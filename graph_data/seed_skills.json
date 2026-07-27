@@ -1,0 +1,1726 @@
+{
+  "generated_by": "deepseek-chat",
+  "generated_at": "2026-07-26T11:17:19.518Z",
+  "review_status": "pending_human_review",
+  "skills": [
+    {
+      "id": "skill:python-basics",
+      "name": "Python基础",
+      "aliases": [
+        "Python编程",
+        "Python入门"
+      ],
+      "description": "学习Python语法、数据类型、控制流、函数和模块等基础知识。",
+      "difficulty": "入门",
+      "est_hours": 40,
+      "prerequisites": [],
+      "advances_to": [
+        "skill:data-structures-algorithms",
+        "skill:numpy",
+        "skill:pandas"
+      ]
+    },
+    {
+      "id": "skill:sql-basics",
+      "name": "SQL基础",
+      "aliases": [
+        "SQL查询",
+        "数据库基础"
+      ],
+      "description": "掌握SQL查询语言，包括SELECT、JOIN、子查询和数据操作。",
+      "difficulty": "入门",
+      "est_hours": 20,
+      "prerequisites": [],
+      "advances_to": [
+        "skill:data-wrangling"
+      ]
+    },
+    {
+      "id": "skill:git-version-control",
+      "name": "Git版本控制",
+      "aliases": [
+        "Git",
+        "版本管理"
+      ],
+      "description": "学习Git的基本操作，如提交、分支、合并和远程仓库管理。",
+      "difficulty": "入门",
+      "est_hours": 10,
+      "prerequisites": [],
+      "advances_to": []
+    },
+    {
+      "id": "skill:linux-command-line",
+      "name": "Linux命令行",
+      "aliases": [
+        "Linux基础",
+        "Shell命令"
+      ],
+      "description": "熟悉Linux常用命令、文件操作、权限管理和脚本编写。",
+      "difficulty": "入门",
+      "est_hours": 15,
+      "prerequisites": [],
+      "advances_to": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "skill:data-structures-algorithms",
+      "name": "数据结构与算法",
+      "aliases": [
+        "DSA",
+        "算法基础"
+      ],
+      "description": "学习数组、链表、栈、队列、树、图及排序搜索等基础算法。",
+      "difficulty": "进阶",
+      "est_hours": 60,
+      "prerequisites": [
+        "skill:python-basics"
+      ],
+      "advances_to": [
+        "skill:linear-algebra",
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "skill:linear-algebra",
+      "name": "线性代数",
+      "aliases": [
+        "线性代数基础",
+        "矩阵运算"
+      ],
+      "description": "掌握向量、矩阵、线性变换、特征值与特征向量等概念。",
+      "difficulty": "进阶",
+      "est_hours": 40,
+      "prerequisites": [
+        "skill:data-structures-algorithms"
+      ],
+      "advances_to": [
+        "skill:calculus",
+        "skill:machine-learning-fundamentals"
+      ]
+    },
+    {
+      "id": "skill:probability-statistics",
+      "name": "概率论与数理统计",
+      "aliases": [
+        "概率统计",
+        "统计基础"
+      ],
+      "description": "学习概率分布、期望、方差、假设检验和回归分析等。",
+      "difficulty": "进阶",
+      "est_hours": 40,
+      "prerequisites": [
+        "skill:data-structures-algorithms"
+      ],
+      "advances_to": [
+        "skill:machine-learning-fundamentals",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "skill:calculus",
+      "name": "微积分",
+      "aliases": [
+        "微积分基础",
+        "导数积分"
+      ],
+      "description": "掌握极限、导数、积分、多元函数微积分和梯度等概念。",
+      "difficulty": "进阶",
+      "est_hours": 40,
+      "prerequisites": [
+        "skill:linear-algebra"
+      ],
+      "advances_to": [
+        "skill:machine-learning-fundamentals",
+        "skill:deep-learning-basics"
+      ]
+    },
+    {
+      "id": "skill:numpy",
+      "name": "NumPy",
+      "aliases": [
+        "NumPy数组",
+        "数值计算"
+      ],
+      "description": "学习NumPy库，掌握数组操作、矩阵运算和数学函数。",
+      "difficulty": "入门",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:python-basics"
+      ],
+      "advances_to": [
+        "skill:pandas",
+        "skill:data-visualization"
+      ]
+    },
+    {
+      "id": "skill:pandas",
+      "name": "Pandas",
+      "aliases": [
+        "Pandas数据处理",
+        "DataFrame"
+      ],
+      "description": "学习Pandas库，掌握数据清洗、转换、分组和合并等操作。",
+      "difficulty": "入门",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:python-basics",
+        "skill:numpy"
+      ],
+      "advances_to": [
+        "skill:data-wrangling",
+        "skill:feature-engineering"
+      ]
+    },
+    {
+      "id": "skill:data-visualization",
+      "name": "数据可视化",
+      "aliases": [
+        "Matplotlib",
+        "Seaborn"
+      ],
+      "description": "使用Matplotlib和Seaborn创建统计图表，如折线图、柱状图和散点图。",
+      "difficulty": "入门",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:python-basics",
+        "skill:numpy"
+      ],
+      "advances_to": [
+        "skill:exploratory-data-analysis"
+      ]
+    },
+    {
+      "id": "skill:data-wrangling",
+      "name": "数据清洗与整理",
+      "aliases": [
+        "数据预处理",
+        "数据整理"
+      ],
+      "description": "处理缺失值、异常值、重复数据，并进行数据格式转换。",
+      "difficulty": "入门",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:pandas",
+        "skill:sql-basics"
+      ],
+      "advances_to": [
+        "skill:feature-engineering",
+        "skill:machine-learning-fundamentals"
+      ]
+    },
+    {
+      "id": "skill:exploratory-data-analysis",
+      "name": "探索性数据分析",
+      "aliases": [
+        "EDA",
+        "数据探索"
+      ],
+      "description": "通过统计摘要和可视化理解数据分布、相关性和模式。",
+      "difficulty": "入门",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:pandas",
+        "skill:data-visualization"
+      ],
+      "advances_to": [
+        "skill:feature-engineering",
+        "skill:machine-learning-fundamentals"
+      ]
+    },
+    {
+      "id": "skill:machine-learning-fundamentals",
+      "name": "机器学习基础",
+      "aliases": [
+        "ML入门",
+        "机器学习概念"
+      ],
+      "description": "了解监督学习、无监督学习、过拟合、欠拟合和交叉验证等核心概念。",
+      "difficulty": "进阶",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:calculus"
+      ],
+      "advances_to": [
+        "skill:supervised-learning",
+        "skill:unsupervised-learning",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "skill:supervised-learning",
+      "name": "监督学习",
+      "aliases": [
+        "监督学习算法",
+        "回归分类"
+      ],
+      "description": "学习线性回归、逻辑回归、决策树、SVM和KNN等监督学习算法。",
+      "difficulty": "进阶",
+      "est_hours": 40,
+      "prerequisites": [
+        "skill:machine-learning-fundamentals"
+      ],
+      "advances_to": [
+        "skill:ensemble-learning",
+        "skill:feature-engineering"
+      ]
+    },
+    {
+      "id": "skill:unsupervised-learning",
+      "name": "无监督学习",
+      "aliases": [
+        "无监督学习算法",
+        "聚类降维"
+      ],
+      "description": "学习K-means、层次聚类、DBSCAN、PCA和t-SNE等算法。",
+      "difficulty": "进阶",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:machine-learning-fundamentals"
+      ],
+      "advances_to": [
+        "skill:feature-engineering",
+        "skill:anomaly-detection"
+      ]
+    },
+    {
+      "id": "skill:feature-engineering",
+      "name": "特征工程",
+      "aliases": [
+        "特征提取",
+        "特征选择"
+      ],
+      "description": "学习特征缩放、编码、构造、选择和降维等技巧以提升模型性能。",
+      "difficulty": "进阶",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:pandas",
+        "skill:machine-learning-fundamentals"
+      ],
+      "advances_to": [
+        "skill:model-evaluation",
+        "skill:ensemble-learning"
+      ]
+    },
+    {
+      "id": "skill:model-evaluation",
+      "name": "模型评估与调优",
+      "aliases": [
+        "模型评估",
+        "超参数调优"
+      ],
+      "description": "掌握交叉验证、混淆矩阵、ROC曲线、AUC和网格搜索等方法。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ],
+      "advances_to": [
+        "skill:ensemble-learning",
+        "skill:xgboost"
+      ]
+    },
+    {
+      "id": "skill:ensemble-learning",
+      "name": "集成学习",
+      "aliases": [
+        "集成方法",
+        "Bagging Boosting"
+      ],
+      "description": "学习随机森林、AdaBoost、梯度提升和Stacking等集成技术。",
+      "difficulty": "进阶",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:supervised-learning",
+        "skill:model-evaluation"
+      ],
+      "advances_to": [
+        "skill:xgboost",
+        "skill:lightgbm"
+      ]
+    },
+    {
+      "id": "skill:xgboost",
+      "name": "XGBoost",
+      "aliases": [
+        "XGBoost算法",
+        "梯度提升"
+      ],
+      "description": "掌握XGBoost的原理、参数调优和实际应用，处理分类与回归问题。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:ensemble-learning"
+      ],
+      "advances_to": [
+        "skill:lightgbm",
+        "skill:catboost"
+      ]
+    },
+    {
+      "id": "skill:lightgbm",
+      "name": "LightGBM",
+      "aliases": [
+        "LightGBM算法",
+        "高效梯度提升"
+      ],
+      "description": "学习LightGBM的直方图算法、叶子节点生长和并行训练等特性。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:xgboost"
+      ],
+      "advances_to": [
+        "skill:catboost"
+      ]
+    },
+    {
+      "id": "skill:catboost",
+      "name": "CatBoost",
+      "aliases": [
+        "CatBoost算法",
+        "类别特征处理"
+      ],
+      "description": "掌握CatBoost对类别特征的原生支持和有序提升等独特技术。",
+      "difficulty": "进阶",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:lightgbm"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:regularization",
+      "name": "正则化技术",
+      "aliases": [
+        "L1 L2正则化",
+        "防止过拟合"
+      ],
+      "description": "学习L1、L2正则化、Dropout和早停等防止过拟合的方法。",
+      "difficulty": "进阶",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:supervised-learning"
+      ],
+      "advances_to": [
+        "skill:deep-learning-basics"
+      ]
+    },
+    {
+      "id": "skill:gradient-descent",
+      "name": "梯度下降优化",
+      "aliases": [
+        "梯度下降",
+        "优化算法"
+      ],
+      "description": "理解批量梯度下降、随机梯度下降、动量法和Adam等优化器。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:calculus",
+        "skill:machine-learning-fundamentals"
+      ],
+      "advances_to": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "skill:deep-learning-basics",
+      "name": "深度学习基础",
+      "aliases": [
+        "DL入门",
+        "神经网络基础"
+      ],
+      "description": "了解感知机、多层感知机、激活函数和反向传播等基本概念。",
+      "difficulty": "进阶",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:machine-learning-fundamentals",
+        "skill:calculus",
+        "skill:gradient-descent"
+      ],
+      "advances_to": [
+        "skill:neural-networks",
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "skill:neural-networks",
+      "name": "神经网络",
+      "aliases": [
+        "NN",
+        "人工神经网络"
+      ],
+      "description": "学习神经网络的架构、训练技巧和调参，使用框架实现简单网络。",
+      "difficulty": "进阶",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:deep-learning-basics"
+      ],
+      "advances_to": [
+        "skill:convolutional-neural-networks",
+        "skill:recurrent-neural-networks"
+      ]
+    },
+    {
+      "id": "skill:convolutional-neural-networks",
+      "name": "卷积神经网络",
+      "aliases": [
+        "CNN",
+        "卷积网络"
+      ],
+      "description": "掌握卷积层、池化层、经典架构（如LeNet、ResNet）和图像分类应用。",
+      "difficulty": "高级",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:object-detection"
+      ]
+    },
+    {
+      "id": "skill:recurrent-neural-networks",
+      "name": "循环神经网络",
+      "aliases": [
+        "RNN",
+        "序列模型"
+      ],
+      "description": "学习RNN、LSTM、GRU及其在时间序列和自然语言处理中的应用。",
+      "difficulty": "高级",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:natural-language-processing"
+      ]
+    },
+    {
+      "id": "skill:natural-language-processing",
+      "name": "自然语言处理",
+      "aliases": [
+        "NLP",
+        "文本处理"
+      ],
+      "description": "学习文本预处理、词嵌入、情感分析和序列标注等NLP任务。",
+      "difficulty": "高级",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:recurrent-neural-networks"
+      ],
+      "advances_to": [
+        "skill:transformers",
+        "skill:attention-mechanism"
+      ]
+    },
+    {
+      "id": "skill:transformers",
+      "name": "Transformer模型",
+      "aliases": [
+        "Transformer",
+        "自注意力"
+      ],
+      "description": "掌握Transformer架构、自注意力机制及其在NLP和CV中的应用。",
+      "difficulty": "高级",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:natural-language-processing"
+      ],
+      "advances_to": [
+        "skill:bert",
+        "skill:gpt"
+      ]
+    },
+    {
+      "id": "skill:bert",
+      "name": "BERT模型",
+      "aliases": [
+        "BERT",
+        "预训练语言模型"
+      ],
+      "description": "学习BERT的预训练与微调，用于文本分类、问答等下游任务。",
+      "difficulty": "高级",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:transformers"
+      ],
+      "advances_to": [
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "skill:gpt",
+      "name": "GPT模型",
+      "aliases": [
+        "GPT",
+        "生成式预训练"
+      ],
+      "description": "了解GPT系列模型的自回归生成原理和提示工程等应用。",
+      "difficulty": "高级",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:transformers"
+      ],
+      "advances_to": [
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "skill:fine-tuning-pretrained-models",
+      "name": "预训练模型微调",
+      "aliases": [
+        "微调",
+        "迁移学习"
+      ],
+      "description": "学习如何利用预训练模型进行迁移学习，针对特定任务微调参数。",
+      "difficulty": "高级",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:bert",
+        "skill:gpt"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:anomaly-detection",
+      "name": "异常检测",
+      "aliases": [
+        "异常检测算法",
+        "离群点检测"
+      ],
+      "description": "学习孤立森林、LOF和Autoencoder等异常检测方法。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:unsupervised-learning"
+      ],
+      "advances_to": [
+        "skill:time-series-analysis"
+      ]
+    },
+    {
+      "id": "skill:time-series-analysis",
+      "name": "时间序列分析",
+      "aliases": [
+        "时间序列",
+        "时序预测"
+      ],
+      "description": "掌握ARIMA、季节性分解、LSTM和Prophet等时间序列建模方法。",
+      "difficulty": "进阶",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:supervised-learning",
+        "skill:recurrent-neural-networks"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:activation-functions",
+      "name": "激活函数",
+      "aliases": [
+        "激活函数",
+        "Activation"
+      ],
+      "description": "神经网络中引入非线性的函数，如ReLU、Sigmoid、Tanh等，是深度学习基础组件。",
+      "difficulty": "入门",
+      "est_hours": 2,
+      "prerequisites": [
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:optimizers"
+      ]
+    },
+    {
+      "id": "skill:optimizers",
+      "name": "优化器",
+      "aliases": [
+        "优化器",
+        "Optimizer"
+      ],
+      "description": "用于更新神经网络参数的算法，如SGD、Adam、RMSprop等，影响模型收敛速度与性能。",
+      "difficulty": "入门",
+      "est_hours": 3,
+      "prerequisites": [
+        "skill:neural-networks",
+        "skill:activation-functions"
+      ],
+      "advances_to": [
+        "skill:cnn-architectures",
+        "skill:rnn-variants"
+      ]
+    },
+    {
+      "id": "skill:loss-functions",
+      "name": "损失函数",
+      "aliases": [
+        "损失函数",
+        "Loss"
+      ],
+      "description": "衡量模型预测与真实值差异的函数，如交叉熵、均方误差等，是训练优化的目标。",
+      "difficulty": "入门",
+      "est_hours": 2,
+      "prerequisites": [
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:optimizers"
+      ]
+    },
+    {
+      "id": "skill:regularization-techniques",
+      "name": "正则化技术",
+      "aliases": [
+        "正则化",
+        "Regularization"
+      ],
+      "description": "防止过拟合的方法，包括L1/L2正则化、Dropout、Batch Normalization等。",
+      "difficulty": "入门",
+      "est_hours": 3,
+      "prerequisites": [
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:cnn-architectures",
+        "skill:rnn-variants"
+      ]
+    },
+    {
+      "id": "skill:cnn-architectures",
+      "name": "CNN架构",
+      "aliases": [
+        "CNN",
+        "卷积神经网络"
+      ],
+      "description": "卷积神经网络的核心结构，包括卷积层、池化层、全连接层及经典模型如LeNet、AlexNet。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:convolutional-neural-networks",
+        "skill:activation-functions"
+      ],
+      "advances_to": [
+        "skill:image-classification",
+        "skill:object-detection"
+      ]
+    },
+    {
+      "id": "skill:rnn-variants",
+      "name": "RNN变体",
+      "aliases": [
+        "RNN",
+        "循环神经网络"
+      ],
+      "description": "处理序列数据的网络变体，包括LSTM、GRU，解决长程依赖和梯度消失问题。",
+      "difficulty": "进阶",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:recurrent-neural-networks",
+        "skill:activation-functions"
+      ],
+      "advances_to": [
+        "skill:word-embeddings",
+        "skill:sequence-labeling"
+      ]
+    },
+    {
+      "id": "skill:word-embeddings",
+      "name": "词向量",
+      "aliases": [
+        "词嵌入",
+        "Word Embedding"
+      ],
+      "description": "将词语映射为稠密向量的技术，包括Word2Vec、GloVe、FastText等，是NLP基础。",
+      "difficulty": "进阶",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:natural-language-processing"
+      ],
+      "advances_to": [
+        "skill:text-classification",
+        "skill:sequence-labeling"
+      ]
+    },
+    {
+      "id": "skill:text-classification",
+      "name": "文本分类",
+      "aliases": [
+        "文本分类",
+        "Text Classification"
+      ],
+      "description": "将文本分配到预定义类别的任务，常用方法包括CNN、RNN、Transformer等。",
+      "difficulty": "进阶",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:word-embeddings",
+        "skill:cnn-architectures",
+        "skill:rnn-variants"
+      ],
+      "advances_to": [
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "skill:sequence-labeling",
+      "name": "序列标注",
+      "aliases": [
+        "序列标注",
+        "Sequence Labeling"
+      ],
+      "description": "为序列中每个元素分配标签的任务，如命名实体识别(NER)、词性标注，常用BiLSTM+CRF。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:rnn-variants",
+        "skill:word-embeddings"
+      ],
+      "advances_to": [
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "skill:transformer-architecture",
+      "name": "Transformer架构",
+      "aliases": [
+        "Transformer",
+        "自注意力"
+      ],
+      "description": "基于自注意力机制的序列模型架构，是BERT、GPT等预训练模型的基础。",
+      "difficulty": "进阶",
+      "est_hours": 6,
+      "prerequisites": [
+        "skill:transformers",
+        "skill:attention-mechanism"
+      ],
+      "advances_to": [
+        "skill:bert",
+        "skill:gpt"
+      ]
+    },
+    {
+      "id": "skill:attention-mechanism",
+      "name": "注意力机制",
+      "aliases": [
+        "注意力",
+        "Attention"
+      ],
+      "description": "让模型关注输入重要部分的技术，包括自注意力、多头注意力，是Transformer核心。",
+      "difficulty": "进阶",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:rnn-variants"
+      ],
+      "advances_to": [
+        "skill:transformer-architecture"
+      ]
+    },
+    {
+      "id": "skill:bert-fine-tuning",
+      "name": "BERT微调",
+      "aliases": [
+        "BERT微调",
+        "Fine-tuning BERT"
+      ],
+      "description": "在预训练BERT基础上针对下游任务进行微调，包括分类、NER、QA等。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:bert",
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "advances_to": [
+        "skill:prompt-engineering"
+      ]
+    },
+    {
+      "id": "skill:gpt-fine-tuning",
+      "name": "GPT微调",
+      "aliases": [
+        "GPT微调",
+        "Fine-tuning GPT"
+      ],
+      "description": "在预训练GPT模型上微调以适应特定文本生成任务，如对话、摘要。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "advances_to": [
+        "skill:prompt-engineering"
+      ]
+    },
+    {
+      "id": "skill:prompt-engineering",
+      "name": "提示工程",
+      "aliases": [
+        "Prompt工程",
+        "Prompt Engineering"
+      ],
+      "description": "设计输入提示以引导大模型生成期望输出的技术，包括零样本、少样本提示。",
+      "difficulty": "进阶",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:gpt",
+        "skill:bert"
+      ],
+      "advances_to": [
+        "skill:rag",
+        "skill:agent-development"
+      ]
+    },
+    {
+      "id": "skill:rag",
+      "name": "检索增强生成",
+      "aliases": [
+        "RAG",
+        "检索增强"
+      ],
+      "description": "结合信息检索与文本生成，从外部知识库检索相关文档辅助大模型生成答案。",
+      "difficulty": "高级",
+      "est_hours": 6,
+      "prerequisites": [
+        "skill:prompt-engineering",
+        "skill:vector-databases"
+      ],
+      "advances_to": [
+        "skill:agent-development"
+      ]
+    },
+    {
+      "id": "skill:lora-fine-tuning",
+      "name": "LoRA微调",
+      "aliases": [
+        "LoRA",
+        "低秩适配"
+      ],
+      "description": "通过低秩矩阵更新大模型参数的高效微调方法，减少计算资源需求。",
+      "difficulty": "高级",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:fine-tuning-pretrained-models",
+        "skill:gpt"
+      ],
+      "advances_to": [
+        "skill:rag"
+      ]
+    },
+    {
+      "id": "skill:agent-development",
+      "name": "智能体开发",
+      "aliases": [
+        "Agent",
+        "AI Agent"
+      ],
+      "description": "构建能自主执行任务、调用工具和记忆的AI智能体，如ReAct模式。",
+      "difficulty": "高级",
+      "est_hours": 8,
+      "prerequisites": [
+        "skill:langchain",
+        "skill:prompt-engineering"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:langchain",
+      "name": "LangChain框架",
+      "aliases": [
+        "LangChain",
+        "链式调用"
+      ],
+      "description": "用于构建大模型应用的框架，提供链、代理、记忆等组件，简化开发流程。",
+      "difficulty": "进阶",
+      "est_hours": 6,
+      "prerequisites": [
+        "skill:prompt-engineering",
+        "skill:python-basics"
+      ],
+      "advances_to": [
+        "skill:agent-development",
+        "skill:rag"
+      ]
+    },
+    {
+      "id": "skill:vector-databases",
+      "name": "向量数据库",
+      "aliases": [
+        "向量数据库",
+        "Vector DB"
+      ],
+      "description": "存储和检索高维向量嵌入的数据库，如FAISS、Pinecone，用于RAG和相似性搜索。",
+      "difficulty": "进阶",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:word-embeddings",
+        "skill:python-basics"
+      ],
+      "advances_to": [
+        "skill:rag"
+      ]
+    },
+    {
+      "id": "skill:image-classification",
+      "name": "图像分类",
+      "aliases": [
+        "图像分类",
+        "Image Classification"
+      ],
+      "description": "将图像分配到预定义类别的任务，常用CNN架构如ResNet、EfficientNet。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:cnn-architectures"
+      ],
+      "advances_to": [
+        "skill:object-detection"
+      ]
+    },
+    {
+      "id": "skill:object-detection",
+      "name": "目标检测",
+      "aliases": [
+        "目标检测",
+        "Object Detection"
+      ],
+      "description": "识别图像中物体位置和类别的任务，常用方法包括YOLO、Faster R-CNN。",
+      "difficulty": "高级",
+      "est_hours": 6,
+      "prerequisites": [
+        "skill:image-classification"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:pytorch-basics",
+      "name": "PyTorch基础",
+      "aliases": [
+        "PyTorch",
+        "Torch"
+      ],
+      "description": "深度学习框架PyTorch的核心概念，包括张量、自动求导、神经网络模块。",
+      "difficulty": "入门",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:python-basics",
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:pytorch-advanced"
+      ]
+    },
+    {
+      "id": "skill:pytorch-advanced",
+      "name": "PyTorch高级",
+      "aliases": [
+        "PyTorch高级",
+        "Torch高级"
+      ],
+      "description": "PyTorch高级特性，包括自定义数据集、分布式训练、模型部署。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:pytorch-basics"
+      ],
+      "advances_to": [
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "skill:tensorflow-basics",
+      "name": "TensorFlow基础",
+      "aliases": [
+        "TensorFlow",
+        "TF"
+      ],
+      "description": "深度学习框架TensorFlow的核心概念，包括张量、计算图、Keras API。",
+      "difficulty": "入门",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:python-basics",
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:tensorflow-advanced"
+      ]
+    },
+    {
+      "id": "skill:tensorflow-advanced",
+      "name": "TensorFlow高级",
+      "aliases": [
+        "TensorFlow高级",
+        "TF高级"
+      ],
+      "description": "TensorFlow高级特性，包括自定义训练循环、TFRecord、TPU训练。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:tensorflow-basics"
+      ],
+      "advances_to": [
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "skill:model-deployment",
+      "name": "模型部署",
+      "aliases": [
+        "部署",
+        "Model Serving"
+      ],
+      "description": "将训练好的模型部署到生产环境，包括ONNX、TensorRT、Flask/FastAPI服务。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:pytorch-basics",
+        "skill:tensorflow-basics"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:distributed-training",
+      "name": "分布式训练",
+      "aliases": [
+        "分布式训练",
+        "Distributed Training"
+      ],
+      "description": "利用多GPU或多节点加速模型训练的技术，包括数据并行、模型并行。",
+      "difficulty": "高级",
+      "est_hours": 6,
+      "prerequisites": [
+        "skill:pytorch-advanced",
+        "skill:tensorflow-advanced"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:generative-adversarial-networks",
+      "name": "生成对抗网络",
+      "aliases": [
+        "GAN",
+        "生成对抗"
+      ],
+      "description": "由生成器和判别器组成的生成模型，用于图像生成、风格迁移等。",
+      "difficulty": "高级",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:cnn-architectures"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:variational-autoencoders",
+      "name": "变分自编码器",
+      "aliases": [
+        "VAE",
+        "变分自编码"
+      ],
+      "description": "基于变分推断的生成模型，学习数据的潜在表示，用于图像生成、降维。",
+      "difficulty": "高级",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:neural-networks",
+        "skill:probability-statistics"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:reinforcement-learning-basics",
+      "name": "强化学习基础",
+      "aliases": [
+        "RL",
+        "强化学习"
+      ],
+      "description": "智能体通过与环境交互学习最优策略的框架，包括Q-learning、策略梯度。",
+      "difficulty": "进阶",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:neural-networks"
+      ],
+      "advances_to": [
+        "skill:deep-reinforcement-learning"
+      ]
+    },
+    {
+      "id": "skill:deep-reinforcement-learning",
+      "name": "深度强化学习",
+      "aliases": [
+        "深度RL",
+        "Deep RL"
+      ],
+      "description": "结合深度学习与强化学习的方法，如DQN、PPO，处理高维状态空间。",
+      "difficulty": "高级",
+      "est_hours": 6,
+      "prerequisites": [
+        "skill:reinforcement-learning-basics",
+        "skill:cnn-architectures"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:model-interpretability",
+      "name": "模型可解释性",
+      "aliases": [
+        "可解释性",
+        "XAI"
+      ],
+      "description": "解释深度学习模型决策的方法，如LIME、SHAP、注意力可视化。",
+      "difficulty": "进阶",
+      "est_hours": 4,
+      "prerequisites": [
+        "skill:neural-networks"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:transfer-learning",
+      "name": "迁移学习",
+      "aliases": [
+        "迁移学习",
+        "Transfer Learning"
+      ],
+      "description": "将预训练模型知识迁移到新任务的技术，减少训练数据需求。",
+      "difficulty": "进阶",
+      "est_hours": 3,
+      "prerequisites": [
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "advances_to": [
+        "skill:bert-fine-tuning",
+        "skill:gpt-fine-tuning"
+      ]
+    },
+    {
+      "id": "skill:data-augmentation",
+      "name": "数据增强",
+      "aliases": [
+        "数据增强",
+        "Data Augmentation"
+      ],
+      "description": "通过对原始数据施加变换生成新样本的技术，提升模型泛化能力，如图像旋转、文本回译。",
+      "difficulty": "入门",
+      "est_hours": 2,
+      "prerequisites": [
+        "skill:deep-learning-basics"
+      ],
+      "advances_to": [
+        "skill:image-classification",
+        "skill:text-classification"
+      ]
+    },
+    {
+      "id": "skill:hyperparameter-tuning",
+      "name": "超参数调优",
+      "aliases": [
+        "超参数调优",
+        "HPO"
+      ],
+      "description": "系统搜索最优超参数的方法，包括网格搜索、随机搜索、贝叶斯优化。",
+      "difficulty": "进阶",
+      "est_hours": 3,
+      "prerequisites": [
+        "skill:model-evaluation"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:docker",
+      "name": "Docker",
+      "aliases": [
+        "容器化",
+        "Docker容器"
+      ],
+      "description": "学习Docker容器化技术，包括镜像构建、容器运行、Docker Compose编排等，用于模型部署。",
+      "difficulty": "入门",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:linux-command-line"
+      ],
+      "advances_to": [
+        "skill:fastapi",
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "skill:fastapi",
+      "name": "FastAPI",
+      "aliases": [
+        "FastAPI框架",
+        "Python Web API"
+      ],
+      "description": "学习使用FastAPI构建高性能RESTful API，用于模型服务化部署。",
+      "difficulty": "入门",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:python-basics"
+      ],
+      "advances_to": [
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "skill:onnx",
+      "name": "ONNX",
+      "aliases": [
+        "开放神经网络交换",
+        "ONNX格式"
+      ],
+      "description": "学习ONNX模型格式，用于模型转换和跨框架部署，提升推理效率。",
+      "difficulty": "进阶",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:deep-learning-basics",
+        "skill:pytorch-basics"
+      ],
+      "advances_to": [
+        "skill:model-quantization",
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "skill:model-quantization",
+      "name": "模型量化",
+      "aliases": [
+        "量化",
+        "INT8量化"
+      ],
+      "description": "学习模型量化技术，减少模型大小和加速推理，包括PTQ和QAT。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:onnx",
+        "skill:deep-learning-basics"
+      ],
+      "advances_to": [
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "skill:mlops-basics",
+      "name": "MLOps基础",
+      "aliases": [
+        "MLOps",
+        "机器学习运维"
+      ],
+      "description": "学习MLOps核心概念，包括实验跟踪、模型版本管理、CI/CD流水线、模型监控。",
+      "difficulty": "进阶",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:machine-learning-fundamentals",
+        "skill:git-version-control"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:apache-spark",
+      "name": "Apache Spark",
+      "aliases": [
+        "Spark",
+        "Spark大数据"
+      ],
+      "description": "学习Spark分布式计算框架，包括RDD、DataFrame、Spark SQL，用于大规模数据处理。",
+      "difficulty": "进阶",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:python-basics",
+        "skill:sql-basics"
+      ],
+      "advances_to": [
+        "skill:data-warehouse-basics"
+      ]
+    },
+    {
+      "id": "skill:data-warehouse-basics",
+      "name": "数据仓库基础",
+      "aliases": [
+        "数仓",
+        "数据仓库"
+      ],
+      "description": "学习数据仓库概念、维度建模、ETL流程，以及常用工具如Hive、Snowflake。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:sql-basics"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:java-basics",
+      "name": "Java基础",
+      "aliases": [
+        "Java",
+        "Java编程"
+      ],
+      "description": "学习Java语言核心，包括面向对象、集合框架、多线程、I/O等。",
+      "difficulty": "入门",
+      "est_hours": 40,
+      "prerequisites": [],
+      "advances_to": [
+        "skill:spring-boot"
+      ]
+    },
+    {
+      "id": "skill:spring-boot",
+      "name": "Spring Boot",
+      "aliases": [
+        "Spring Boot框架",
+        "Spring Boot开发"
+      ],
+      "description": "学习Spring Boot框架，包括依赖注入、REST API、数据访问、安全配置等。",
+      "difficulty": "进阶",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:java-basics"
+      ],
+      "advances_to": [
+        "skill:microservices-basics"
+      ]
+    },
+    {
+      "id": "skill:microservices-basics",
+      "name": "微服务基础",
+      "aliases": [
+        "微服务架构",
+        "微服务"
+      ],
+      "description": "学习微服务架构设计原则、服务拆分、服务发现、API网关等。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:spring-boot"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:redis",
+      "name": "Redis",
+      "aliases": [
+        "Redis缓存",
+        "Redis数据库"
+      ],
+      "description": "学习Redis内存数据库，包括数据结构、缓存策略、持久化、集群等。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:linux-command-line"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:message-queue",
+      "name": "消息队列",
+      "aliases": [
+        "MQ",
+        "消息中间件"
+      ],
+      "description": "学习消息队列原理及常用系统如Kafka、RabbitMQ，包括生产消费模型、分区、可靠性。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:java-basics"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:resume-writing",
+      "name": "简历撰写",
+      "aliases": [
+        "简历技巧",
+        "简历优化"
+      ],
+      "description": "学习如何撰写技术简历，突出项目经验、技能和成果，吸引面试官。",
+      "difficulty": "入门",
+      "est_hours": 5,
+      "prerequisites": [],
+      "advances_to": [
+        "skill:technical-interview"
+      ]
+    },
+    {
+      "id": "skill:technical-interview",
+      "name": "技术面试",
+      "aliases": [
+        "面试技巧",
+        "算法面试"
+      ],
+      "description": "学习技术面试常见题型，包括算法、数据结构、系统设计、行为问题。",
+      "difficulty": "进阶",
+      "est_hours": 40,
+      "prerequisites": [
+        "skill:data-structures-algorithms"
+      ],
+      "advances_to": [
+        "skill:system-design-interview"
+      ]
+    },
+    {
+      "id": "skill:system-design-interview",
+      "name": "系统设计面试",
+      "aliases": [
+        "系统设计",
+        "架构面试"
+      ],
+      "description": "学习系统设计面试方法论，包括设计高并发、高可用系统，如设计推特、秒杀系统。",
+      "difficulty": "高级",
+      "est_hours": 30,
+      "prerequisites": [
+        "skill:technical-interview",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:message-queue"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:model-deployment-with-docker",
+      "name": "Docker模型部署",
+      "aliases": [
+        "模型容器化",
+        "Docker部署"
+      ],
+      "description": "学习使用Docker打包机器学习模型并部署为服务，结合FastAPI。",
+      "difficulty": "进阶",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:docker",
+        "skill:fastapi",
+        "skill:model-deployment"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:ci-cd-for-ml",
+      "name": "ML CI/CD",
+      "aliases": [
+        "ML流水线",
+        "持续集成部署"
+      ],
+      "description": "学习为机器学习项目建立CI/CD流水线，自动化训练、测试和部署。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:mlops-basics",
+        "skill:git-version-control"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:model-monitoring",
+      "name": "模型监控",
+      "aliases": [
+        "模型漂移",
+        "ML监控"
+      ],
+      "description": "学习监控模型在生产中的性能，检测数据漂移和概念漂移。",
+      "difficulty": "进阶",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:mlops-basics"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:feature-store",
+      "name": "特征存储",
+      "aliases": [
+        "Feature Store",
+        "特征平台"
+      ],
+      "description": "学习特征存储概念和工具如Feast，用于特征共享和在线推理。",
+      "difficulty": "进阶",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:feature-engineering",
+        "skill:mlops-basics"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:etl-pipeline",
+      "name": "ETL流水线",
+      "aliases": [
+        "ETL",
+        "数据管道"
+      ],
+      "description": "学习构建ETL流水线，使用工具如Airflow、Spark进行数据抽取、转换、加载。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:java-spring-boot-rest-api",
+      "name": "Spring Boot REST API",
+      "aliases": [
+        "REST API开发",
+        "Spring Boot API"
+      ],
+      "description": "深入学习使用Spring Boot构建RESTful API，包括异常处理、验证、文档。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:spring-boot"
+      ],
+      "advances_to": [
+        "skill:microservices-basics"
+      ]
+    },
+    {
+      "id": "skill:redis-cache",
+      "name": "Redis缓存策略",
+      "aliases": [
+        "缓存设计",
+        "Redis缓存"
+      ],
+      "description": "学习Redis缓存模式，包括缓存穿透、击穿、雪崩的解决方案。",
+      "difficulty": "进阶",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:redis"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:kafka-basics",
+      "name": "Kafka基础",
+      "aliases": [
+        "Kafka",
+        "消息队列Kafka"
+      ],
+      "description": "学习Apache Kafka核心概念，包括主题、分区、消费者组、可靠性保证。",
+      "difficulty": "进阶",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:message-queue"
+      ],
+      "advances_to": []
+    },
+    {
+      "id": "skill:behavioral-interview",
+      "name": "行为面试",
+      "aliases": [
+        "行为问题",
+        "软技能面试"
+      ],
+      "description": "学习行为面试技巧，使用STAR方法回答项目经验、团队合作等问题。",
+      "difficulty": "入门",
+      "est_hours": 5,
+      "prerequisites": [
+        "skill:resume-writing"
+      ],
+      "advances_to": [
+        "skill:technical-interview"
+      ]
+    },
+    {
+      "id": "skill:leetcode-practice",
+      "name": "LeetCode刷题",
+      "aliases": [
+        "算法刷题",
+        "编程练习"
+      ],
+      "description": "通过LeetCode练习算法和数据结构题目，提升编程能力和面试通过率。",
+      "difficulty": "进阶",
+      "est_hours": 60,
+      "prerequisites": [
+        "skill:data-structures-algorithms"
+      ],
+      "advances_to": [
+        "skill:technical-interview"
+      ]
+    },
+    {
+      "id": "skill:design-patterns",
+      "name": "设计模式",
+      "aliases": [
+        "GoF设计模式",
+        "软件设计模式"
+      ],
+      "description": "学习常用设计模式，如单例、工厂、观察者等，提升代码可维护性。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:java-basics"
+      ],
+      "advances_to": [
+        "skill:system-design-interview"
+      ]
+    },
+    {
+      "id": "skill:cloud-deployment",
+      "name": "云部署基础",
+      "aliases": [
+        "云服务",
+        "AWS/Azure/GCP"
+      ],
+      "description": "学习云平台基础，如AWS EC2、S3，用于部署模型和应用。",
+      "difficulty": "入门",
+      "est_hours": 15,
+      "prerequisites": [
+        "skill:linux-command-line"
+      ],
+      "advances_to": [
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "skill:kubernetes-basics",
+      "name": "Kubernetes基础",
+      "aliases": [
+        "K8s",
+        "容器编排"
+      ],
+      "description": "学习Kubernetes容器编排，包括Pod、Service、Deployment等，用于微服务部署。",
+      "difficulty": "进阶",
+      "est_hours": 25,
+      "prerequisites": [
+        "skill:docker"
+      ],
+      "advances_to": [
+        "skill:microservices-basics"
+      ]
+    },
+    {
+      "id": "skill:api-design",
+      "name": "API设计",
+      "aliases": [
+        "RESTful设计",
+        "API规范"
+      ],
+      "description": "学习RESTful API设计原则，包括资源命名、状态码、版本控制。",
+      "difficulty": "入门",
+      "est_hours": 10,
+      "prerequisites": [
+        "skill:python-basics"
+      ],
+      "advances_to": [
+        "skill:fastapi",
+        "skill:spring-boot"
+      ]
+    },
+    {
+      "id": "skill:sql-advanced",
+      "name": "SQL进阶",
+      "aliases": [
+        "复杂SQL",
+        "SQL优化"
+      ],
+      "description": "学习高级SQL技巧，包括窗口函数、CTE、查询优化、索引策略。",
+      "difficulty": "进阶",
+      "est_hours": 20,
+      "prerequisites": [
+        "skill:sql-basics"
+      ],
+      "advances_to": [
+        "skill:data-warehouse-basics"
+      ]
+    }
+  ]
+}

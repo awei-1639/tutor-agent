@@ -1,0 +1,3375 @@
+{
+  "generated_by": "deepseek-chat",
+  "generated_at": "2026-07-26T11:17:19.518Z",
+  "review_status": "pending_human_review",
+  "jobs": [
+    {
+      "id": "job:senior-nlp-algorithm-engineer-1",
+      "title": "高级NLP算法工程师",
+      "company": "字节跳动",
+      "city": "北京",
+      "salary": "40-70K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:deep-learning-basics"
+      ],
+      "jd_snapshot": "负责大语言模型在搜索、对话等场景的研发与优化，包括模型微调、推理加速等。要求硕士及以上学历，3年以上NLP经验，熟悉Transformer架构，有大规模模型训练经验者优先。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-2",
+      "title": "NLP算法工程师",
+      "company": "阿里巴巴",
+      "city": "杭州",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:sequence-labeling",
+        "skill:word-embeddings",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "从事自然语言处理相关算法研发，包括文本分类、序列标注、语义理解等。要求硕士及以上学历，熟悉BERT等预训练模型，熟练使用PyTorch。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-3",
+      "title": "NLP算法工程师（对话系统）",
+      "company": "腾讯",
+      "city": "深圳",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain"
+      ],
+      "jd_snapshot": "负责对话系统和大模型应用开发，包括Prompt设计、RAG系统搭建等。要求硕士及以上学历，熟悉LangChain框架，有对话系统经验者优先。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-4",
+      "title": "NLP算法工程师（金融方向）",
+      "company": "蚂蚁集团",
+      "city": "杭州",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:text-classification",
+        "skill:feature-engineering",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "负责金融领域NLP算法研发，如风险控制、智能客服等。要求硕士及以上学历，熟悉文本分类和特征工程，有金融背景优先。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-5",
+      "title": "NLP算法工程师（搜索推荐）",
+      "company": "百度",
+      "city": "北京",
+      "salary": "35-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:transfer-learning"
+      ],
+      "jd_snapshot": "负责搜索推荐场景下的NLP算法优化，包括query理解、文档相关性等。要求硕士及以上学历，熟悉预训练模型微调，有搜索推荐经验者优先。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-6",
+      "title": "NLP算法工程师（知识图谱）",
+      "company": "美团",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:sequence-labeling",
+        "skill:word-embeddings",
+        "skill:data-wrangling"
+      ],
+      "jd_snapshot": "负责知识图谱构建与NLP结合，包括实体识别、关系抽取等。要求硕士及以上学历，熟悉序列标注和词向量技术。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-8",
+      "title": "NLP算法工程师（医疗方向）",
+      "company": "科大讯飞",
+      "city": "远程",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:fine-tuning-pretrained-models",
+        "skill:model-deployment",
+        "skill:docker"
+      ],
+      "jd_snapshot": "负责医疗领域NLP算法研发，如病历分析、辅助诊断等。要求硕士及以上学历，熟悉模型部署，有医疗NLP经验者优先。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-9",
+      "title": "NLP算法工程师（智能客服）",
+      "company": "京东",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain"
+      ],
+      "jd_snapshot": "负责智能客服系统NLP算法，包括意图识别、FAQ匹配等。要求硕士及以上学历，熟悉大模型应用和RAG技术。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-10",
+      "title": "NLP算法工程师（机器翻译）",
+      "company": "网易",
+      "city": "广州",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:attention-mechanism",
+        "skill:sequence-labeling",
+        "skill:word-embeddings",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "负责机器翻译算法研发，包括模型训练、优化等。要求硕士及以上学历，熟悉Transformer和注意力机制。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-14",
+      "title": "NLP算法工程师（内容安全）",
+      "company": "快手",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:text-classification",
+        "skill:anomaly-detection",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "负责内容安全NLP算法，包括垃圾文本识别、违规内容过滤等。要求硕士及以上学历，熟悉文本分类和异常检测。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-18",
+      "title": "NLP算法工程师（小样本学习）",
+      "company": "第四范式",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:fine-tuning-pretrained-models",
+        "skill:transfer-learning",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "负责小样本场景下的NLP算法，如少样本分类、迁移学习等。要求硕士及以上学历，熟悉预训练模型微调和数据增强。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-23",
+      "title": "NLP算法工程师（推荐系统NLP）",
+      "company": "拼多多",
+      "city": "上海",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:text-classification",
+        "skill:feature-engineering",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "负责推荐系统中NLP特征提取与模型优化，包括商品标题理解等。要求硕士及以上学历，熟悉文本分类和特征工程。"
+    },
+    {
+      "id": "job:nlp-algorithm-engineer-24",
+      "title": "NLP算法工程师（远程）",
+      "company": "FlowGPT",
+      "city": "远程",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain"
+      ],
+      "jd_snapshot": "负责大模型应用开发，包括Prompt优化、RAG系统等。要求本科及以上学历，熟悉LangChain，远程办公。"
+    },
+    {
+      "id": "job:large-model-app-dev-26",
+      "title": "大模型应用开发工程师",
+      "company": "智谱AI",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain",
+        "skill:agent-development"
+      ],
+      "jd_snapshot": "负责基于大模型的智能应用开发，包括Prompt工程、RAG系统构建及Agent框架设计。要求精通Python，熟悉Transformer架构，有LangChain开发经验，具备独立解决复杂问题的能力。"
+    },
+    {
+      "id": "job:large-model-app-dev-27",
+      "title": "高级大模型应用工程师",
+      "company": "字节跳动",
+      "city": "杭州",
+      "salary": "40-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:lora-fine-tuning",
+        "skill:vector-databases",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "参与大模型在业务场景中的落地，负责模型微调（LoRA）、向量数据库集成及部署优化。要求有GPT系列模型实战经验，熟悉分布式训练，具备系统设计能力。"
+    },
+    {
+      "id": "job:large-model-app-dev-28",
+      "title": "大模型应用开发工程师",
+      "company": "百度",
+      "city": "上海",
+      "salary": "25-45K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:fastapi",
+        "skill:docker"
+      ],
+      "jd_snapshot": "开发基于大语言模型的API服务，优化Prompt策略，构建高并发推理接口。要求掌握NLP基础，熟悉FastAPI和Docker，有模型服务化经验。"
+    },
+    {
+      "id": "job:large-model-app-dev-29",
+      "title": "大模型应用开发工程师",
+      "company": "阿里巴巴",
+      "city": "深圳",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:rag",
+        "skill:langchain",
+        "skill:mlops-basics"
+      ],
+      "jd_snapshot": "设计并实现RAG系统，结合LangChain构建知识增强应用，负责MLOps流程搭建。要求有深度学习基础，熟悉Transformer，具备工程化思维。"
+    },
+    {
+      "id": "job:large-model-app-dev-30",
+      "title": "大模型应用开发工程师",
+      "company": "腾讯",
+      "city": "广州",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:prompt-engineering",
+        "skill:agent-development",
+        "skill:kubernetes-basics"
+      ],
+      "jd_snapshot": "负责大模型在智能对话场景的应用，包括模型微调、Agent开发及Kubernetes部署。要求精通GPT系列模型，有Agent开发经验，熟悉容器化技术。"
+    },
+    {
+      "id": "job:large-model-app-dev-31",
+      "title": "大模型应用开发工程师",
+      "company": "华为",
+      "city": "成都",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:vector-databases",
+        "skill:model-quantization"
+      ],
+      "jd_snapshot": "参与大模型在端侧的应用开发，优化模型推理性能，实现知识库问答系统。要求熟悉Transformer，掌握Prompt工程和模型量化技术。"
+    },
+    {
+      "id": "job:large-model-app-dev-32",
+      "title": "大模型应用开发工程师",
+      "company": "小米",
+      "city": "北京",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:langchain",
+        "skill:fastapi",
+        "skill:redis"
+      ],
+      "jd_snapshot": "开发智能助手应用，利用LangChain编排大模型能力，结合Redis实现缓存加速。要求掌握NLP，熟悉LangChain和API开发。"
+    },
+    {
+      "id": "job:large-model-app-dev-33",
+      "title": "大模型应用开发工程师",
+      "company": "美团",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:agent-development",
+        "skill:model-deployment-with-docker"
+      ],
+      "jd_snapshot": "负责大模型在推荐系统中的应用，设计智能Agent并部署至生产环境。要求有深度学习背景，熟悉Agent框架和Docker部署。"
+    },
+    {
+      "id": "job:large-model-app-dev-34",
+      "title": "大模型应用开发工程师",
+      "company": "快手",
+      "city": "杭州",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:lora-fine-tuning",
+        "skill:langchain",
+        "skill:vector-databases"
+      ],
+      "jd_snapshot": "参与大模型在内容生成场景的应用，进行LoRA微调并构建向量检索系统。要求有GPT微调经验，熟悉LangChain和向量数据库。"
+    },
+    {
+      "id": "job:large-model-app-dev-35",
+      "title": "大模型应用开发工程师",
+      "company": "网易",
+      "city": "广州",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:fastapi",
+        "skill:ci-cd-for-ml"
+      ],
+      "jd_snapshot": "开发基于RAG的智能问答系统，优化Prompt策略并搭建CI/CD流水线。要求熟悉Transformer，有RAG和CI/CD实践经验。"
+    },
+    {
+      "id": "job:large-model-app-dev-36",
+      "title": "大模型应用开发工程师",
+      "company": "京东",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:model-monitoring"
+      ],
+      "jd_snapshot": "负责大模型驱动的智能客服系统，开发Agent并实现模型监控。要求有深度学习基础，熟悉LangChain和监控体系。"
+    },
+    {
+      "id": "job:large-model-app-dev-37",
+      "title": "大模型应用开发工程师",
+      "company": "滴滴",
+      "city": "成都",
+      "salary": "20-30K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:vector-databases",
+        "skill:docker"
+      ],
+      "jd_snapshot": "参与出行场景的大模型应用开发，实现智能调度助手。要求掌握NLP和Transformer，熟悉向量数据库和Docker。"
+    },
+    {
+      "id": "job:large-model-app-dev-38",
+      "title": "大模型应用开发工程师",
+      "company": "商汤科技",
+      "city": "深圳",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "负责大模型在视觉语言任务中的应用，进行模型微调与部署。要求有深度学习基础，熟悉GPT系列模型和部署工具。"
+    },
+    {
+      "id": "job:large-model-app-dev-39",
+      "title": "大模型应用开发工程师",
+      "company": "旷视科技",
+      "city": "北京",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain",
+        "skill:kubernetes-basics"
+      ],
+      "jd_snapshot": "开发基于大模型的视觉问答系统，构建RAG流程并部署至Kubernetes。要求熟悉Transformer，有LangChain和K8s经验。"
+    },
+    {
+      "id": "job:large-model-app-dev-40",
+      "title": "大模型应用开发工程师",
+      "company": "科大讯飞",
+      "city": "远程",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:agent-development",
+        "skill:fastapi"
+      ],
+      "jd_snapshot": "参与语音交互场景的大模型应用，开发智能Agent和API服务。要求掌握NLP，熟悉Prompt工程和FastAPI。"
+    },
+    {
+      "id": "job:large-model-app-dev-41",
+      "title": "大模型应用开发工程师",
+      "company": "字节跳动",
+      "city": "远程",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:lora-fine-tuning",
+        "skill:langchain",
+        "skill:vector-databases"
+      ],
+      "jd_snapshot": "远程岗位，负责大模型在内容平台的应用，进行LoRA微调和向量检索开发。要求有GPT微调经验，熟悉LangChain和向量数据库。"
+    },
+    {
+      "id": "job:large-model-app-dev-42",
+      "title": "大模型应用开发工程师",
+      "company": "阿里巴巴",
+      "city": "杭州",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:mlops-basics"
+      ],
+      "jd_snapshot": "负责电商场景的大模型应用，构建智能导购Agent和RAG系统。要求精通Transformer，有Agent开发和MLOps经验。"
+    },
+    {
+      "id": "job:large-model-app-dev-43",
+      "title": "大模型应用开发工程师",
+      "company": "腾讯",
+      "city": "深圳",
+      "salary": "40-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:model-deployment-with-docker"
+      ],
+      "jd_snapshot": "负责大模型在社交场景的应用，进行模型微调和Docker部署。要求有深度学习基础，熟悉GPT系列模型和容器化部署。"
+    },
+    {
+      "id": "job:large-model-app-dev-44",
+      "title": "大模型应用开发工程师",
+      "company": "百度",
+      "city": "北京",
+      "salary": "25-45K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:fastapi"
+      ],
+      "jd_snapshot": "开发搜索场景的大模型应用，优化Prompt和RAG流程，构建高性能API。要求掌握NLP和Transformer，熟悉FastAPI。"
+    },
+    {
+      "id": "job:large-model-app-dev-45",
+      "title": "大模型应用开发工程师",
+      "company": "华为",
+      "city": "上海",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:model-quantization"
+      ],
+      "jd_snapshot": "负责大模型在云服务中的应用，开发智能Agent并进行模型量化。要求熟悉Transformer，有LangChain和量化经验。"
+    },
+    {
+      "id": "job:large-model-app-dev-46",
+      "title": "大模型应用开发工程师",
+      "company": "小米",
+      "city": "远程",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:vector-databases",
+        "skill:docker"
+      ],
+      "jd_snapshot": "参与智能家居场景的大模型应用，实现语音助手功能。要求有深度学习基础，熟悉Transformer和向量数据库。"
+    },
+    {
+      "id": "job:large-model-app-dev-47",
+      "title": "大模型应用开发工程师",
+      "company": "美团",
+      "city": "北京",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:python-basics",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:lora-fine-tuning",
+        "skill:langchain",
+        "skill:model-monitoring"
+      ],
+      "jd_snapshot": "负责大模型在搜索推荐中的应用，进行LoRA微调和模型监控。要求有GPT微调经验，熟悉LangChain和监控体系。"
+    },
+    {
+      "id": "job:large-model-app-dev-48",
+      "title": "大模型应用开发工程师",
+      "company": "快手",
+      "city": "北京",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:fastapi"
+      ],
+      "jd_snapshot": "开发短视频场景的大模型应用，构建智能推荐Agent和RAG系统。要求熟悉Transformer，有Agent和API开发经验。"
+    },
+    {
+      "id": "job:large-model-app-dev-49",
+      "title": "大模型应用开发工程师",
+      "company": "网易",
+      "city": "杭州",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:langchain",
+        "skill:vector-databases"
+      ],
+      "jd_snapshot": "参与游戏场景的大模型应用，开发智能NPC对话系统。要求掌握NLP，熟悉LangChain和向量数据库。"
+    },
+    {
+      "id": "job:large-model-app-dev-50",
+      "title": "大模型应用开发工程师",
+      "company": "京东",
+      "city": "成都",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:docker"
+      ],
+      "jd_snapshot": "负责物流场景的大模型应用，实现智能调度和问答系统。要求有深度学习基础，熟悉Transformer和Docker。"
+    },
+    {
+      "id": "job:machine-learning-engineer-51",
+      "title": "机器学习算法工程师",
+      "company": "字节跳动",
+      "city": "北京",
+      "salary": "35-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:deep-learning-basics",
+        "skill:pytorch-basics",
+        "skill:python-basics",
+        "skill:feature-engineering",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "负责推荐系统核心算法研发，包括特征工程、模型设计与优化。要求硕士及以上学历，精通机器学习与深度学习，熟练使用PyTorch，有大规模推荐系统经验者优先。"
+    },
+    {
+      "id": "job:machine-learning-engineer-52",
+      "title": "高级机器学习工程师",
+      "company": "蚂蚁集团",
+      "city": "杭州",
+      "salary": "40-70K",
+      "education": "硕士",
+      "requires": [
+        "skill:supervised-learning",
+        "skill:unsupervised-learning",
+        "skill:xgboost",
+        "skill:lightgbm",
+        "skill:ensemble-learning",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "负责金融风控模型研发与部署，精通XGBoost、LightGBM等集成学习算法，有模型上线经验。硕士及以上学历，3年以上相关经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-53",
+      "title": "机器学习算法工程师",
+      "company": "腾讯",
+      "city": "深圳",
+      "salary": "30-55K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:fine-tuning-pretrained-models",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "从事自然语言处理方向算法研发，包括文本分类、情感分析等。本科及以上学历，熟悉Transformer、BERT等模型，有NLP项目经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-54",
+      "title": "机器学习算法工程师",
+      "company": "阿里巴巴",
+      "city": "杭州",
+      "salary": "35-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-advanced",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "负责计算机视觉算法研发，包括图像分类、目标检测等。硕士及以上学历，精通CNN架构，熟练使用PyTorch，有CV领域顶会论文优先。"
+    },
+    {
+      "id": "job:machine-learning-engineer-55",
+      "title": "机器学习算法工程师",
+      "company": "百度",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering",
+        "skill:model-evaluation",
+        "skill:hyperparameter-tuning",
+        "skill:python-basics",
+        "skill:sql-basics"
+      ],
+      "jd_snapshot": "参与搜索排序算法优化，负责特征工程与模型调优。本科及以上学历，熟悉机器学习基础，有搜索或推荐经验者优先。"
+    },
+    {
+      "id": "job:machine-learning-engineer-56",
+      "title": "机器学习算法工程师",
+      "company": "美团",
+      "city": "北京",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:time-series-analysis",
+        "skill:anomaly-detection",
+        "skill:xgboost",
+        "skill:lightgbm",
+        "skill:python-basics",
+        "skill:pandas"
+      ],
+      "jd_snapshot": "负责业务时序预测与异常检测算法研发，使用XGBoost等模型。硕士及以上学历，有时间序列分析经验，熟悉Python数据处理。"
+    },
+    {
+      "id": "job:machine-learning-engineer-57",
+      "title": "机器学习算法工程师",
+      "company": "拼多多",
+      "city": "上海",
+      "salary": "40-65K",
+      "education": "硕士",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:pytorch-basics",
+        "skill:feature-engineering"
+      ],
+      "jd_snapshot": "负责推荐系统算法研发，包括召回、排序等环节。硕士及以上学历，精通深度学习与推荐系统，有大规模推荐经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-58",
+      "title": "机器学习算法工程师",
+      "company": "华为",
+      "city": "上海",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning",
+        "skill:unsupervised-learning",
+        "skill:python-basics",
+        "skill:linux-command-line",
+        "skill:git-version-control"
+      ],
+      "jd_snapshot": "参与通信网络智能运维算法研发，包括异常检测与预测。本科及以上学历，熟悉机器学习基础，有Linux开发经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-59",
+      "title": "机器学习算法工程师",
+      "company": "京东",
+      "city": "北京",
+      "salary": "30-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "负责智能客服对话系统研发，基于GPT等大模型进行微调与Prompt工程。硕士及以上学历，有NLP或对话系统经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-61",
+      "title": "机器学习算法工程师",
+      "company": "网易",
+      "city": "广州",
+      "salary": "25-45K",
+      "education": "本科",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:deep-learning-basics",
+        "skill:python-basics",
+        "skill:tensorflow-basics",
+        "skill:data-wrangling"
+      ],
+      "jd_snapshot": "负责音乐推荐算法研发，包括用户画像与物品表示学习。本科及以上学历，熟悉推荐系统与深度学习，有TensorFlow经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-62",
+      "title": "机器学习算法工程师",
+      "company": "快手",
+      "city": "北京",
+      "salary": "35-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-advanced",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "负责视频理解算法研发，包括动作识别与视频分类。硕士及以上学历，精通3D CNN等模型，有视频分析经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-63",
+      "title": "机器学习算法工程师",
+      "company": "商汤科技",
+      "city": "上海",
+      "salary": "30-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:model-deployment",
+        "skill:onnx"
+      ],
+      "jd_snapshot": "负责计算机视觉模型研发与部署，包括目标检测与分割。硕士及以上学历，熟悉检测与分割算法，有模型部署经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-65",
+      "title": "机器学习算法工程师",
+      "company": "科大讯飞",
+      "city": "远程",
+      "salary": "20-40K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:python-basics",
+        "skill:tensorflow-basics",
+        "skill:feature-engineering"
+      ],
+      "jd_snapshot": "负责语音识别算法研发，包括声学模型与语言模型。本科及以上学历，熟悉NLP与语音处理，有TensorFlow经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-74",
+      "title": "机器学习算法工程师",
+      "company": "第四范式",
+      "city": "北京",
+      "salary": "35-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:hyperparameter-tuning",
+        "skill:feature-engineering",
+        "skill:python-basics",
+        "skill:sql-basics"
+      ],
+      "jd_snapshot": "负责AutoML平台算法研发，包括自动特征工程与超参优化。硕士及以上学历，有AutoML或机器学习平台经验。"
+    },
+    {
+      "id": "job:machine-learning-engineer-75",
+      "title": "机器学习算法工程师",
+      "company": "远程科技",
+      "city": "远程",
+      "salary": "25-45K",
+      "education": "本科",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:pytorch-basics",
+        "skill:model-deployment",
+        "skill:docker",
+        "skill:fastapi"
+      ],
+      "jd_snapshot": "负责机器学习模型研发与API部署，全远程工作。本科及以上学历，熟悉PyTorch与FastAPI，有独立开发能力。"
+    },
+    {
+      "id": "job:computer-vision-engineer-76",
+      "title": "高级计算机视觉工程师",
+      "company": "极光科技",
+      "city": "杭州",
+      "salary": "35-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:image-classification",
+        "skill:model-deployment",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "负责前沿计算机视觉算法研发，包括目标检测、图像分类等方向。要求硕士及以上学历，3年以上CV经验，精通PyTorch，熟悉模型部署与数据增强技术。"
+    },
+    {
+      "id": "job:computer-vision-engineer-77",
+      "title": "计算机视觉工程师（自动驾驶）",
+      "company": "未来出行",
+      "city": "北京",
+      "salary": "40-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:object-detection",
+        "skill:cnn-architectures",
+        "skill:pytorch-advanced",
+        "skill:transfer-learning",
+        "skill:model-quantization",
+        "skill:distributed-training"
+      ],
+      "jd_snapshot": "参与自动驾驶感知系统开发，优化目标检测与跟踪算法。要求硕士以上，精通CNN架构与PyTorch，有模型量化与分布式训练经验者优先。"
+    },
+    {
+      "id": "job:computer-vision-engineer-78",
+      "title": "计算机视觉工程师（医疗影像）",
+      "company": "慧眼医疗",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:image-classification",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-basics",
+        "skill:data-augmentation",
+        "skill:model-evaluation",
+        "skill:transfer-learning"
+      ],
+      "jd_snapshot": "开发医疗影像分析算法，包括病灶检测与分割。要求硕士学历，熟悉CNN与PyTorch，具备医学图像处理经验者优先。"
+    },
+    {
+      "id": "job:computer-vision-engineer-79",
+      "title": "计算机视觉工程师（安防）",
+      "company": "安视科技",
+      "city": "深圳",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:python-basics",
+        "skill:linux-command-line",
+        "skill:docker",
+        "skill:onnx"
+      ],
+      "jd_snapshot": "负责安防场景下的人脸识别、行为分析算法研发。本科及以上，熟悉目标检测与分类，掌握Python、Linux及Docker部署。"
+    },
+    {
+      "id": "job:computer-vision-engineer-80",
+      "title": "计算机视觉工程师（AR/VR）",
+      "company": "幻境科技",
+      "city": "广州",
+      "salary": "30-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:generative-adversarial-networks",
+        "skill:pytorch-basics",
+        "skill:model-deployment",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "研发AR/VR中的视觉算法，包括场景理解与生成。要求硕士以上，精通CNN与GAN，有3D视觉经验者优先。"
+    },
+    {
+      "id": "job:computer-vision-engineer-81",
+      "title": "计算机视觉工程师（工业质检）",
+      "company": "智造未来",
+      "city": "成都",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:data-augmentation",
+        "skill:model-quantization",
+        "skill:onnx"
+      ],
+      "jd_snapshot": "开发工业缺陷检测算法，部署至边缘设备。本科及以上，熟悉图像分类与目标检测，有模型量化与ONNX部署经验。"
+    },
+    {
+      "id": "job:computer-vision-engineer-82",
+      "title": "计算机视觉工程师（遥感）",
+      "company": "天眼信息",
+      "city": "北京",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:image-classification",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-advanced",
+        "skill:transfer-learning",
+        "skill:data-augmentation",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "处理遥感影像，进行地物分类与变化检测。硕士以上，熟悉CNN与PyTorch，有遥感数据处理经验者优先。"
+    },
+    {
+      "id": "job:data-analyst-101",
+      "title": "数据分析师",
+      "company": "字节跳动",
+      "city": "北京",
+      "salary": "15-25K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "jd_snapshot": "负责业务数据的提取、清洗与分析，产出数据报告和可视化看板；与运营团队协作，通过A/B测试和漏斗分析优化产品策略；要求熟练使用SQL和Python，具备统计学基础，有电商或用户增长经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-102",
+      "title": "数据工程师",
+      "company": "阿里云",
+      "city": "杭州",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:docker"
+      ],
+      "jd_snapshot": "设计并维护大规模数据管道，使用Spark和Hive进行ETL开发；优化数据仓库模型，保障数据质量和时效性；熟悉Linux环境，有分布式系统经验者优先。"
+    },
+    {
+      "id": "job:senior-data-analyst-103",
+      "title": "高级数据分析师",
+      "company": "腾讯",
+      "city": "深圳",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "深入分析用户行为数据，构建用户画像和增长模型；应用机器学习算法进行预测和归因分析；与产品、算法团队紧密合作，推动数据驱动决策；要求3年以上数据分析经验，熟悉Python和SQL。"
+    },
+    {
+      "id": "job:data-engineer-104",
+      "title": "数据工程师",
+      "company": "美团",
+      "city": "北京",
+      "salary": "30-45K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:sql-advanced",
+        "skill:java-basics",
+        "skill:redis"
+      ],
+      "jd_snapshot": "负责实时和离线数据管道的开发与维护，建设数据仓库和数据集市；使用Java和Spark进行大数据处理，优化任务性能；熟悉Redis等缓存技术，有高并发场景经验者优先。"
+    },
+    {
+      "id": "job:data-analyst-105",
+      "title": "数据分析师",
+      "company": "拼多多",
+      "city": "上海",
+      "salary": "18-28K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "jd_snapshot": "分析电商平台交易数据，监控核心指标并输出日报/周报；通过用户分层和商品分析驱动运营策略优化；熟练使用SQL和Python，有数据可视化工具经验（如Tableau）者优先。"
+    },
+    {
+      "id": "job:data-engineer-106",
+      "title": "数据工程师",
+      "company": "滴滴出行",
+      "city": "北京",
+      "salary": "22-35K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:kafka-basics"
+      ],
+      "jd_snapshot": "构建和维护实时数据流处理系统，使用Spark Streaming和Kafka；开发ETL任务，确保数据准确性和低延迟；熟悉分布式系统原理，有大数据平台运维经验者优先。"
+    },
+    {
+      "id": "job:senior-data-analyst-107",
+      "title": "高级数据分析师",
+      "company": "京东",
+      "city": "北京",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:time-series-analysis",
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering"
+      ],
+      "jd_snapshot": "负责供应链和物流数据分析，建立需求预测模型；使用时间序列和机器学习方法优化库存和配送效率；与业务部门协作，输出分析报告和策略建议；硕士及以上学历，统计学或运筹学背景优先。"
+    },
+    {
+      "id": "job:data-engineer-108",
+      "title": "数据工程师",
+      "company": "快手",
+      "city": "北京",
+      "salary": "28-42K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:sql-advanced",
+        "skill:java-basics",
+        "skill:docker"
+      ],
+      "jd_snapshot": "参与数据平台建设，设计高效的数据模型和ETL流程；使用Spark和Hive处理海量数据，优化查询性能；熟悉Java和Docker，有数据治理经验者优先。"
+    },
+    {
+      "id": "job:data-analyst-109",
+      "title": "数据分析师",
+      "company": "小红书",
+      "city": "上海",
+      "salary": "16-26K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "jd_snapshot": "分析社区内容与用户互动数据，支持推荐策略优化；通过数据洞察提升用户留存和活跃度；熟练使用SQL和Python，有内容平台分析经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-110",
+      "title": "数据工程师",
+      "company": "网易",
+      "city": "杭州",
+      "salary": "20-32K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:redis"
+      ],
+      "jd_snapshot": "负责游戏业务数据管道的开发与维护，处理实时和离线数据；使用Spark和Flink进行流批一体处理；熟悉Redis等缓存技术，有游戏数据分析经验者优先。"
+    },
+    {
+      "id": "job:senior-data-analyst-111",
+      "title": "高级数据分析师",
+      "company": "百度",
+      "city": "北京",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "负责搜索和广告业务的数据分析，构建点击率预估和转化率模型；应用机器学习算法优化广告排序策略；与工程团队协作，推动模型上线和迭代；硕士及以上学历，有广告算法经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-112",
+      "title": "数据工程师",
+      "company": "字节跳动",
+      "city": "深圳",
+      "salary": "25-38K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:sql-advanced",
+        "skill:java-basics",
+        "skill:kafka-basics"
+      ],
+      "jd_snapshot": "参与实时数据平台建设，使用Spark、Flink和Kafka处理高吞吐数据流；设计并优化数据仓库模型，支持业务快速分析；熟悉Java和分布式系统，有大数据架构经验者优先。"
+    },
+    {
+      "id": "job:data-analyst-113",
+      "title": "数据分析师",
+      "company": "B站",
+      "city": "上海",
+      "salary": "15-25K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "jd_snapshot": "分析视频内容与用户行为数据，支持内容推荐和社区运营；通过数据驱动提升用户参与度和付费转化；熟练使用SQL和Python，有视频平台分析经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-114",
+      "title": "数据工程师",
+      "company": "蚂蚁集团",
+      "city": "杭州",
+      "salary": "30-45K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:docker"
+      ],
+      "jd_snapshot": "负责金融数据管道的开发与维护，确保数据安全与合规；使用Spark和Hive处理大规模交易数据，优化ETL性能；熟悉Docker和Kubernetes，有金融行业经验者优先。"
+    },
+    {
+      "id": "job:senior-data-analyst-115",
+      "title": "高级数据分析师",
+      "company": "携程",
+      "city": "上海",
+      "salary": "22-35K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:time-series-analysis",
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering"
+      ],
+      "jd_snapshot": "分析旅游业务数据，建立价格预测和需求预测模型；使用时间序列和机器学习方法优化定价策略；与业务团队协作，输出数据报告和决策建议；有OTA或电商经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-116",
+      "title": "数据工程师",
+      "company": "华为",
+      "city": "深圳",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:sql-advanced",
+        "skill:java-basics",
+        "skill:redis"
+      ],
+      "jd_snapshot": "参与企业级数据平台建设，设计数据模型和ETL流程；使用Spark和Hive处理海量数据，优化查询性能；熟悉Java和Redis，有大数据平台开发经验者优先。"
+    },
+    {
+      "id": "job:data-analyst-117",
+      "title": "数据分析师",
+      "company": "知乎",
+      "city": "北京",
+      "salary": "14-22K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "jd_snapshot": "分析社区内容与用户行为数据，支持内容推荐和社区治理；通过数据洞察优化用户体验和广告收入；熟练使用SQL和Python，有社交平台分析经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-118",
+      "title": "数据工程师",
+      "company": "小米",
+      "city": "北京",
+      "salary": "20-32K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:kafka-basics"
+      ],
+      "jd_snapshot": "负责IoT设备数据管道的开发与维护，处理实时设备数据流；使用Spark和Flink进行流处理，确保低延迟；熟悉Kafka和Linux，有物联网数据经验者优先。"
+    },
+    {
+      "id": "job:senior-data-analyst-119",
+      "title": "高级数据分析师",
+      "company": "美团",
+      "city": "上海",
+      "salary": "28-42K",
+      "education": "硕士",
+      "requires": [
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "负责到店餐饮业务的数据分析，建立商户评级和用户偏好模型；应用机器学习算法优化推荐和搜索排序；与产品团队合作，推动数据产品落地；硕士及以上学历，有O2O经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-120",
+      "title": "数据工程师",
+      "company": "腾讯",
+      "city": "广州",
+      "salary": "22-35K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:sql-advanced",
+        "skill:java-basics",
+        "skill:docker"
+      ],
+      "jd_snapshot": "参与游戏数据平台建设，设计数据模型和ETL流程；使用Spark和Hive处理海量游戏日志，优化查询性能；熟悉Java和Docker，有游戏数据经验者优先。"
+    },
+    {
+      "id": "job:data-analyst-121",
+      "title": "数据分析师",
+      "company": "滴滴出行",
+      "city": "杭州",
+      "salary": "15-25K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "jd_snapshot": "分析出行业务数据，监控供需和运力效率；通过数据驱动优化派单和定价策略；熟练使用SQL和Python，有出行或物流分析经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-122",
+      "title": "数据工程师",
+      "company": "京东",
+      "city": "成都",
+      "salary": "18-28K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:redis"
+      ],
+      "jd_snapshot": "负责物流数据管道的开发与维护，处理实时和离线数据；使用Spark和Hive进行ETL，优化数据质量；熟悉Redis和Linux，有物流行业经验者优先。"
+    },
+    {
+      "id": "job:senior-data-analyst-123",
+      "title": "高级数据分析师",
+      "company": "字节跳动",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "负责抖音电商业务的数据分析，构建用户购买意向和商品推荐模型；应用机器学习算法提升转化率和GMV；与算法团队紧密合作，推动模型迭代；硕士及以上学历，有电商算法经验者优先。"
+    },
+    {
+      "id": "job:data-engineer-124",
+      "title": "数据工程师",
+      "company": "蚂蚁集团",
+      "city": "上海",
+      "salary": "28-42K",
+      "education": "本科",
+      "requires": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:sql-advanced",
+        "skill:java-basics",
+        "skill:kafka-basics"
+      ],
+      "jd_snapshot": "参与金融数据平台建设，设计高可用的数据管道和实时计算任务；使用Spark、Flink和Kafka处理交易数据；熟悉Java和分布式系统，有金融风控数据经验者优先。"
+    },
+    {
+      "id": "job:data-analyst-125",
+      "title": "数据分析师",
+      "company": "拼多多",
+      "city": "广州",
+      "salary": "16-26K",
+      "education": "本科",
+      "requires": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "jd_snapshot": "分析社交电商业务数据，监控用户增长和商品销售；通过数据驱动优化营销活动和用户运营策略；熟练使用SQL和Python，有社交电商分析经验者优先。"
+    },
+    {
+      "id": "job:ai-product-manager-126",
+      "title": "AI产品经理",
+      "company": "智云科技",
+      "city": "杭州",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:transformers",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "负责AI产品的需求分析、功能设计及迭代优化，与算法团队协作将大模型能力转化为用户价值。要求3年以上产品经验，熟悉LLM应用开发流程，具备优秀的跨部门沟通能力。"
+    },
+    {
+      "id": "job:prompt-engineer-127",
+      "title": "提示词工程师",
+      "company": "灵犀AI",
+      "city": "北京",
+      "salary": "25-45K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:bert",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "jd_snapshot": "设计、优化和评估大语言模型的提示词，提升输出质量和准确性。要求精通Prompt Engineering，熟悉NLP和主流预训练模型，有实际项目经验。"
+    },
+    {
+      "id": "job:ai-product-manager-128",
+      "title": "高级AI产品经理",
+      "company": "星辰科技",
+      "city": "上海",
+      "salary": "40-60K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:vector-databases",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "主导AI产品从0到1的设计与落地，深入理解用户需求，制定产品路线图。要求5年以上产品经验，有AI产品成功案例，熟悉RAG和Agent开发。"
+    },
+    {
+      "id": "job:prompt-engineer-129",
+      "title": "提示词工程师（大模型方向）",
+      "company": "未来智能",
+      "city": "深圳",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:bert",
+        "skill:transformers",
+        "skill:natural-language-processing",
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "jd_snapshot": "负责大模型提示词的设计与调优，参与模型评测和效果提升。要求熟悉GPT/BERT等模型，有NLP背景，具备良好的逻辑思维和文字表达能力。"
+    },
+    {
+      "id": "job:ai-product-manager-130",
+      "title": "AI产品经理（对话系统）",
+      "company": "对话智能",
+      "city": "广州",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:natural-language-processing",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "负责对话式AI产品的规划与设计，优化用户体验。要求熟悉对话系统架构，有NLP产品经验，能独立完成产品需求文档。"
+    },
+    {
+      "id": "job:prompt-engineer-131",
+      "title": "提示词工程师（RAG方向）",
+      "company": "知源科技",
+      "city": "成都",
+      "salary": "18-30K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:vector-databases",
+        "skill:langchain",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "jd_snapshot": "专注于RAG系统的提示词优化，提升检索增强生成的效果。要求熟悉向量数据库和LangChain，有实际RAG项目经验。"
+    },
+    {
+      "id": "job:ai-product-manager-132",
+      "title": "AI产品经理（内容生成）",
+      "company": "创想科技",
+      "city": "杭州",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:transformers",
+        "skill:natural-language-processing",
+        "skill:agent-development",
+        "skill:langchain"
+      ],
+      "jd_snapshot": "负责AI内容生成产品的需求分析和功能设计，推动产品迭代。要求3年以上产品经验，熟悉大模型应用，有内容创作工具经验优先。"
+    },
+    {
+      "id": "job:prompt-engineer-133",
+      "title": "提示词工程师（Agent方向）",
+      "company": "智行者",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:gpt",
+        "skill:rag",
+        "skill:vector-databases"
+      ],
+      "jd_snapshot": "设计并优化智能Agent的提示词，提升任务完成率和用户满意度。要求精通Agent开发框架，有LangChain实战经验，熟悉RAG和工具调用。"
+    },
+    {
+      "id": "job:ai-product-manager-134",
+      "title": "AI产品经理（搜索推荐）",
+      "company": "搜推科技",
+      "city": "上海",
+      "salary": "35-55K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:vector-databases",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:natural-language-processing"
+      ],
+      "jd_snapshot": "负责AI搜索推荐产品的规划，利用大模型提升搜索体验。要求熟悉搜索推荐算法，有产品管理经验，对RAG和向量检索有深入理解。"
+    },
+    {
+      "id": "job:prompt-engineer-135",
+      "title": "提示词工程师（多模态）",
+      "company": "视界AI",
+      "city": "深圳",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:transformers",
+        "skill:natural-language-processing",
+        "skill:image-classification",
+        "skill:object-detection"
+      ],
+      "jd_snapshot": "负责多模态大模型的提示词设计与优化，提升图文理解与生成能力。要求有NLP和CV背景，熟悉多模态模型，有实际项目经验。"
+    },
+    {
+      "id": "job:ai-product-manager-136",
+      "title": "AI产品经理（企业级）",
+      "company": "云企科技",
+      "city": "北京",
+      "salary": "40-60K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:vector-databases",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "负责企业级AI产品的规划与落地，包括知识库、客服等场景。要求5年以上B端产品经验，熟悉大模型应用，有企业服务背景。"
+    },
+    {
+      "id": "job:prompt-engineer-137",
+      "title": "提示词工程师（金融风控）",
+      "company": "金科智能",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:anomaly-detection"
+      ],
+      "jd_snapshot": "针对金融风控场景设计提示词，优化模型对异常交易的识别能力。要求有NLP和风控背景，熟悉大模型微调，具备数据分析能力。"
+    },
+    {
+      "id": "job:ai-product-manager-138",
+      "title": "AI产品经理（教育方向）",
+      "company": "学而智",
+      "city": "广州",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:gpt",
+        "skill:natural-language-processing"
+      ],
+      "jd_snapshot": "负责AI教育产品的设计，包括智能辅导、自适应学习等。要求有教育产品经验，熟悉大模型应用，对教育行业有热情。"
+    },
+    {
+      "id": "job:prompt-engineer-139",
+      "title": "提示词工程师（医疗健康）",
+      "company": "医智云",
+      "city": "成都",
+      "salary": "20-35K",
+      "education": "硕士",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:rag"
+      ],
+      "jd_snapshot": "为医疗AI应用设计提示词，提升诊断辅助和问答系统的准确性。要求有医疗NLP经验，熟悉大模型，具备医学知识背景优先。"
+    },
+    {
+      "id": "job:ai-product-manager-140",
+      "title": "AI产品经理（语音交互）",
+      "company": "声智科技",
+      "city": "杭州",
+      "salary": "30-45K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:natural-language-processing",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "负责语音交互产品的规划与设计，结合大模型提升对话体验。要求熟悉语音交互流程，有AI产品经验，了解ASR/TTS技术。"
+    },
+    {
+      "id": "job:prompt-engineer-141",
+      "title": "提示词工程师（代码生成）",
+      "company": "码智AI",
+      "city": "北京",
+      "salary": "35-55K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:transformers",
+        "skill:natural-language-processing",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "优化代码生成模型的提示词，提高代码质量和准确性。要求精通Prompt Engineering，有编程背景，熟悉代码大模型。"
+    },
+    {
+      "id": "job:ai-product-manager-142",
+      "title": "AI产品经理（低代码平台）",
+      "company": "易搭科技",
+      "city": "深圳",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:gpt",
+        "skill:vector-databases"
+      ],
+      "jd_snapshot": "负责AI低代码平台的产品规划，降低AI应用开发门槛。要求有平台型产品经验，熟悉大模型和Agent开发，对开发者体验有深刻理解。"
+    },
+    {
+      "id": "job:prompt-engineer-143",
+      "title": "提示词工程师（电商推荐）",
+      "company": "电商智能",
+      "city": "上海",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:rag"
+      ],
+      "jd_snapshot": "为电商推荐系统设计提示词，提升个性化推荐效果。要求有NLP和推荐系统经验，熟悉大模型，具备数据分析能力。"
+    },
+    {
+      "id": "job:ai-product-manager-144",
+      "title": "AI产品经理（智能客服）",
+      "company": "客服云",
+      "city": "广州",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:vector-databases",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "负责智能客服产品的规划与迭代，利用大模型提升客服效率。要求有客服产品经验，熟悉RAG和Agent开发，具备数据分析能力。"
+    },
+    {
+      "id": "job:prompt-engineer-145",
+      "title": "提示词工程师（游戏NPC）",
+      "company": "游智科技",
+      "city": "成都",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:natural-language-processing",
+        "skill:transformers"
+      ],
+      "jd_snapshot": "为游戏NPC设计智能对话提示词，提升角色互动真实感。要求有游戏AI经验，熟悉大模型和Agent开发，对游戏行业有热情。"
+    },
+    {
+      "id": "job:ai-product-manager-146",
+      "title": "AI产品经理（法律科技）",
+      "company": "法智未来",
+      "city": "北京",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:vector-databases",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "负责法律AI产品的规划，包括合同审查、法律咨询等。要求有法律科技产品经验，熟悉大模型应用，具备法律知识背景优先。"
+    },
+    {
+      "id": "job:prompt-engineer-147",
+      "title": "提示词工程师（科研辅助）",
+      "company": "科智AI",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:rag",
+        "skill:transformers",
+        "skill:natural-language-processing"
+      ],
+      "jd_snapshot": "为科研场景设计提示词，辅助文献分析、实验设计等。要求有NLP和科研背景，熟悉大模型，具备良好的学术写作能力。"
+    },
+    {
+      "id": "job:ai-product-manager-148",
+      "title": "AI产品经理（文娱方向）",
+      "company": "文娱科技",
+      "city": "杭州",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:transformers",
+        "skill:natural-language-processing",
+        "skill:agent-development",
+        "skill:langchain"
+      ],
+      "jd_snapshot": "负责文娱AI产品（如剧本生成、虚拟偶像）的规划与设计。要求有文娱产品经验，熟悉大模型应用，对内容创作有深刻理解。"
+    },
+    {
+      "id": "job:prompt-engineer-149",
+      "title": "提示词工程师（安全合规）",
+      "company": "安盾科技",
+      "city": "深圳",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:anomaly-detection"
+      ],
+      "jd_snapshot": "设计提示词以检测和过滤不安全内容，确保模型输出合规。要求有NLP和安全背景，熟悉大模型，具备风险意识。"
+    },
+    {
+      "id": "job:ai-product-manager-150",
+      "title": "AI产品经理（远程办公）",
+      "company": "远程未来",
+      "city": "远程",
+      "salary": "35-55K",
+      "education": "本科",
+      "requires": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:vector-databases",
+        "skill:gpt"
+      ],
+      "jd_snapshot": "负责远程办公场景下的AI产品规划，如智能会议、协作助手等。要求有SaaS产品经验，熟悉大模型应用，具备远程协作经验。"
+    },
+    {
+      "id": "job:java-backend-developer-151",
+      "title": "Java后端开发工程师",
+      "company": "杭州智联科技",
+      "city": "杭州",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:message-queue",
+        "skill:sql-advanced"
+      ],
+      "jd_snapshot": "负责公司核心业务系统的后端开发与维护，参与微服务架构设计与优化。要求3年以上Java开发经验，熟悉Spring Boot、Redis、消息队列，具备良好的SQL能力。"
+    },
+    {
+      "id": "job:java-backend-developer-152",
+      "title": "高级Java后端工程师",
+      "company": "北京云帆数据",
+      "city": "北京",
+      "salary": "30-50K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:kafka-basics",
+        "skill:design-patterns"
+      ],
+      "jd_snapshot": "主导高并发分布式系统的设计与开发，优化系统性能与稳定性。要求5年以上Java经验，精通Spring Boot、微服务、Redis、Kafka，熟悉设计模式。"
+    },
+    {
+      "id": "job:java-backend-developer-153",
+      "title": "Java后端开发（AI平台方向）",
+      "company": "上海智算科技",
+      "city": "上海",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:fastapi",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "参与AI平台后端开发，负责模型服务化部署与API设计。要求熟悉Java和Python，有Docker、FastAPI经验，了解模型部署流程。"
+    },
+    {
+      "id": "job:java-backend-developer-154",
+      "title": "Java后端开发工程师",
+      "company": "深圳创新科技",
+      "city": "深圳",
+      "salary": "18-30K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:sql-advanced",
+        "skill:redis",
+        "skill:git-version-control",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "负责业务模块的后端开发，编写高质量代码并参与系统设计。要求2年以上Java经验，熟悉Spring Boot、SQL、Redis，熟练使用Git和Linux。"
+    },
+    {
+      "id": "job:java-backend-developer-155",
+      "title": "Java后端工程师（AI平台）",
+      "company": "广州智云科技",
+      "city": "广州",
+      "salary": "22-35K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:kubernetes-basics",
+        "skill:mlops-basics"
+      ],
+      "jd_snapshot": "参与AI平台后端开发，支持模型训练与推理的工程化。要求熟悉Java和Python，有Docker、Kubernetes经验，了解MLOps。"
+    },
+    {
+      "id": "job:java-backend-developer-156",
+      "title": "Java后端开发工程师",
+      "company": "成都数智未来",
+      "city": "成都",
+      "salary": "15-25K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:message-queue",
+        "skill:sql-advanced"
+      ],
+      "jd_snapshot": "负责公司核心业务系统后端开发，参与微服务架构演进。要求2年以上Java经验，熟悉Spring Boot、微服务、Redis、消息队列。"
+    },
+    {
+      "id": "job:java-backend-developer-157",
+      "title": "Java后端开发（远程）",
+      "company": "远程科技",
+      "city": "远程",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:kafka-basics",
+        "skill:docker"
+      ],
+      "jd_snapshot": "远程工作，负责后端系统开发与维护。要求3年以上Java经验，熟悉Spring Boot、微服务、Redis、Kafka，熟练使用Docker。"
+    },
+    {
+      "id": "job:java-backend-developer-158",
+      "title": "Java后端工程师（AI推理平台）",
+      "company": "北京智算未来",
+      "city": "北京",
+      "salary": "28-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:onnx",
+        "skill:model-quantization",
+        "skill:docker"
+      ],
+      "jd_snapshot": "负责AI推理平台后端开发，优化模型推理性能。要求熟悉Java和Python，有ONNX、模型量化经验，熟悉Docker部署。"
+    },
+    {
+      "id": "job:java-backend-developer-159",
+      "title": "Java后端开发工程师",
+      "company": "上海数据科技",
+      "city": "上海",
+      "salary": "20-30K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:sql-advanced",
+        "skill:redis",
+        "skill:git-version-control",
+        "skill:design-patterns"
+      ],
+      "jd_snapshot": "负责数据平台后端开发，参与系统架构设计。要求3年以上Java经验，熟悉Spring Boot、SQL、Redis，掌握设计模式。"
+    },
+    {
+      "id": "job:java-backend-developer-160",
+      "title": "Java后端工程师（AI平台方向）",
+      "company": "深圳智算科技",
+      "city": "深圳",
+      "salary": "25-40K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:fastapi",
+        "skill:docker",
+        "skill:kubernetes-basics"
+      ],
+      "jd_snapshot": "参与AI平台后端开发，负责模型服务API设计与实现。要求熟悉Java和Python，有FastAPI、Docker、Kubernetes经验。"
+    },
+    {
+      "id": "job:java-backend-developer-161",
+      "title": "Java后端开发工程师",
+      "company": "杭州云科技",
+      "city": "杭州",
+      "salary": "18-28K",
+      "education": "大专",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:redis",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:git-version-control"
+      ],
+      "jd_snapshot": "负责业务系统后端开发与维护。要求1年以上Java经验，熟悉Spring Boot、Redis、SQL，熟练使用Linux和Git。"
+    },
+    {
+      "id": "job:java-backend-developer-162",
+      "title": "高级Java后端工程师（AI平台）",
+      "company": "北京智云科技",
+      "city": "北京",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:kubernetes-basics",
+        "skill:mlops-basics"
+      ],
+      "jd_snapshot": "领导AI平台后端团队，设计可扩展的架构。要求5年以上Java经验，熟悉Java和Python，精通Docker、Kubernetes，有MLOps经验。"
+    },
+    {
+      "id": "job:java-backend-developer-163",
+      "title": "Java后端开发工程师",
+      "company": "广州云数据",
+      "city": "广州",
+      "salary": "16-26K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:message-queue",
+        "skill:sql-advanced"
+      ],
+      "jd_snapshot": "负责后端服务开发，参与系统优化。要求2年以上Java经验，熟悉Spring Boot、微服务、Redis、消息队列。"
+    },
+    {
+      "id": "job:java-backend-developer-164",
+      "title": "Java后端工程师（AI平台）",
+      "company": "成都智算科技",
+      "city": "成都",
+      "salary": "20-32K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:fastapi",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "参与AI平台后端开发，负责模型部署与API开发。要求熟悉Java和Python，有Docker、FastAPI经验。"
+    },
+    {
+      "id": "job:java-backend-developer-165",
+      "title": "Java后端开发工程师（远程）",
+      "company": "远程数据科技",
+      "city": "远程",
+      "salary": "22-38K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:kafka-basics",
+        "skill:docker"
+      ],
+      "jd_snapshot": "远程全职，负责后端系统开发。要求3年以上Java经验，熟悉Spring Boot、微服务、Redis、Kafka，熟练使用Docker。"
+    },
+    {
+      "id": "job:java-backend-developer-166",
+      "title": "Java后端工程师（AI推理优化）",
+      "company": "上海智算未来",
+      "city": "上海",
+      "salary": "30-48K",
+      "education": "硕士",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:onnx",
+        "skill:model-quantization",
+        "skill:docker"
+      ],
+      "jd_snapshot": "负责AI推理引擎后端开发，优化模型推理性能。要求熟悉Java和Python，有ONNX、模型量化经验。"
+    },
+    {
+      "id": "job:java-backend-developer-167",
+      "title": "Java后端开发工程师",
+      "company": "深圳云科技",
+      "city": "深圳",
+      "salary": "19-30K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:sql-advanced",
+        "skill:redis",
+        "skill:git-version-control",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "负责业务系统后端开发，参与代码评审。要求2年以上Java经验，熟悉Spring Boot、SQL、Redis，熟练使用Git和Linux。"
+    },
+    {
+      "id": "job:java-backend-developer-168",
+      "title": "Java后端工程师（AI平台方向）",
+      "company": "北京数据科技",
+      "city": "北京",
+      "salary": "26-42K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:kubernetes-basics",
+        "skill:mlops-basics"
+      ],
+      "jd_snapshot": "参与AI平台后端开发，支持模型训练与推理的工程化。要求熟悉Java和Python，有Docker、Kubernetes经验，了解MLOps。"
+    },
+    {
+      "id": "job:java-backend-developer-169",
+      "title": "Java后端开发工程师",
+      "company": "杭州智云科技",
+      "city": "杭州",
+      "salary": "17-27K",
+      "education": "大专",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:redis",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:git-version-control"
+      ],
+      "jd_snapshot": "负责后端模块开发与维护。要求1年以上Java经验，熟悉Spring Boot、Redis、SQL，熟练使用Linux和Git。"
+    },
+    {
+      "id": "job:java-backend-developer-170",
+      "title": "高级Java后端工程师（AI平台）",
+      "company": "上海智云科技",
+      "city": "上海",
+      "salary": "35-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:kubernetes-basics",
+        "skill:mlops-basics"
+      ],
+      "jd_snapshot": "领导AI平台后端团队，设计可扩展的架构。要求5年以上Java经验，熟悉Java和Python，精通Docker、Kubernetes，有MLOps经验。"
+    },
+    {
+      "id": "job:java-backend-developer-171",
+      "title": "Java后端开发工程师",
+      "company": "广州智算科技",
+      "city": "广州",
+      "salary": "18-28K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:message-queue",
+        "skill:sql-advanced"
+      ],
+      "jd_snapshot": "负责后端服务开发，参与系统优化。要求2年以上Java经验，熟悉Spring Boot、微服务、Redis、消息队列。"
+    },
+    {
+      "id": "job:java-backend-developer-172",
+      "title": "Java后端工程师（AI平台）",
+      "company": "成都云数据",
+      "city": "成都",
+      "salary": "20-32K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:fastapi",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "参与AI平台后端开发，负责模型部署与API开发。要求熟悉Java和Python，有Docker、FastAPI经验。"
+    },
+    {
+      "id": "job:java-backend-developer-173",
+      "title": "Java后端开发工程师（远程）",
+      "company": "远程智算科技",
+      "city": "远程",
+      "salary": "22-38K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:kafka-basics",
+        "skill:docker"
+      ],
+      "jd_snapshot": "远程全职，负责后端系统开发。要求3年以上Java经验，熟悉Spring Boot、微服务、Redis、Kafka，熟练使用Docker。"
+    },
+    {
+      "id": "job:java-backend-developer-174",
+      "title": "Java后端工程师（AI推理优化）",
+      "company": "北京智算未来",
+      "city": "北京",
+      "salary": "30-48K",
+      "education": "硕士",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:onnx",
+        "skill:model-quantization",
+        "skill:docker"
+      ],
+      "jd_snapshot": "负责AI推理引擎后端开发，优化模型推理性能。要求熟悉Java和Python，有ONNX、模型量化经验。"
+    },
+    {
+      "id": "job:java-backend-developer-175",
+      "title": "Java后端开发工程师",
+      "company": "深圳数据科技",
+      "city": "深圳",
+      "salary": "19-30K",
+      "education": "本科",
+      "requires": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:sql-advanced",
+        "skill:redis",
+        "skill:git-version-control",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "负责业务系统后端开发，参与代码评审。要求2年以上Java经验，熟悉Spring Boot、SQL、Redis，熟练使用Git和Linux。"
+    },
+    {
+      "id": "job:algorithm-intern-176",
+      "title": "算法实习生（机器学习方向）",
+      "company": "字节跳动",
+      "city": "北京",
+      "salary": "6-10K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:data-structures-algorithms",
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "参与核心业务算法研发，包括特征工程、模型训练与评估。要求熟悉Python和机器学习基础，掌握线性代数与概率统计，有PyTorch使用经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-177",
+      "title": "算法实习生（自然语言处理）",
+      "company": "阿里巴巴",
+      "city": "杭州",
+      "salary": "7-11K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:python-basics",
+        "skill:pytorch-basics",
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "jd_snapshot": "参与NLP模型研发，包括文本分类、序列标注等任务。要求熟悉Transformer架构和BERT模型，有PyTorch微调经验。"
+    },
+    {
+      "id": "job:algorithm-intern-178",
+      "title": "算法实习生（计算机视觉）",
+      "company": "腾讯",
+      "city": "深圳",
+      "salary": "6-10K",
+      "education": "本科",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "参与图像分类、目标检测等CV任务。要求熟悉CNN和深度学习基础，掌握PyTorch，有数据增强经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-179",
+      "title": "算法实习生（推荐系统）",
+      "company": "美团",
+      "city": "北京",
+      "salary": "7-12K",
+      "education": "硕士",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering",
+        "skill:ensemble-learning",
+        "skill:xgboost",
+        "skill:python-basics",
+        "skill:sql-basics"
+      ],
+      "jd_snapshot": "参与推荐算法研发，包括特征工程、模型调优。要求熟悉机器学习基础和集成学习，掌握XGBoost，有SQL经验。"
+    },
+    {
+      "id": "job:algorithm-intern-180",
+      "title": "算法实习生（强化学习）",
+      "company": "百度",
+      "city": "北京",
+      "salary": "8-12K",
+      "education": "硕士",
+      "requires": [
+        "skill:reinforcement-learning-basics",
+        "skill:deep-reinforcement-learning",
+        "skill:python-basics",
+        "skill:pytorch-basics",
+        "skill:probability-statistics",
+        "skill:data-structures-algorithms"
+      ],
+      "jd_snapshot": "参与强化学习算法研究与落地，包括环境搭建、策略优化。要求熟悉RL基础，有DRL项目经验，熟练使用PyTorch。"
+    },
+    {
+      "id": "job:algorithm-intern-181",
+      "title": "算法实习生（时间序列分析）",
+      "company": "滴滴出行",
+      "city": "北京",
+      "salary": "6-9K",
+      "education": "本科",
+      "requires": [
+        "skill:time-series-analysis",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:model-evaluation"
+      ],
+      "jd_snapshot": "参与时间序列预测算法开发，包括数据清洗、模型构建与评估。要求熟悉时间序列分析方法，掌握Python和Pandas。"
+    },
+    {
+      "id": "job:algorithm-intern-183",
+      "title": "算法实习生（生成式AI）",
+      "company": "智谱AI",
+      "city": "北京",
+      "salary": "8-13K",
+      "education": "硕士",
+      "requires": [
+        "skill:generative-adversarial-networks",
+        "skill:variational-autoencoders",
+        "skill:deep-learning-basics",
+        "skill:pytorch-basics",
+        "skill:python-basics",
+        "skill:attention-mechanism"
+      ],
+      "jd_snapshot": "参与生成式模型研发，包括GAN、VAE等。要求熟悉生成模型原理，掌握PyTorch，有注意力机制相关经验。"
+    },
+    {
+      "id": "job:algorithm-intern-184",
+      "title": "算法实习生（大模型应用）",
+      "company": "月之暗面",
+      "city": "北京",
+      "salary": "10-15K",
+      "education": "硕士",
+      "requires": [
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain",
+        "skill:python-basics",
+        "skill:vector-databases"
+      ],
+      "jd_snapshot": "参与大模型应用开发，包括Prompt工程、RAG系统构建。要求熟悉GPT模型，掌握LangChain和向量数据库。"
+    },
+    {
+      "id": "job:algorithm-intern-185",
+      "title": "算法实习生（多模态）",
+      "company": "商汤科技",
+      "city": "上海",
+      "salary": "8-12K",
+      "education": "硕士",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:convolutional-neural-networks",
+        "skill:transformers",
+        "skill:pytorch-basics",
+        "skill:python-basics",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "参与多模态算法研发，结合视觉与语言。要求熟悉CNN和Transformer，有跨模态项目经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-188",
+      "title": "算法实习生（运筹优化）",
+      "company": "京东",
+      "city": "北京",
+      "salary": "7-10K",
+      "education": "硕士",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:data-structures-algorithms",
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:sql-basics"
+      ],
+      "jd_snapshot": "参与物流调度等运筹优化算法开发。要求熟悉机器学习基础，掌握Python和SQL，有优化算法经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-198",
+      "title": "算法实习生（大模型训练）",
+      "company": "百川智能",
+      "city": "北京",
+      "salary": "10-15K",
+      "education": "硕士",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:pytorch-advanced",
+        "skill:distributed-training",
+        "skill:python-basics",
+        "skill:data-structures-algorithms"
+      ],
+      "jd_snapshot": "参与大模型训练与优化，包括分布式训练策略。要求熟悉Transformer和PyTorch，有分布式训练经验。"
+    },
+    {
+      "id": "job:algorithm-intern-200",
+      "title": "算法实习生（MLOps）",
+      "company": "字节跳动",
+      "city": "杭州",
+      "salary": "8-12K",
+      "education": "硕士",
+      "requires": [
+        "skill:mlops-basics",
+        "skill:docker",
+        "skill:python-basics",
+        "skill:ci-cd-for-ml",
+        "skill:model-monitoring",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "参与MLOps平台建设，包括模型部署、监控与CI/CD。要求熟悉Docker和MLOps基础，有模型部署经验。"
+    },
+    {
+      "id": "job:nlp-engineer-300",
+      "title": "NLP算法工程师",
+      "company": "智言科技",
+      "city": "杭州",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:gpt",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 负责NLP模型的设计、训练与优化，提升文本理解与生成能力；2. 参与大规模预训练模型的微调与部署。任职要求：1. 硕士及以上学历，计算机、数学相关专业；2. 熟悉Transformer、BERT、GPT等模型，有实际项目经验；3. 熟练使用PyTorch，编程能力强。"
+    },
+    {
+      "id": "job:nlp-engineer-301",
+      "title": "高级NLP算法工程师",
+      "company": "未来科技",
+      "city": "北京",
+      "salary": "35-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:fine-tuning-pretrained-models",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain"
+      ],
+      "jd_snapshot": "岗位职责：1. 主导NLP算法研发，包括文本分类、信息抽取、对话系统等；2. 探索Prompt Engineering、RAG等技术提升模型性能。任职要求：1. 硕士及以上学历，3年以上NLP经验；2. 精通Transformer、预训练模型微调；3. 熟悉LangChain、向量数据库等工具。"
+    },
+    {
+      "id": "job:nlp-engineer-302",
+      "title": "NLP算法工程师（对话系统）",
+      "company": "星云智能",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发智能对话系统，包括意图识别、槽位填充、对话管理；2. 基于大模型构建Agent，实现多轮交互。任职要求：1. 本科及以上学历，2年以上NLP经验；2. 熟悉GPT系列模型及LangChain框架；3. 具备Agent开发经验者优先。"
+    },
+    {
+      "id": "job:nlp-engineer-303",
+      "title": "NLP算法工程师（搜索推荐）",
+      "company": "云帆科技",
+      "city": "深圳",
+      "salary": "28-42K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:feature-engineering",
+        "skill:machine-learning-fundamentals",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 负责搜索推荐场景的NLP算法优化，包括Query理解、语义匹配；2. 结合特征工程提升排序模型效果。任职要求：1. 硕士及以上学历，有搜索推荐相关经验；2. 熟悉BERT等预训练模型，掌握PyTorch；3. 具备扎实的机器学习基础。"
+    },
+    {
+      "id": "job:nlp-engineer-304",
+      "title": "NLP算法工程师（大模型方向）",
+      "company": "智脑科技",
+      "city": "广州",
+      "salary": "40-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:lora-fine-tuning",
+        "skill:prompt-engineering",
+        "skill:distributed-training"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与大语言模型的训练与微调，包括LoRA、全参数微调等；2. 优化分布式训练效率，提升模型性能。任职要求：1. 硕士及以上学历，有LLM训练经验；2. 熟悉GPT系列模型，掌握分布式训练框架；3. 有Prompt Engineering经验优先。"
+    },
+    {
+      "id": "job:nlp-engineer-305",
+      "title": "NLP算法工程师（知识图谱）",
+      "company": "图灵智能",
+      "city": "成都",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:sequence-labeling",
+        "skill:word-embeddings",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 负责知识图谱构建中的实体识别、关系抽取等NLP任务；2. 优化序列标注模型，提升抽取准确率。任职要求：1. 本科及以上学历，1年以上NLP经验；2. 熟悉BERT、序列标注模型；3. 熟练使用PyTorch和Python。"
+    },
+    {
+      "id": "job:nlp-engineer-306",
+      "title": "NLP算法工程师（文本生成）",
+      "company": "创意科技",
+      "city": "远程",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:gpt",
+        "skill:transformers",
+        "skill:fine-tuning-pretrained-models",
+        "skill:prompt-engineering",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发文本生成模型，包括摘要、写作辅助等应用；2. 探索Prompt Engineering提升生成质量。任职要求：1. 硕士及以上学历，有文本生成项目经验；2. 熟悉GPT、Transformer，掌握微调方法；3. 具备优秀的编程能力。"
+    },
+    {
+      "id": "job:nlp-engineer-307",
+      "title": "NLP算法工程师（语音交互）",
+      "company": "声学科技",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:attention-mechanism",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 负责语音交互中的自然语言理解与生成；2. 优化Attention机制在语音NLP中的应用。任职要求：1. 硕士及以上学历，有语音NLP经验优先；2. 熟悉Transformer、BERT等模型；3. 熟练使用PyTorch。"
+    },
+    {
+      "id": "job:nlp-engineer-308",
+      "title": "NLP算法工程师（金融风控）",
+      "company": "金科数据",
+      "city": "北京",
+      "salary": "30-45K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:text-classification",
+        "skill:anomaly-detection",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 利用NLP技术进行金融文本风险识别与分类；2. 构建异常检测模型，识别欺诈行为。任职要求：1. 本科及以上学历，有金融NLP经验优先；2. 熟悉BERT、文本分类模型；3. 具备机器学习基础。"
+    },
+    {
+      "id": "job:nlp-engineer-309",
+      "title": "NLP算法工程师（医疗方向）",
+      "company": "医智科技",
+      "city": "杭州",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:sequence-labeling",
+        "skill:word-embeddings",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 处理医疗文本数据，进行实体识别、关系抽取；2. 构建医学知识图谱，辅助临床决策。任职要求：1. 硕士及以上学历，医学或计算机背景；2. 熟悉BERT、序列标注模型；3. 有医疗NLP项目经验者优先。"
+    },
+    {
+      "id": "job:nlp-engineer-310",
+      "title": "NLP算法工程师（多模态）",
+      "company": "视界科技",
+      "city": "深圳",
+      "salary": "35-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发多模态模型，融合文本与图像信息；2. 参与图文匹配、视觉问答等任务。任职要求：1. 硕士及以上学历，有多模态经验；2. 熟悉Transformer及视觉模型；3. 熟练使用PyTorch。"
+    },
+    {
+      "id": "job:nlp-engineer-311",
+      "title": "NLP算法工程师（推理优化）",
+      "company": "极速智能",
+      "city": "北京",
+      "salary": "40-55K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:model-quantization",
+        "skill:onnx",
+        "skill:model-deployment",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 优化NLP模型推理速度，包括量化、剪枝等；2. 部署模型到生产环境，保证低延迟。任职要求：1. 硕士及以上学历，有模型优化经验；2. 熟悉ONNX、TensorRT等工具；3. 掌握模型部署技术。"
+    },
+    {
+      "id": "job:nlp-engineer-312",
+      "title": "NLP算法工程师（数据标注）",
+      "company": "数据宝",
+      "city": "成都",
+      "salary": "18-30K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:data-wrangling",
+        "skill:exploratory-data-analysis",
+        "skill:python-basics",
+        "skill:pandas"
+      ],
+      "jd_snapshot": "岗位职责：1. 设计NLP数据标注规范，管理标注团队；2. 清洗与预处理文本数据，提升数据质量。任职要求：1. 本科及以上学历，有数据标注管理经验；2. 熟悉NLP基础，了解BERT；3. 熟练使用Pandas进行数据分析。"
+    },
+    {
+      "id": "job:nlp-engineer-313",
+      "title": "NLP算法工程师（情感分析）",
+      "company": "舆情科技",
+      "city": "广州",
+      "salary": "22-35K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:text-classification",
+        "skill:feature-engineering",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发情感分析模型，监控舆情动态；2. 结合特征工程提升模型准确率。任职要求：1. 本科及以上学历，1年以上NLP经验；2. 熟悉BERT、文本分类；3. 具备机器学习基础。"
+    },
+    {
+      "id": "job:nlp-engineer-314",
+      "title": "NLP算法工程师（机器翻译）",
+      "company": "译通科技",
+      "city": "远程",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:attention-mechanism",
+        "skill:sequence-labeling",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发机器翻译模型，提升翻译质量；2. 优化Attention机制，处理长文本。任职要求：1. 硕士及以上学历，有机器翻译经验；2. 熟悉Transformer、序列到序列模型；3. 熟练使用PyTorch。"
+    },
+    {
+      "id": "job:nlp-engineer-315",
+      "title": "NLP算法工程师（问答系统）",
+      "company": "知答科技",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:rag",
+        "skill:vector-databases",
+        "skill:langchain"
+      ],
+      "jd_snapshot": "岗位职责：1. 构建基于检索与生成的问答系统；2. 利用RAG技术融合外部知识。任职要求：1. 硕士及以上学历，有问答系统经验；2. 熟悉BERT、RAG、向量数据库；3. 掌握LangChain框架。"
+    },
+    {
+      "id": "job:nlp-engineer-316",
+      "title": "NLP算法工程师（文本分类）",
+      "company": "分类科技",
+      "city": "杭州",
+      "salary": "20-30K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:text-classification",
+        "skill:feature-engineering",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 负责文本分类模型的研发与优化；2. 处理多标签、层次分类等复杂场景。任职要求：1. 本科及以上学历，有文本分类经验；2. 熟悉BERT、特征工程；3. 掌握机器学习基础。"
+    },
+    {
+      "id": "job:nlp-engineer-317",
+      "title": "NLP算法工程师（信息抽取）",
+      "company": "抽取智能",
+      "city": "北京",
+      "salary": "28-42K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:sequence-labeling",
+        "skill:word-embeddings",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发信息抽取模型，包括实体、关系、事件抽取；2. 优化序列标注与阅读理解模型。任职要求：1. 硕士及以上学历，有信息抽取经验；2. 熟悉BERT、序列标注；3. 熟练使用PyTorch。"
+    },
+    {
+      "id": "job:nlp-engineer-318",
+      "title": "NLP算法工程师（预训练模型）",
+      "company": "预训练科技",
+      "city": "深圳",
+      "salary": "40-60K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:distributed-training",
+        "skill:fine-tuning-pretrained-models",
+        "skill:pytorch-advanced"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与大规模预训练模型的训练与优化；2. 研究模型架构改进，提升训练效率。任职要求：1. 硕士及以上学历，有预训练模型经验；2. 熟悉GPT、Transformer，掌握分布式训练；3. 精通PyTorch高级特性。"
+    },
+    {
+      "id": "job:nlp-engineer-319",
+      "title": "NLP算法工程师（模型部署）",
+      "company": "部署云",
+      "city": "成都",
+      "salary": "25-38K",
+      "education": "本科",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:model-deployment",
+        "skill:docker",
+        "skill:fastapi",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 将NLP模型部署为API服务，保证高并发低延迟；2. 使用Docker容器化，配合CI/CD。任职要求：1. 本科及以上学历，有模型部署经验；2. 熟悉FastAPI、Docker；3. 了解NLP基础。"
+    },
+    {
+      "id": "job:computer-vision-engineer-340",
+      "title": "计算机视觉工程师",
+      "company": "智眼科技",
+      "city": "杭州",
+      "salary": "25-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:image-classification",
+        "skill:model-deployment",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "岗位职责：1. 负责图像识别、目标检测等算法的研发与优化；2. 参与模型训练、调参及部署上线；3. 跟踪前沿技术并落地业务场景。任职要求：1. 硕士及以上学历，计算机视觉方向；2. 精通CNN、目标检测算法，熟练使用PyTorch；3. 有实际项目经验，熟悉模型部署与数据增强。"
+    },
+    {
+      "id": "job:computer-vision-engineer-341",
+      "title": "高级计算机视觉算法工程师",
+      "company": "视界未来",
+      "city": "北京",
+      "salary": "35-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:object-detection",
+        "skill:pytorch-advanced",
+        "skill:model-quantization",
+        "skill:onnx",
+        "skill:distributed-training"
+      ],
+      "jd_snapshot": "岗位职责：1. 设计并实现高精度目标检测与分割算法；2. 优化模型推理速度，进行量化与剪枝；3. 领导团队攻克技术难点。任职要求：1. 硕士及以上学历，5年以上CV经验；2. 精通目标检测、模型加速，熟练使用PyTorch；3. 有分布式训练经验，熟悉ONNX部署。"
+    },
+    {
+      "id": "job:computer-vision-engineer-342",
+      "title": "计算机视觉工程师（自动驾驶方向）",
+      "company": "星驰科技",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "本科",
+      "requires": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:transfer-learning",
+        "skill:data-augmentation",
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发自动驾驶场景下的视觉感知算法，包括目标检测、车道线识别；2. 进行模型训练、调优及在嵌入式平台部署；3. 参与数据采集与标注流程优化。任职要求：1. 本科及以上学历，计算机相关专业；2. 熟悉目标检测、图像分类，有迁移学习经验；3. 掌握Docker及Linux，有实际项目经历。"
+    },
+    {
+      "id": "job:computer-vision-engineer-343",
+      "title": "计算机视觉工程师（医疗影像）",
+      "company": "医视科技",
+      "city": "深圳",
+      "salary": "28-42K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:model-interpretability",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "岗位职责：1. 开发医疗影像分析算法，如病灶检测、分割；2. 与医生合作标注数据并优化模型；3. 提升模型可解释性以满足临床要求。任职要求：1. 硕士及以上学历，医学影像或CV方向；2. 熟悉CNN、目标检测，熟练使用PyTorch；3. 有医疗影像项目经验，了解模型可解释性。"
+    },
+    {
+      "id": "job:computer-vision-engineer-344",
+      "title": "计算机视觉算法工程师（视频理解）",
+      "company": "动视科技",
+      "city": "广州",
+      "salary": "25-38K",
+      "education": "本科",
+      "requires": [
+        "skill:recurrent-neural-networks",
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:pytorch-basics",
+        "skill:time-series-analysis",
+        "skill:feature-engineering"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发视频行为识别、动作检测算法；2. 结合时序信息优化模型性能；3. 部署算法到视频分析平台。任职要求：1. 本科及以上学历，计算机相关专业；2. 熟悉RNN、CNN，有视频理解经验；3. 掌握PyTorch，有时序分析基础。"
+    },
+    {
+      "id": "job:computer-vision-engineer-345",
+      "title": "计算机视觉工程师（工业质检）",
+      "company": "智造未来",
+      "city": "成都",
+      "salary": "20-35K",
+      "education": "本科",
+      "requires": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:data-augmentation",
+        "skill:model-deployment",
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "岗位职责：1. 开发工业产品缺陷检测算法；2. 优化模型在边缘设备上的推理速度；3. 配合产线完成算法部署。任职要求：1. 本科及以上学历，计算机或自动化相关；2. 熟悉图像分类、目标检测，有数据增强经验；3. 掌握Docker和Linux，有模型部署经验。"
+    },
+    {
+      "id": "job:computer-vision-engineer-346",
+      "title": "计算机视觉工程师（增强现实）",
+      "company": "虚实科技",
+      "city": "远程",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:pytorch-advanced",
+        "skill:model-quantization",
+        "skill:onnx"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发AR场景下的视觉定位与目标跟踪算法；2. 优化模型在移动端的实时性能；3. 参与AR SDK的开发与维护。任职要求：1. 硕士及以上学历，CV或图形学方向；2. 精通CNN、目标检测，熟练使用PyTorch；3. 有模型量化、ONNX部署经验，熟悉移动端优化。"
+    },
+    {
+      "id": "job:computer-vision-engineer-347",
+      "title": "计算机视觉算法工程师（人脸识别）",
+      "company": "识人科技",
+      "city": "杭州",
+      "salary": "25-35K",
+      "education": "本科",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:pytorch-basics",
+        "skill:transfer-learning",
+        "skill:data-augmentation",
+        "skill:model-deployment"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发人脸检测、识别及活体检测算法；2. 优化模型精度与速度，落地安防场景；3. 维护人脸识别系统。任职要求：1. 本科及以上学历，计算机相关；2. 熟悉CNN、图像分类，有迁移学习经验；3. 掌握PyTorch，有模型部署经验。"
+    },
+    {
+      "id": "job:computer-vision-engineer-348",
+      "title": "计算机视觉工程师（遥感图像）",
+      "company": "天眼科技",
+      "city": "北京",
+      "salary": "28-40K",
+      "education": "硕士",
+      "requires": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-basics",
+        "skill:data-augmentation",
+        "skill:transfer-learning"
+      ],
+      "jd_snapshot": "岗位职责：1. 开发遥感图像目标检测与分类算法；2. 处理多光谱、高分辨率影像数据；3. 优化模型在云平台上的训练效率。任职要求：1. 硕士及以上学历，遥感或CV方向；2. 熟悉图像分类、目标检测，有遥感项目经验；3. 掌握PyTorch，熟悉数据增强与迁移学习。"
+    },
+    {
+      "id": "job:computer-vision-engineer-349",
+      "title": "计算机视觉工程师（机器人视觉）",
+      "company": "智行机器人",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-advanced",
+        "skill:model-deployment",
+        "skill:docker"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发机器人视觉感知算法，包括物体识别、抓取检测；2. 在ROS环境下部署模型；3. 与机械臂团队协作实现视觉引导。任职要求：1. 硕士及以上学历，机器人或CV方向；2. 精通目标检测、图像分类，熟练使用PyTorch；3. 有模型部署经验，熟悉Docker。"
+    },
+    {
+      "id": "job:computer-vision-engineer-350",
+      "title": "计算机视觉工程师（安防监控）",
+      "company": "安视科技",
+      "city": "深圳",
+      "salary": "22-35K",
+      "education": "本科",
+      "requires": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-basics",
+        "skill:model-deployment",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "岗位职责：1. 开发安防场景下的目标检测与跟踪算法；2. 优化模型在NVR设备上的运行效率；3. 参与系统集成与调试。任职要求：1. 本科及以上学历，计算机相关；2. 熟悉目标检测、图像分类，有安防项目经验；3. 掌握PyTorch，熟悉Linux和模型部署。"
+    },
+    {
+      "id": "job:computer-vision-engineer-351",
+      "title": "计算机视觉算法工程师（OCR方向）",
+      "company": "识文科技",
+      "city": "广州",
+      "salary": "25-38K",
+      "education": "本科",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:natural-language-processing",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发文字检测与识别算法，优化OCR系统；2. 处理复杂场景下的文字识别；3. 结合NLP提升识别后处理效果。任职要求：1. 本科及以上学历，计算机相关；2. 熟悉CNN、目标检测，有OCR项目经验；3. 掌握PyTorch，了解NLP基础。"
+    },
+    {
+      "id": "job:computer-vision-engineer-352",
+      "title": "计算机视觉工程师（三维重建）",
+      "company": "三维视界",
+      "city": "成都",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:pytorch-advanced",
+        "skill:generative-adversarial-networks",
+        "skill:model-deployment",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发基于图像的三维重建算法；2. 优化神经渲染流程，提升重建质量；3. 部署算法到云端或移动端。任职要求：1. 硕士及以上学历，CV或图形学方向；2. 精通CNN、GAN，有三维重建经验；3. 熟练使用PyTorch，有模型部署经验。"
+    },
+    {
+      "id": "job:computer-vision-engineer-353",
+      "title": "计算机视觉工程师（边缘计算）",
+      "company": "边云科技",
+      "city": "杭州",
+      "salary": "25-38K",
+      "education": "本科",
+      "requires": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:model-quantization",
+        "skill:onnx",
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "岗位职责：1. 优化视觉模型在边缘设备上的推理性能；2. 进行模型量化、剪枝与压缩；3. 开发边缘端推理引擎。任职要求：1. 本科及以上学历，计算机相关；2. 熟悉目标检测、图像分类，有模型优化经验；3. 掌握ONNX、Docker，熟悉Linux。"
+    },
+    {
+      "id": "job:computer-vision-engineer-354",
+      "title": "计算机视觉算法工程师（多模态）",
+      "company": "多模态科技",
+      "city": "北京",
+      "salary": "35-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:pytorch-advanced",
+        "skill:attention-mechanism"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发视觉-语言多模态模型，支持图文理解；2. 优化跨模态检索与生成任务；3. 参与前沿论文复现与创新。任职要求：1. 硕士及以上学历，CV或NLP方向；2. 精通CNN、Transformer，有多模态项目经验；3. 熟练使用PyTorch，了解注意力机制。"
+    },
+    {
+      "id": "job:computer-vision-engineer-355",
+      "title": "计算机视觉工程师（图像生成）",
+      "company": "创想科技",
+      "city": "上海",
+      "salary": "30-45K",
+      "education": "硕士",
+      "requires": [
+        "skill:generative-adversarial-networks",
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:pytorch-advanced",
+        "skill:model-deployment",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发图像生成算法，如GAN、扩散模型；2. 优化生成质量与多样性；3. 部署生成模型到产品中。任职要求：1. 硕士及以上学历，CV相关；2. 精通GAN、CNN，有图像生成经验；3. 熟练使用PyTorch，有模型部署经验。"
+    },
+    {
+      "id": "job:computer-vision-engineer-356",
+      "title": "计算机视觉工程师（自动驾驶感知）",
+      "company": "智驾科技",
+      "city": "深圳",
+      "salary": "35-50K",
+      "education": "硕士",
+      "requires": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-advanced",
+        "skill:model-quantization",
+        "skill:distributed-training"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发自动驾驶感知算法，包括3D目标检测、语义分割；2. 优化模型在车端芯片上的部署；3. 参与数据闭环建设。任职要求：1. 硕士及以上学历，CV或自动驾驶方向；2. 精通目标检测、CNN，有自动驾驶项目经验；3. 掌握模型量化与分布式训练。"
+    },
+    {
+      "id": "job:computer-vision-engineer-357",
+      "title": "计算机视觉工程师（工业视觉）",
+      "company": "工业视觉科技",
+      "city": "广州",
+      "salary": "22-35K",
+      "education": "本科",
+      "requires": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:data-augmentation",
+        "skill:model-deployment",
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "岗位职责：1. 开发工业场景下的视觉检测算法，如尺寸测量、缺陷检测；2. 优化算法在工控机上的实时性；3. 配合机械工程师完成集成。任职要求：1. 本科及以上学历，计算机或自动化相关；2. 熟悉图像分类、目标检测，有工业项目经验；3. 掌握Docker和Linux，有模型部署经验。"
+    },
+    {
+      "id": "job:computer-vision-engineer-358",
+      "title": "计算机视觉算法工程师（视频分析）",
+      "company": "视讯科技",
+      "city": "成都",
+      "salary": "25-38K",
+      "education": "本科",
+      "requires": [
+        "skill:convolutional-neural-networks",
+        "skill:recurrent-neural-networks",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:time-series-analysis"
+      ],
+      "jd_snapshot": "岗位职责：1. 研发视频异常事件检测算法；2. 结合时序模型提升准确率；3. 部署算法到视频监控平台。任职要求：1. 本科及以上学历，计算机相关；2. 熟悉CNN、RNN，有视频分析经验；3. 掌握PyTorch，有时序分析基础。"
+    },
+    {
+      "id": "job:computer-vision-engineer-359",
+      "title": "计算机视觉工程师（移动端优化）",
+      "company": "移视科技",
+      "city": "远程",
+      "salary": "25-35K",
+      "education": "本科",
+      "requires": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:model-quantization",
+        "skill:onnx",
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "jd_snapshot": "岗位职责：1. 优化视觉模型在移动端（Android/iOS）的推理性能；2. 进行模型量化、转换与部署；3. 开发移动端推理SDK。任职要求：1. 本科及以上学历，计算机相关；2. 熟悉图像分类、目标检测，有模型优化经验；3. 掌握ONNX、Docker，熟悉Linux。"
+    },
+    {
+      "id": "job:algorithm-intern-380",
+      "title": "算法实习生",
+      "company": "字节跳动",
+      "city": "北京",
+      "salary": "4-6K",
+      "education": "本科",
+      "requires": [
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:pytorch-basics",
+        "skill:data-structures-algorithms"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与机器学习模型的开发与优化，包括数据处理、特征工程、模型训练与评估。2. 协助团队进行前沿算法的调研与复现，撰写技术文档。任职要求：1. 计算机、数学等相关专业本科及以上学历，熟悉Python编程。2. 了解机器学习基础，有PyTorch使用经验，掌握基本数据结构和算法。"
+    },
+    {
+      "id": "job:algorithm-intern-381",
+      "title": "算法实习生（NLP方向）",
+      "company": "阿里巴巴",
+      "city": "杭州",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与自然语言处理相关项目，包括文本分类、序列标注等任务的模型开发。2. 利用预训练模型进行微调，优化模型性能。任职要求：1. 硕士在读，自然语言处理方向优先。2. 熟悉Transformer架构，有PyTorch和Python基础，有NLP项目经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-382",
+      "title": "算法实习生（计算机视觉）",
+      "company": "腾讯",
+      "city": "深圳",
+      "salary": "4-6K",
+      "education": "本科",
+      "requires": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与图像分类、目标检测等计算机视觉任务的模型训练与调优。2. 负责数据预处理与增强，提升模型泛化能力。任职要求：1. 本科及以上学历，计算机视觉方向优先。2. 熟悉PyTorch，了解常见CNN架构，有数据增强经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-383",
+      "title": "算法实习生（推荐系统）",
+      "company": "美团",
+      "city": "北京",
+      "salary": "5-7K",
+      "education": "本科",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering",
+        "skill:python-basics",
+        "skill:sql-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与推荐系统相关算法研发，包括特征工程、模型训练与离线评估。2. 分析用户行为数据，优化推荐策略。任职要求：1. 本科及以上学历，机器学习基础扎实。2. 熟悉Python和SQL，有特征工程经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-384",
+      "title": "算法实习生（强化学习）",
+      "company": "快手",
+      "city": "北京",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:reinforcement-learning-basics",
+        "skill:deep-reinforcement-learning",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与强化学习算法的研究与实现，应用于推荐或游戏场景。2. 设计并实现仿真环境，进行算法验证。任职要求：1. 硕士在读，强化学习方向优先。2. 熟悉深度强化学习算法，有PyTorch和Python编程经验。"
+    },
+    {
+      "id": "job:algorithm-intern-385",
+      "title": "算法实习生（时间序列）",
+      "company": "滴滴",
+      "city": "北京",
+      "salary": "4-6K",
+      "education": "本科",
+      "requires": [
+        "skill:time-series-analysis",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:pandas"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与时间序列预测模型的开发，包括数据清洗、特征提取与模型训练。2. 对模型效果进行分析与调优。任职要求：1. 本科及以上学历，统计学或计算机相关专业。2. 熟悉时间序列分析方法，掌握Python和Pandas。"
+    },
+    {
+      "id": "job:algorithm-intern-386",
+      "title": "算法实习生（生成式AI）",
+      "company": "百度",
+      "city": "北京",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:generative-adversarial-networks",
+        "skill:variational-autoencoders",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与生成式AI模型的研发，包括GAN、VAE等模型的实现与改进。2. 探索图像生成、文本生成等应用。任职要求：1. 硕士在读，生成模型方向优先。2. 熟悉GAN和VAE原理，有PyTorch实战经验。"
+    },
+    {
+      "id": "job:algorithm-intern-387",
+      "title": "算法实习生（多模态）",
+      "company": "华为",
+      "city": "深圳",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与多模态算法研发，涉及图像与文本的联合建模。2. 负责模型训练、调优及效果评估。任职要求：1. 硕士在读，深度学习基础扎实。2. 熟悉Transformer架构，有PyTorch和Python经验，有多模态项目优先。"
+    },
+    {
+      "id": "job:algorithm-intern-388",
+      "title": "算法实习生（搜索排序）",
+      "company": "京东",
+      "city": "北京",
+      "salary": "4-6K",
+      "education": "本科",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering",
+        "skill:python-basics",
+        "skill:data-structures-algorithms"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与搜索排序算法的优化，包括特征提取、模型训练与评估。2. 分析线上数据，提出排序改进方案。任职要求：1. 本科及以上学历，机器学习基础扎实。2. 熟悉Python和数据结构，有特征工程经验者优先。"
+    },
+    {
+      "id": "job:algorithm-intern-389",
+      "title": "算法实习生（语音识别）",
+      "company": "科大讯飞",
+      "city": "远程",
+      "salary": "4-6K",
+      "education": "本科",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:recurrent-neural-networks",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与语音识别模型的训练与优化，包括声学模型和语言模型。2. 进行数据处理与特征提取。任职要求：1. 本科及以上学历，信号处理或深度学习方向。2. 熟悉RNN和PyTorch，有语音项目经验优先。"
+    },
+    {
+      "id": "job:algorithm-intern-390",
+      "title": "算法实习生（图神经网络）",
+      "company": "蚂蚁集团",
+      "city": "杭州",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与图神经网络算法的研究与实现，应用于风控或推荐场景。2. 设计并实验新的图模型结构。任职要求：1. 硕士在读，图神经网络方向优先。2. 熟悉深度学习基础，有PyTorch和Python编程经验。"
+    },
+    {
+      "id": "job:algorithm-intern-391",
+      "title": "算法实习生（自动驾驶感知）",
+      "company": "小鹏汽车",
+      "city": "广州",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:pytorch-basics",
+        "skill:data-augmentation"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与自动驾驶感知算法的研发，包括目标检测、分类等任务。2. 负责数据标注质量检查与模型训练。任职要求：1. 硕士在读，计算机视觉方向优先。2. 熟悉目标检测算法，有PyTorch和数据增强经验。"
+    },
+    {
+      "id": "job:algorithm-intern-392",
+      "title": "算法实习生（联邦学习）",
+      "company": "微众银行",
+      "city": "深圳",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:distributed-training",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与联邦学习算法的研究与实现，保护数据隐私。2. 设计并实现分布式训练框架。任职要求：1. 硕士在读，机器学习基础扎实。2. 熟悉分布式训练和PyTorch，有联邦学习经验优先。"
+    },
+    {
+      "id": "job:algorithm-intern-393",
+      "title": "算法实习生（异常检测）",
+      "company": "网易",
+      "city": "杭州",
+      "salary": "4-6K",
+      "education": "本科",
+      "requires": [
+        "skill:anomaly-detection",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:pandas"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与异常检测算法的开发，应用于业务监控与安全领域。2. 分析数据特征，构建检测模型并评估效果。任职要求：1. 本科及以上学历，机器学习基础扎实。2. 熟悉异常检测方法，掌握Python和Pandas。"
+    },
+    {
+      "id": "job:algorithm-intern-394",
+      "title": "算法实习生（大模型应用）",
+      "company": "智谱AI",
+      "city": "北京",
+      "salary": "5-7K",
+      "education": "硕士",
+      "requires": [
+        "skill:gpt",
+        "skill:bert",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "jd_snapshot": "岗位职责：1. 参与大模型在垂直领域的应用开发，包括微调与Prompt设计。2. 评估模型效果并优化性能。任职要求：1. 硕士在读，NLP方向优先。2. 熟悉GPT/BERT等预训练模型，有PyTorch和Python经验。"
+    }
+  ]
+}

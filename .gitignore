@@ -1,0 +1,23 @@
+.env
+target/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+embedding_cache/
+backups/
+~$*.docx
+
+# 评估运行期产物 (脚本入仓, 结果不入)
+evals/results/
+evals/_last_insert.sql
+results/
+
+# IDE / 系统
+.DS_Store
+Thumbs.db

@@ -1,0 +1,2698 @@
+{
+  "generated_by": "deepseek-chat",
+  "generated_at": "2026-07-26T11:17:19.518Z",
+  "review_status": "pending_human_review",
+  "resources": [
+    {
+      "id": "res:automate-the-boring-stuff-with-python",
+      "title": "Automate the Boring Stuff with Python",
+      "description": "一本面向初学者的Python编程书籍，涵盖自动化任务、文件处理等实用技能。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:python-crash-course",
+      "title": "Python Crash Course",
+      "description": "畅销Python入门书籍，包含基础语法和三个实战项目，适合零基础读者。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:learn-python-the-hard-way",
+      "title": "Learn Python the Hard Way",
+      "description": "通过练习驱动的Python入门教程，强调动手编码和基础概念。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 25,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:codecademy-learn-python-3",
+      "title": "Codecademy Learn Python 3",
+      "description": "交互式在线课程，通过浏览器编写代码学习Python基础语法和概念。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 25,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:mit-6-0001-introduction-to-computer-science-and-programming-in-python",
+      "title": "MIT 6.0001: Introduction to Computer Science and Programming in Python",
+      "description": "MIT经典入门课程，涵盖计算思维、算法基础与Python编程。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics",
+        "skill:data-structures-algorithms"
+      ]
+    },
+    {
+      "id": "res:google-python-class",
+      "title": "Google's Python Class",
+      "description": "Google内部Python培训课程，包含视频和练习，适合有编程基础者。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:python-for-everybody-specialization",
+      "title": "Python for Everybody Specialization (Coursera)",
+      "description": "密歇根大学系列课程，从零开始学Python，涵盖数据抓取、数据库等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 50,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics",
+        "skill:sql-basics"
+      ]
+    },
+    {
+      "id": "res:data-camp-introduction-to-python",
+      "title": "DataCamp Introduction to Python",
+      "description": "交互式Python入门课程，侧重数据科学场景，包含练习和项目。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:python-official-tutorial",
+      "title": "Python Official Tutorial",
+      "description": "Python官方文档中的入门教程，权威且全面，适合系统学习。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:real-python-tutorials",
+      "title": "Real Python Tutorials",
+      "description": "高质量Python教程网站，涵盖从基础到高级的各类主题。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 60,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:python-programming-net-tutorials",
+      "title": "PythonProgramming.net Tutorials",
+      "description": "免费Python教程系列，包含基础、数据分析和机器学习。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:cs50s-introduction-to-programming-with-python",
+      "title": "CS50's Introduction to Programming with Python",
+      "description": "哈佛大学CS50系列Python入门课程，项目驱动，适合初学者。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics",
+        "skill:data-structures-algorithms"
+      ]
+    },
+    {
+      "id": "res:think-python-2e",
+      "title": "Think Python: How to Think Like a Computer Scientist",
+      "description": "以计算思维为导向的Python入门书籍，强调问题分解和算法设计。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics",
+        "skill:data-structures-algorithms"
+      ]
+    },
+    {
+      "id": "res:head-first-python",
+      "title": "Head First Python",
+      "description": "采用视觉化、互动式学习风格的Python入门书籍，适合快速上手。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 35,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:python-tutorial-w3schools",
+      "title": "W3Schools Python Tutorial",
+      "description": "简洁的在线Python教程，适合快速查阅语法和基础概念。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:learn-python-in-y-minutes",
+      "title": "Learn Python in Y Minutes",
+      "description": "极简Python语法速查，适合有编程经验者快速了解Python。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 1,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:python-basics-with-numpy-and-pandas",
+      "title": "Python Basics with NumPy and Pandas (DataCamp)",
+      "description": "DataCamp课程，结合Python基础与NumPy、Pandas数据操作。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:python-basics",
+        "skill:numpy",
+        "skill:pandas"
+      ]
+    },
+    {
+      "id": "res:introduction-to-git-and-github",
+      "title": "Introduction to Git and GitHub (Coursera)",
+      "description": "Google课程，学习Git版本控制和GitHub协作基础。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:git-version-control"
+      ]
+    },
+    {
+      "id": "res:linux-command-line-basics",
+      "title": "Linux Command Line Basics (Udacity)",
+      "description": "Udacity免费课程，学习Linux终端常用命令和文件操作。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:linux-command-line"
+      ]
+    },
+    {
+      "id": "res:data-structures-and-algorithms-in-python",
+      "title": "Data Structures and Algorithms in Python (Jovian)",
+      "description": "Jovian免费课程，用Python实现常见数据结构和算法。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:data-structures-algorithms",
+        "skill:python-basics"
+      ]
+    },
+    {
+      "id": "res:linear-algebra-for-machine-learning",
+      "title": "Linear Algebra for Machine Learning (Imperial College London)",
+      "description": "Coursera课程，讲解机器学习所需的线性代数基础。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:linear-algebra"
+      ]
+    },
+    {
+      "id": "res:introduction-to-probability-and-statistics",
+      "title": "Introduction to Probability and Statistics (MIT 18.05)",
+      "description": "MIT概率统计入门课程，涵盖概率论、统计推断等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:calculus-for-machine-learning",
+      "title": "Calculus for Machine Learning (Imperial College London)",
+      "description": "Coursera课程，介绍机器学习中微积分概念，如导数、梯度。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:calculus"
+      ]
+    },
+    {
+      "id": "res:python-data-science-handbook",
+      "title": "Python Data Science Handbook",
+      "description": "Jake VanderPlas著作，涵盖NumPy、Pandas、Matplotlib等数据科学工具。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:numpy",
+        "skill:pandas",
+        "skill:data-visualization"
+      ]
+    },
+    {
+      "id": "res:data-wrangling-with-pandas",
+      "title": "Data Wrangling with Pandas (DataCamp)",
+      "description": "DataCamp课程，学习使用Pandas进行数据清洗和转换。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:pandas",
+        "skill:data-wrangling"
+      ]
+    },
+    {
+      "id": "res:3blue1brown-linear-algebra",
+      "title": "3Blue1Brown线性代数的本质",
+      "description": "直观动画讲解线性代数核心概念，适合入门理解向量、矩阵、特征值等。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:linear-algebra"
+      ]
+    },
+    {
+      "id": "res:3blue1brown-calculus",
+      "title": "3Blue1Brown微积分的本质",
+      "description": "通过动画直观解释微积分核心思想，包括极限、导数、积分等。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:calculus"
+      ]
+    },
+    {
+      "id": "res:mit-1806-linear-algebra",
+      "title": "MIT 18.06 线性代数",
+      "description": "Gilbert Strang教授经典课程，系统讲解线性代数理论与应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:linear-algebra"
+      ]
+    },
+    {
+      "id": "res:mit-1801-calculus",
+      "title": "MIT 18.01 单变量微积分",
+      "description": "MIT经典微积分课程，涵盖微分、积分及其应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:calculus"
+      ]
+    },
+    {
+      "id": "res:mit-1802-multivariable-calculus",
+      "title": "MIT 18.02 多变量微积分",
+      "description": "学习多元函数微积分、向量场、线积分等，为机器学习打基础。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:calculus"
+      ]
+    },
+    {
+      "id": "res:harvard-stat110",
+      "title": "哈佛大学 STAT110 概率论",
+      "description": "Joe Blitzstein教授的概率论课程，内容全面且生动。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:mathematics-for-machine-learning",
+      "title": "Mathematics for Machine Learning (MML) 书籍",
+      "description": "涵盖线性代数、微积分、概率论等机器学习所需数学基础。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:linear-algebra",
+        "skill:calculus",
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:pattern-recognition-and-machine-learning",
+      "title": "Pattern Recognition and Machine Learning (PRML)",
+      "description": "Bishop经典教材，深入讲解概率图模型等机器学习数学理论。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 50,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:the-elements-of-statistical-learning",
+      "title": "The Elements of Statistical Learning (ESL)",
+      "description": "统计学习经典，涵盖回归、分类、树模型等理论与算法。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning"
+      ]
+    },
+    {
+      "id": "res:an-introduction-to-statistical-learning",
+      "title": "An Introduction to Statistical Learning (ISLR)",
+      "description": "统计学习入门教材，配有R语言实践，通俗易懂。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning"
+      ]
+    },
+    {
+      "id": "res:probability-and-statistics-for-cs",
+      "title": "Probability and Statistics for Computer Science",
+      "description": "卡内基梅隆大学概率统计课程，面向计算机科学应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:linear-algebra-done-right",
+      "title": "Linear Algebra Done Right",
+      "description": "Sheldon Axler的线性代数教材，强调概念理解而非计算。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:linear-algebra"
+      ]
+    },
+    {
+      "id": "res:calculus-made-easy",
+      "title": "Calculus Made Easy",
+      "description": "经典微积分入门书，以简单易懂的方式讲解微积分。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:calculus"
+      ]
+    },
+    {
+      "id": "res:statistical-rethinking",
+      "title": "Statistical Rethinking",
+      "description": "Richard McElreath的贝叶斯统计教材，结合R语言实践。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:deep-learning-book",
+      "title": "Deep Learning (Goodfellow et al.)",
+      "description": "深度学习圣经，涵盖深度学习的数学、算法与理论。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:cs229-machine-learning",
+      "title": "CS229 机器学习课程 (Stanford)",
+      "description": "Andrew Ng的经典机器学习课程，涵盖数学推导与算法。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning"
+      ]
+    },
+    {
+      "id": "res:cs229-lecture-notes",
+      "title": "CS229 机器学习讲义",
+      "description": "Stanford CS229课程配套讲义，包含详细的数学推导。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning"
+      ]
+    },
+    {
+      "id": "res:information-theory-inference-learning",
+      "title": "Information Theory, Inference, and Learning Algorithms",
+      "description": "David MacKay的经典教材，结合信息论与机器学习。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:convex-optimization-boyd",
+      "title": "Convex Optimization (Boyd & Vandenberghe)",
+      "description": "凸优化经典教材，机器学习优化理论基础。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:gradient-descent"
+      ]
+    },
+    {
+      "id": "res:ee364a-convex-optimization",
+      "title": "EE364a 凸优化 (Stanford)",
+      "description": "Stephen Boyd教授的凸优化课程，理论与应用并重。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:gradient-descent"
+      ]
+    },
+    {
+      "id": "res:probabilistic-machine-learning",
+      "title": "Probabilistic Machine Learning (Kevin Murphy)",
+      "description": "全面介绍概率机器学习方法，涵盖贝叶斯推断等。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:gaussian-processes-for-machine-learning",
+      "title": "Gaussian Processes for Machine Learning",
+      "description": "高斯过程经典教材，深入讲解非参数贝叶斯方法。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:understanding-machine-learning",
+      "title": "Understanding Machine Learning: From Theory to Algorithms",
+      "description": "Shai Shalev-Shwartz的机器学习理论书籍，注重算法分析。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning"
+      ]
+    },
+    {
+      "id": "res:foundations-of-data-science",
+      "title": "Foundations of Data Science (Blum, Hopcroft, Kannan)",
+      "description": "数据科学理论基础，涵盖随机算法、高维几何等。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:all-of-statistics",
+      "title": "All of Statistics: A Concise Course in Statistical Inference",
+      "description": "Wasserman的统计推断简明教材，适合机器学习背景。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:probability-statistics"
+      ]
+    },
+    {
+      "id": "res:kaggle-competitions",
+      "title": "Kaggle Competitions",
+      "description": "全球最大数据科学竞赛平台，通过真实数据集和问题提升实战能力。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 100,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "res:driven-data-competitions",
+      "title": "DrivenData Competitions",
+      "description": "面向社会公益的数据科学竞赛平台，解决真实世界问题。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 50,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:data-wrangling"
+      ]
+    },
+    {
+      "id": "res:signate-competitions",
+      "title": "SIGNATE Competitions",
+      "description": "日本最大的数据科学竞赛平台，提供企业级实战数据集。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:feature-engineering"
+      ]
+    },
+    {
+      "id": "res:analytics-vidhya-hackathons",
+      "title": "Analytics Vidhya Hackathons",
+      "description": "印度知名数据科学社区举办的在线黑客马拉松，适合练习。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning"
+      ]
+    },
+    {
+      "id": "res:datahack-competitions",
+      "title": "DataHack Competitions",
+      "description": "Analytics Vidhya旗下竞赛平台，涵盖多种机器学习任务。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:supervised-learning",
+        "skill:unsupervised-learning"
+      ]
+    },
+    {
+      "id": "res:zhihu-kaggle-competition-guide",
+      "title": "Kaggle竞赛指南",
+      "description": "知乎专栏，系统讲解Kaggle竞赛流程、特征工程与模型融合技巧。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:feature-engineering",
+        "skill:ensemble-learning"
+      ]
+    },
+    {
+      "id": "res:datawhale-kaggle-tutorial",
+      "title": "DataWhale Kaggle教程",
+      "description": "开源中文教程，从零到一完成Kaggle竞赛项目。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:pandas"
+      ]
+    },
+    {
+      "id": "res:hands-on-machine-learning",
+      "title": "Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow",
+      "description": "经典实战书籍，涵盖端到端机器学习项目流程与最佳实践。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 60,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:deep-learning-basics"
+      ]
+    },
+    {
+      "id": "res:python-machine-learning-book",
+      "title": "Python Machine Learning",
+      "description": "Sebastian Raschka著，深入讲解机器学习算法实现与Scikit-learn应用。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:supervised-learning",
+        "skill:unsupervised-learning"
+      ]
+    },
+    {
+      "id": "res:feature-engineering-for-ml",
+      "title": "Feature Engineering for Machine Learning",
+      "description": "Alice Zheng著，系统介绍特征工程方法与技巧。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:feature-engineering",
+        "skill:data-wrangling"
+      ]
+    },
+    {
+      "id": "res:fastai-practical-deep-learning",
+      "title": "fast.ai Practical Deep Learning for Coders",
+      "description": "顶级实战课程，从零开始构建深度学习模型并参加竞赛。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:transfer-learning"
+      ]
+    },
+    {
+      "id": "res:cs231n-convnets",
+      "title": "CS231n Convolutional Neural Networks for Visual Recognition",
+      "description": "斯坦福CNN课程，作业涵盖图像分类竞赛任务。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification"
+      ]
+    },
+    {
+      "id": "res:cs224n-nlp",
+      "title": "CS224n Natural Language Processing with Deep Learning",
+      "description": "斯坦福NLP课程，作业包含文本分类等竞赛任务。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "res:data-quest-kaggle-courses",
+      "title": "DataQuest Kaggle Courses",
+      "description": "交互式平台，通过实战项目学习Kaggle竞赛技能。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:pandas",
+        "skill:data-visualization"
+      ]
+    },
+    {
+      "id": "res:alex-kaggle-ensemble",
+      "title": "Kaggle Ensembling Guide",
+      "description": "经典博文，详细介绍模型集成方法在竞赛中的应用。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:ensemble-learning",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "res:ml-competitions-guide-book",
+      "title": "Machine Learning Competitions Guide Book",
+      "description": "Kaggle Grandmaster编写的竞赛策略与技巧总结。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:feature-engineering",
+        "skill:hyperparameter-tuning"
+      ]
+    },
+    {
+      "id": "res:data-science-competitions-kaggle",
+      "title": "Data Science Competitions: A Guide to Kaggle",
+      "description": "Medium上系列文章，涵盖竞赛全流程。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:data-wrangling"
+      ]
+    },
+    {
+      "id": "res:kaggle-30-days-of-ml",
+      "title": "Kaggle 30 Days of ML",
+      "description": "Kaggle官方挑战，30天完成多个竞赛级项目。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:pandas"
+      ]
+    },
+    {
+      "id": "res:ml-course-with-projects",
+      "title": "Machine Learning A-Z: Hands-On Python & R In Data Science",
+      "description": "Udemy课程，包含多个竞赛风格项目。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:supervised-learning",
+        "skill:unsupervised-learning"
+      ]
+    },
+    {
+      "id": "res:feature-engineering-competition",
+      "title": "Feature Engineering for Kaggle Competitions",
+      "description": "Kaggle Notebook合集，展示顶级特征工程技巧。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:feature-engineering",
+        "skill:xgboost"
+      ]
+    },
+    {
+      "id": "res:hyperparameter-tuning-competition",
+      "title": "Hyperparameter Tuning for Kaggle Competitions",
+      "description": "Kaggle Notebook合集，系统讲解超参数调优方法。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:hyperparameter-tuning",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "res:time-series-competition",
+      "title": "Time Series Forecasting Competitions",
+      "description": "Kaggle上时间序列竞赛案例分析与解决方案。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:time-series-analysis",
+        "skill:feature-engineering"
+      ]
+    },
+    {
+      "id": "res:nlp-competition-tutorial",
+      "title": "NLP Competitions Tutorial",
+      "description": "Kaggle上NLP竞赛的入门教程与实战Notebook。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "res:image-classification-competition",
+      "title": "Image Classification Competitions",
+      "description": "Kaggle图像分类竞赛经典案例与代码解析。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:image-classification",
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "res:deep-learning-specialization",
+      "title": "Deep Learning Specialization (Andrew Ng)",
+      "description": "Coursera上由吴恩达主讲的深度学习专项课程，覆盖神经网络基础、CNN、RNN等核心主题。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 80,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "res:fastai-part1",
+      "title": "Practical Deep Learning for Coders (fast.ai)",
+      "description": "fast.ai的实战深度学习课程，强调代码实践和顶层API，适合编程背景学习者。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:pytorch-basics"
+      ]
+    },
+    {
+      "id": "res:d2l-pytorch",
+      "title": "动手学深度学习 (D2L)",
+      "description": "李沐等编写的深度学习教材，提供PyTorch/MXNet/TensorFlow实现，理论实践结合。",
+      "format": "书籍",
+      "language": "中文",
+      "duration_hours": 60,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:pytorch-basics"
+      ]
+    },
+    {
+      "id": "res:cs231n",
+      "title": "CS231n: CNNs for Visual Recognition",
+      "description": "斯坦福大学经典课程，深入讲解卷积神经网络及其在视觉任务中的应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:cs224n",
+      "title": "CS224n: NLP with Deep Learning",
+      "description": "斯坦福NLP课程，涵盖词向量、RNN、Transformer等深度学习在NLP中的应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:recurrent-neural-networks",
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "res:neural-networks-and-deep-learning",
+      "title": "Neural Networks and Deep Learning (Michael Nielsen)",
+      "description": "免费在线书籍，以直观方式解释神经网络原理，适合初学者。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ]
+    },
+    {
+      "id": "res:pytorch-tutorial",
+      "title": "PyTorch官方教程",
+      "description": "PyTorch官方提供的60分钟入门教程，涵盖张量、自动求导、神经网络构建等。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:tensorflow-tutorial",
+      "title": "TensorFlow官方入门教程",
+      "description": "TensorFlow官方教程，从基础到模型构建，适合初学者快速上手。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:tensorflow-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:huggingface-course",
+      "title": "Hugging Face NLP Course",
+      "description": "Hugging Face官方课程，学习Transformers库和预训练模型微调。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:transformers",
+        "skill:fine-tuning-pretrained-models",
+        "skill:natural-language-processing"
+      ]
+    },
+    {
+      "id": "res:datawhale-dl",
+      "title": "DataWhale深度学习教程",
+      "description": "DataWhale开源深度学习教程，中文讲解，包含理论和代码实践。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 30,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:pytorch-basics"
+      ]
+    },
+    {
+      "id": "res:mit-6s191",
+      "title": "MIT 6.S191: Introduction to Deep Learning",
+      "description": "MIT短期深度学习课程，覆盖CNN、RNN、GAN等前沿主题。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "res:deep-learning-book-goodfellow",
+      "title": "Deep Learning (Goodfellow et al.)",
+      "description": "深度学习圣经，系统讲解数学原理和算法，适合进阶入门。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 60,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:kaggle-dl-course",
+      "title": "Kaggle Intro to Deep Learning",
+      "description": "Kaggle上的深度学习入门微课程，结合实战练习。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:coursera-ai-for-everyone",
+      "title": "AI For Everyone (Andrew Ng)",
+      "description": "非技术背景的AI入门课程，涵盖深度学习概念和应用。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 8,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics"
+      ]
+    },
+    {
+      "id": "res:udacity-dl-nanodegree",
+      "title": "Udacity Deep Learning Nanodegree",
+      "description": "Udacity深度学习纳米学位，项目驱动，覆盖CNN、RNN、GAN等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 100,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "res:deeplearning-ai-tensorflow",
+      "title": "TensorFlow in Practice Specialization",
+      "description": "deeplearning.ai的TensorFlow实践专项，从基础到高级。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:tensorflow-basics",
+        "skill:neural-networks",
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "res:cnn-explainer",
+      "title": "CNN Explainer (Interactive Visualization)",
+      "description": "交互式CNN可视化工具，帮助理解卷积神经网络工作原理。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 2,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "res:3blue1brown-neural-networks",
+      "title": "3Blue1Brown Neural Networks Series",
+      "description": "直观动画解释神经网络和反向传播，视觉化学习。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 2,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:neural-networks",
+        "skill:gradient-descent"
+      ]
+    },
+    {
+      "id": "res:statquest-dl",
+      "title": "StatQuest Deep Learning Series",
+      "description": "StatQuest频道以简单方式解释深度学习概念，适合入门。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:pytorch-ignite-tutorial",
+      "title": "PyTorch Ignite官方教程",
+      "description": "PyTorch Ignite库教程，简化训练循环，适合快速实验。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:fastbook",
+      "title": "Fastbook (fast.ai)",
+      "description": "fast.ai的免费书籍，结合代码和理论，覆盖深度学习全貌。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks",
+        "skill:pytorch-basics"
+      ]
+    },
+    {
+      "id": "res:google-ml-crash-course",
+      "title": "Google Machine Learning Crash Course",
+      "description": "Google提供的ML速成课程，包含深度学习基础，附带练习。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:machine-learning-fundamentals",
+        "skill:deep-learning-basics"
+      ]
+    },
+    {
+      "id": "res:cs50-ai",
+      "title": "CS50's Introduction to Artificial Intelligence",
+      "description": "哈佛CS50 AI课程，涵盖搜索、机器学习、神经网络等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:neural-networks"
+      ]
+    },
+    {
+      "id": "res:alexnet-paper",
+      "title": "ImageNet Classification with Deep CNNs (AlexNet)",
+      "description": "经典论文，介绍AlexNet架构，深度学习里程碑。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 2,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:convolutional-neural-networks",
+        "skill:cnn-architectures"
+      ]
+    },
+    {
+      "id": "res:transformer-paper",
+      "title": "Attention Is All You Need (Transformer)",
+      "description": "Transformer原始论文，理解注意力机制和序列模型。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:transformer-architecture",
+        "skill:attention-mechanism"
+      ]
+    },
+    {
+      "id": "res:pytorch-official-tutorials",
+      "title": "PyTorch官方教程",
+      "description": "PyTorch官方提供的入门到进阶教程，涵盖基础、图像、NLP等实战案例。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-basics",
+        "skill:deep-learning-basics"
+      ]
+    },
+    {
+      "id": "res:deep-learning-with-pytorch",
+      "title": "Deep Learning with PyTorch",
+      "description": "书籍《Deep Learning with PyTorch》的官方代码仓库，包含丰富的实战项目。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-basics",
+        "skill:pytorch-advanced"
+      ]
+    },
+    {
+      "id": "res:pytorch-ignite-tutorials",
+      "title": "PyTorch Ignite官方教程",
+      "description": "PyTorch Ignite高级库教程，简化训练循环，支持分布式训练。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-advanced",
+        "skill:distributed-training"
+      ]
+    },
+    {
+      "id": "res:huggingface-pytorch-course",
+      "title": "HuggingFace PyTorch课程",
+      "description": "HuggingFace官方课程，使用PyTorch微调Transformer模型。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 15,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-basics",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:pytorch-lightning-tutorials",
+      "title": "PyTorch Lightning官方教程",
+      "description": "PyTorch Lightning简化训练流程，支持多GPU和TPU，官方教程覆盖核心功能。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-advanced",
+        "skill:distributed-training"
+      ]
+    },
+    {
+      "id": "res:cs231n-pytorch",
+      "title": "CS231n: Convolutional Neural Networks for Visual Recognition (PyTorch版)",
+      "description": "斯坦福CS231n课程，使用PyTorch实现CNN，包含图像分类、目标检测等实战。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 60,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification"
+      ]
+    },
+    {
+      "id": "res:cs224n-pytorch",
+      "title": "CS224n: Natural Language Processing with Deep Learning (PyTorch版)",
+      "description": "斯坦福CS224n课程，使用PyTorch实现NLP模型，包括RNN、Transformer等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 60,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "res:pytorch-forecasting",
+      "title": "PyTorch Forecasting官方教程",
+      "description": "专注于时间序列预测的PyTorch库，提供TFT、N-BEATS等模型实战。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:time-series-analysis",
+        "skill:pytorch-advanced"
+      ]
+    },
+    {
+      "id": "res:torchvision-object-detection",
+      "title": "Torchvision目标检测教程",
+      "description": "官方Torchvision教程，使用Faster R-CNN、Mask R-CNN等进行目标检测。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:object-detection",
+        "skill:convolutional-neural-networks"
+      ]
+    },
+    {
+      "id": "res:pytorch-gan-tutorial",
+      "title": "PyTorch GAN教程",
+      "description": "使用PyTorch实现GAN、DCGAN、WGAN等生成对抗网络。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 12,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:generative-adversarial-networks",
+        "skill:pytorch-basics"
+      ]
+    },
+    {
+      "id": "res:pytorch-rl-tutorials",
+      "title": "PyTorch强化学习教程",
+      "description": "PyTorch官方强化学习教程，实现DQN、PPO等算法。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:reinforcement-learning-basics",
+        "skill:deep-reinforcement-learning"
+      ]
+    },
+    {
+      "id": "res:pytorch-mobilenet-tutorial",
+      "title": "PyTorch MobileNet实战教程",
+      "description": "使用PyTorch实现MobileNet轻量级网络，用于移动端部署。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:cnn-architectures",
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "res:pytorch-quantization-tutorial",
+      "title": "PyTorch量化教程",
+      "description": "PyTorch官方量化教程，包括动态量化、静态量化和QAT。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 6,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:model-quantization",
+        "skill:pytorch-advanced"
+      ]
+    },
+    {
+      "id": "res:pytorch-distributed-tutorial",
+      "title": "PyTorch分布式训练教程",
+      "description": "PyTorch官方分布式训练教程，涵盖DDP、FSDP等。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:distributed-training",
+        "skill:pytorch-advanced"
+      ]
+    },
+    {
+      "id": "res:pytorch-onnx-tutorial",
+      "title": "PyTorch ONNX导出教程",
+      "description": "将PyTorch模型导出为ONNX格式，用于跨平台部署。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:onnx",
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "res:pytorch-docker-deployment",
+      "title": "PyTorch Docker部署教程",
+      "description": "使用Docker容器化部署PyTorch模型，包含Flask/FastAPI服务。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 6,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:docker",
+        "skill:model-deployment-with-docker"
+      ]
+    },
+    {
+      "id": "res:pytorch-lightning-hydra",
+      "title": "PyTorch Lightning + Hydra配置管理",
+      "description": "使用Hydra管理PyTorch Lightning项目配置，实现可复现实验。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:pytorch-advanced",
+        "skill:hyperparameter-tuning"
+      ]
+    },
+    {
+      "id": "res:pytorch-bert-fine-tuning",
+      "title": "PyTorch BERT微调教程",
+      "description": "使用PyTorch和Transformers库微调BERT进行文本分类、问答等任务。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:bert-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:pytorch-lora-tutorial",
+      "title": "PyTorch LoRA微调教程",
+      "description": "使用LoRA技术高效微调大语言模型，降低显存占用。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 6,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:lora-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:pytorch-vae-tutorial",
+      "title": "PyTorch VAE教程",
+      "description": "使用PyTorch实现变分自编码器，用于生成模型和表示学习。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 6,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:variational-autoencoders",
+        "skill:pytorch-basics"
+      ]
+    },
+    {
+      "id": "res:pytorch-gpt-fine-tuning",
+      "title": "PyTorch GPT微调教程",
+      "description": "使用PyTorch微调GPT模型进行文本生成和下游任务。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:gpt-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:pytorch-rag-tutorial",
+      "title": "PyTorch RAG教程",
+      "description": "使用PyTorch实现检索增强生成，结合向量数据库和语言模型。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:vector-databases"
+      ]
+    },
+    {
+      "id": "res:pytorch-agent-tutorial",
+      "title": "PyTorch Agent开发教程",
+      "description": "使用PyTorch和LangChain开发智能代理，实现工具调用和任务规划。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 12,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:agent-development",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:attention-is-all-you-need",
+      "title": "Attention Is All You Need",
+      "description": "Transformer原始论文，提出自注意力机制，是NLP里程碑式工作。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:transformer-architecture",
+        "skill:attention-mechanism"
+      ]
+    },
+    {
+      "id": "res:the-annotated-transformer",
+      "title": "The Annotated Transformer",
+      "description": "逐行注释Transformer论文代码，结合PyTorch实现，帮助理解细节。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:transformer-architecture",
+        "skill:pytorch-basics"
+      ]
+    },
+    {
+      "id": "res:huggingface-nlp-course",
+      "title": "Hugging Face NLP Course",
+      "description": "Hugging Face官方课程，学习Transformers库、微调、部署等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:transformers",
+        "skill:fine-tuning-pretrained-models",
+        "skill:bert"
+      ]
+    },
+    {
+      "id": "res:fastai-nlp",
+      "title": "fast.ai Practical Deep Learning for NLP",
+      "description": "fast.ai课程中的NLP部分，注重实践，涵盖ULMFiT、Transformer等。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 15,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:transfer-learning"
+      ]
+    },
+    {
+      "id": "res:nlp-with-transformers-book",
+      "title": "Natural Language Processing with Transformers",
+      "description": "O'Reilly出版，使用Hugging Face库构建NLP应用，含BERT、GPT等。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 25,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:transformers",
+        "skill:bert",
+        "skill:gpt"
+      ]
+    },
+    {
+      "id": "res:bert-paper",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers",
+      "description": "BERT原始论文，提出双向预训练模型，刷新多项NLP基准。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:bert",
+        "skill:bert-fine-tuning"
+      ]
+    },
+    {
+      "id": "res:gpt-paper",
+      "title": "Improving Language Understanding by Generative Pre-Training",
+      "description": "GPT原始论文，开创生成式预训练范式，影响深远。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:gpt",
+        "skill:gpt-fine-tuning"
+      ]
+    },
+    {
+      "id": "res:stanford-cs224n-assignments",
+      "title": "CS224n Assignments",
+      "description": "CS224n课程配套编程作业，实现RNN、Transformer、机器翻译等。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:pytorch-basics",
+        "skill:transformer-architecture"
+      ]
+    },
+    {
+      "id": "res:transformers-from-scratch",
+      "title": "The Transformer from Scratch (PyTorch)",
+      "description": "教程从零实现Transformer，包括多头注意力、位置编码等。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:transformer-architecture",
+        "skill:pytorch-advanced"
+      ]
+    },
+    {
+      "id": "res:alex-smola-deep-learning",
+      "title": "D2L.ai: Dive into Deep Learning (NLP章节)",
+      "description": "动手学深度学习NLP部分，含Transformer、BERT代码实现。",
+      "format": "书籍",
+      "language": "中英字幕",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:bert"
+      ]
+    },
+    {
+      "id": "res:spacy-nlp-course",
+      "title": "spaCy NLP Course",
+      "description": "spaCy官方课程，学习工业级NLP处理，含文本分类、实体识别等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:text-classification",
+        "skill:sequence-labeling"
+      ]
+    },
+    {
+      "id": "res:datawhale-nlp-tutorial",
+      "title": "DataWhale NLP教程",
+      "description": "中文社区NLP教程，从词向量到Transformer，含实践项目。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 15,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:word-embeddings",
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "res:rasa-nlp-course",
+      "title": "Rasa NLP Course",
+      "description": "对话式AI框架Rasa的课程，学习意图分类、实体提取等。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:sequence-labeling",
+        "skill:bert-fine-tuning"
+      ]
+    },
+    {
+      "id": "res:openai-gpt-3-prompt-guide",
+      "title": "OpenAI GPT-3 Prompt Engineering Guide",
+      "description": "OpenAI官方提示工程指南，学习如何有效使用GPT-3/4。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:prompt-engineering",
+        "skill:gpt"
+      ]
+    },
+    {
+      "id": "res:langchain-docs",
+      "title": "LangChain Documentation",
+      "description": "LangChain官方文档，学习构建LLM应用，含RAG、Agent等。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:langchain",
+        "skill:rag",
+        "skill:agent-development"
+      ]
+    },
+    {
+      "id": "res:llama-index-tutorials",
+      "title": "LlamaIndex Tutorials",
+      "description": "LlamaIndex官方教程，学习数据索引与检索增强生成。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:vector-databases",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:lora-paper",
+      "title": "LoRA: Low-Rank Adaptation of Large Language Models",
+      "description": "LoRA论文，提出高效微调大模型的方法，参数高效。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:lora-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:peft-huggingface",
+      "title": "Hugging Face PEFT Library",
+      "description": "Hugging Face PEFT文档，学习LoRA、Prefix Tuning等参数高效微调。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:lora-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:nlp-projects-github",
+      "title": "NLP Projects on GitHub (e.g., sentiment analysis, NER)",
+      "description": "GitHub上NLP实战项目，如情感分析、命名实体识别等。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:text-classification",
+        "skill:sequence-labeling",
+        "skill:natural-language-processing"
+      ]
+    },
+    {
+      "id": "res:kaggle-nlp-competitions",
+      "title": "Kaggle NLP Competitions",
+      "description": "Kaggle上NLP竞赛，如Jigsaw Toxic Comment、Quora Question Pairs等。",
+      "format": "实战项目",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "res:glue-benchmark",
+      "title": "GLUE Benchmark",
+      "description": "GLUE基准测试，含9个NLP任务，用于评估模型性能。",
+      "format": "题库",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "res:superglue-benchmark",
+      "title": "SuperGLUE Benchmark",
+      "description": "GLUE升级版，更难的任务，用于评估模型泛化能力。",
+      "format": "题库",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:model-evaluation"
+      ]
+    },
+    {
+      "id": "res:stanford-squad-dataset",
+      "title": "Stanford SQuAD Dataset",
+      "description": "机器阅读理解数据集，用于训练和评估问答模型。",
+      "format": "题库",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:bert-fine-tuning"
+      ]
+    },
+    {
+      "id": "res:nlp-books-collection",
+      "title": "NLP Books Collection (Speech and Language Processing, etc.)",
+      "description": "经典NLP书籍，如《Speech and Language Processing》，全面系统。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 50,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:word-embeddings"
+      ]
+    },
+    {
+      "id": "res:deeplearning-ai-rag",
+      "title": "Building and Evaluating Advanced RAG",
+      "description": "DeepLearning.AI的RAG课程，涵盖检索增强生成的高级技术。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 6,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:langchain-rag-course",
+      "title": "LangChain & Vector Databases in Production",
+      "description": "FreeCodeCamp课程，学习使用LangChain和向量数据库构建RAG系统。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:langchain",
+        "skill:vector-databases"
+      ]
+    },
+    {
+      "id": "res:openai-rag-cookbook",
+      "title": "OpenAI Cookbook: RAG",
+      "description": "OpenAI官方RAG示例，包括检索、嵌入和问答。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 2,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:prompt-engineering"
+      ]
+    },
+    {
+      "id": "res:llamaindex-rag-tutorial",
+      "title": "LlamaIndex RAG Tutorial",
+      "description": "LlamaIndex官方教程，构建RAG应用，包括索引和查询。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:agentic-rag-deeplearningai",
+      "title": "Agentic RAG with LlamaIndex",
+      "description": "DeepLearning.AI课程，结合代理和RAG构建智能系统。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:multi-agent-deeplearningai",
+      "title": "Multi AI Agent Systems with crewAI",
+      "description": "DeepLearning.AI课程，使用crewAI构建多代理系统。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:agent-development",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:autogen-agent-tutorial",
+      "title": "AutoGen: Enabling Next-Gen LLM Applications",
+      "description": "微软AutoGen官方教程，构建多代理对话系统。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 2,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:agent-development",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:langgraph-agent-course",
+      "title": "LangGraph: Build Agentic Applications",
+      "description": "LangChain官方课程，使用LangGraph构建代理应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:agent-development",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:huggingface-agents-course",
+      "title": "Hugging Face Agents Course",
+      "description": "Hugging Face官方代理课程，学习构建和使用AI代理。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:agent-development",
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "res:lora-fine-tuning-huggingface",
+      "title": "LoRA Fine-Tuning with Hugging Face",
+      "description": "Hugging Face官方教程，使用LoRA高效微调大模型。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 2,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:lora-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:peft-fine-tuning-deeplearningai",
+      "title": "Parameter-Efficient Fine-Tuning (PEFT)",
+      "description": "DeepLearning.AI课程，学习PEFT技术如LoRA、Prefix Tuning。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:lora-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:fine-tuning-llm-huggingface",
+      "title": "Fine-Tuning Large Language Models",
+      "description": "Hugging Face NLP课程中的微调部分，涵盖完整流程。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 6,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:fine-tuning-pretrained-models",
+        "skill:transformers"
+      ]
+    },
+    {
+      "id": "res:full-finetuning-llama2",
+      "title": "Fine-tune Llama 2 with QLoRA",
+      "description": "Hugging Face博客教程，使用QLoRA微调Llama 2。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:lora-fine-tuning",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:deeplearning-ai-finetuning",
+      "title": "Finetuning Large Language Models",
+      "description": "DeepLearning.AI课程，全面学习微调LLM，包括数据准备和评估。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 6,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:fine-tuning-pretrained-models",
+        "skill:prompt-engineering"
+      ]
+    },
+    {
+      "id": "res:langchain-for-llm-apps",
+      "title": "LangChain for LLM Application Development",
+      "description": "DeepLearning.AI课程，使用LangChain构建LLM应用，包括链和代理。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:langchain",
+        "skill:prompt-engineering"
+      ]
+    },
+    {
+      "id": "res:vector-databases-course",
+      "title": "Vector Databases: from Embeddings to Applications",
+      "description": "Weaviate课程，学习向量数据库原理及在RAG中的应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:vector-databases",
+        "skill:rag"
+      ]
+    },
+    {
+      "id": "res:prompt-engineering-guide",
+      "title": "Prompt Engineering Guide",
+      "description": "DAIR.AI的提示工程指南，涵盖多种提示技术。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 3,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:prompt-engineering"
+      ]
+    },
+    {
+      "id": "res:chatgpt-prompt-engineering",
+      "title": "ChatGPT Prompt Engineering for Developers",
+      "description": "DeepLearning.AI和OpenAI合作课程，学习提示工程最佳实践。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 2,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:prompt-engineering"
+      ]
+    },
+    {
+      "id": "res:llm-apps-with-huggingface",
+      "title": "Building LLM Apps with Hugging Face",
+      "description": "Hugging Face课程，使用Transformers库构建LLM应用。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:transformers",
+        "skill:fine-tuning-pretrained-models"
+      ]
+    },
+    {
+      "id": "res:llmops-course",
+      "title": "LLMOps: Large Language Model Operations",
+      "description": "DeepLearning.AI课程，学习LLM的部署、监控和维护。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:model-deployment",
+        "skill:mlops-basics"
+      ]
+    },
+    {
+      "id": "res:datawhale-rag-tutorial",
+      "title": "DataWhale RAG教程",
+      "description": "DataWhale社区RAG教程，从入门到实践，包含代码。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 4,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:rag",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:datawhale-finetuning-tutorial",
+      "title": "DataWhale LLM微调教程",
+      "description": "DataWhale社区LLM微调教程，涵盖LoRA和全量微调。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:fine-tuning-pretrained-models",
+        "skill:lora-fine-tuning"
+      ]
+    },
+    {
+      "id": "res:datawhale-agent-tutorial",
+      "title": "DataWhale Agent教程",
+      "description": "DataWhale社区Agent开发教程，使用LangChain构建智能代理。",
+      "format": "文档教程",
+      "language": "中文",
+      "duration_hours": 4,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:agent-development",
+        "skill:langchain"
+      ]
+    },
+    {
+      "id": "res:fastapi-official-docs",
+      "title": "FastAPI官方文档",
+      "description": "FastAPI框架的权威指南，涵盖API开发、部署等工程实践。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:fastapi",
+        "skill:api-design"
+      ]
+    },
+    {
+      "id": "res:docker-get-started",
+      "title": "Docker Get Started",
+      "description": "Docker官方入门教程，学习容器化部署基础。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:docker"
+      ]
+    },
+    {
+      "id": "res:kubernetes-basics-tutorial",
+      "title": "Kubernetes Basics Tutorial",
+      "description": "Kubernetes官方交互式教程，学习容器编排基础。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 8,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:kubernetes-basics"
+      ]
+    },
+    {
+      "id": "res:mlops-specialization-coursera",
+      "title": "MLOps Specialization (Coursera)",
+      "description": "DeepLearning.AI的MLOps专项课程，涵盖CI/CD、模型部署等。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:mlops-basics",
+        "skill:ci-cd-for-ml",
+        "skill:model-deployment-with-docker"
+      ]
+    },
+    {
+      "id": "res:full-stack-deep-learning",
+      "title": "Full Stack Deep Learning",
+      "description": "课程覆盖ML工程全栈，包括部署、监控、数据管理。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:model-deployment",
+        "skill:mlops-basics"
+      ]
+    },
+    {
+      "id": "res:made-with-ml",
+      "title": "Made With ML",
+      "description": "ML项目实战教程，从实验到部署的完整流程。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:model-deployment",
+        "skill:mlops-basics"
+      ]
+    },
+    {
+      "id": "res:leetcode-explore",
+      "title": "LeetCode Explore",
+      "description": "LeetCode官方学习路径，系统准备算法面试。",
+      "format": "题库",
+      "language": "英文",
+      "duration_hours": 100,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:data-structures-algorithms",
+        "skill:leetcode-practice"
+      ]
+    },
+    {
+      "id": "res:system-design-primer",
+      "title": "System Design Primer",
+      "description": "GitHub上最流行的系统设计资源，涵盖面试常见主题。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 40,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:system-design-interview"
+      ]
+    },
+    {
+      "id": "res:grokking-system-design",
+      "title": "Grokking the System Design Interview",
+      "description": "系统设计面试经典课程，讲解设计模式与案例。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:system-design-interview"
+      ]
+    },
+    {
+      "id": "res:designing-data-intensive-applications",
+      "title": "Designing Data-Intensive Applications",
+      "description": "系统设计必读书籍，深入分布式系统原理。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "高级",
+      "url": null,
+      "teaches": [
+        "skill:system-design-interview"
+      ]
+    },
+    {
+      "id": "res:ml-system-design-interview",
+      "title": "Machine Learning System Design Interview",
+      "description": "针对ML系统设计的面试准备资源，含案例。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:system-design-interview",
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "res:aws-ml-specialty",
+      "title": "AWS Certified Machine Learning Specialty",
+      "description": "AWS官方备考课程，涵盖ML工程与部署。",
+      "format": "视频课",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:cloud-deployment",
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "res:gcp-ml-engineer",
+      "title": "Google Cloud ML Engineer Learning Path",
+      "description": "GCP官方学习路径，覆盖ML模型部署与流水线。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 25,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:cloud-deployment",
+        "skill:mlops-basics"
+      ]
+    },
+    {
+      "id": "res:fastai-deployment",
+      "title": "fast.ai Practical Deep Learning for Coders (Deployment)",
+      "description": "fast.ai课程中的部署部分，使用Hugging Face等工具。",
+      "format": "视频课",
+      "language": "中英字幕",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "res:onnx-tutorial",
+      "title": "ONNX Tutorial",
+      "description": "ONNX官方教程，学习模型转换与部署。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:onnx",
+        "skill:model-quantization"
+      ]
+    },
+    {
+      "id": "res:mlflow-docs",
+      "title": "MLflow Documentation",
+      "description": "MLflow官方文档，涵盖实验跟踪、模型注册与部署。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:mlops-basics",
+        "skill:model-deployment"
+      ]
+    },
+    {
+      "id": "res:redis-cache-patterns",
+      "title": "Redis Cache Patterns",
+      "description": "Redis官方文档中的缓存模式，用于系统设计。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 5,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:redis-cache",
+        "skill:redis"
+      ]
+    },
+    {
+      "id": "res:kafka-the-definitive-guide",
+      "title": "Kafka: The Definitive Guide",
+      "description": "Kafka权威指南，学习消息队列与流处理。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:kafka-basics",
+        "skill:message-queue"
+      ]
+    },
+    {
+      "id": "res:spring-boot-guides",
+      "title": "Spring Boot Guides",
+      "description": "Spring官方教程，快速构建微服务REST API。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "入门",
+      "url": null,
+      "teaches": [
+        "skill:spring-boot",
+        "skill:java-spring-boot-rest-api"
+      ]
+    },
+    {
+      "id": "res:sql-advanced-queries",
+      "title": "SQL Advanced Queries (LeetCode)",
+      "description": "LeetCode SQL题目，练习复杂查询与优化。",
+      "format": "题库",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:sql-advanced",
+        "skill:sql-basics"
+      ]
+    },
+    {
+      "id": "res:data-warehouse-modeling",
+      "title": "Data Warehouse Modeling (Kimball)",
+      "description": "数据仓库经典方法论，维度建模实践。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 15,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:data-warehouse-basics",
+        "skill:etl-pipeline"
+      ]
+    },
+    {
+      "id": "res:apache-spark-structured-streaming",
+      "title": "Apache Spark Structured Streaming",
+      "description": "Spark流处理官方指南，实时数据处理。",
+      "format": "文档教程",
+      "language": "英文",
+      "duration_hours": 10,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:apache-spark"
+      ]
+    },
+    {
+      "id": "res:design-patterns-gof",
+      "title": "Design Patterns: Elements of Reusable Object-Oriented Software",
+      "description": "GoF设计模式经典书籍，面试常考。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 20,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:design-patterns"
+      ]
+    },
+    {
+      "id": "res:cracking-the-coding-interview",
+      "title": "Cracking the Coding Interview",
+      "description": "技术面试经典书籍，涵盖算法与系统设计。",
+      "format": "书籍",
+      "language": "英文",
+      "duration_hours": 30,
+      "difficulty": "进阶",
+      "url": null,
+      "teaches": [
+        "skill:data-structures-algorithms",
+        "skill:technical-interview"
+      ]
+    }
+  ]
+}

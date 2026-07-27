@@ -1,0 +1,55 @@
+server:
+  port: 8180   # 8080 被本机其他服务占用
+
+spring:
+  application:
+    name: personal-ai-tutor
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tutor
+    username: tutor
+    password: ${POSTGRES_PASSWORD:tutor_dev_only}
+  flyway:
+    enabled: true
+
+security:
+  # 简历原文与PII映射的对称加密密钥 (pgcrypto pgp_sym_encrypt); 缺失时拒绝上传
+  resume-enc-key: ${RESUME_ENC_KEY:}
+
+push:
+  cron: "0 0 8,20 * * *"       # 每日两次 (V3 6.2)
+  match-threshold: 0.65
+  cold-coverage-threshold: 0.5  # 无简历时按覆盖率判定 (冷启动规则)
+  release-batch: 5              # Mock注水池每次释放条数
+  max-per-run: 5
+
+neo4j:
+  uri: bolt://localhost:7687
+  username: neo4j
+  password: ${NEO4J_PASSWORD:tutor_dev_only}
+
+llm:
+  # purpose→model 映射 (实现设计 6.4 模型分级路由), 配置化可整体切换
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+  siliconflow:
+    api-key: ${SILICONFLOW_API_KEY:}
+    base-url: ${SILICONFLOW_BASE_URL:https://api.siliconflow.cn/v1}
+  routing:
+    chat: deepseek-chat
+    router: deepseek-chat        # 轻任务候选: 切至更廉价模型后跑评估回归
+    expert: deepseek-chat
+    summary: deepseek-chat
+    extract: deepseek-chat
+    embed: BAAI/bge-m3
+  budget:
+    daily-token-limit: 2000000   # 每日限额 (网关执行, 实现设计 6.1)
+    turn-token-limit: 50000      # 单轮熔断
+  timeout:
+    router-seconds: 10
+    chat-seconds: 60
+    summary-seconds: 120
