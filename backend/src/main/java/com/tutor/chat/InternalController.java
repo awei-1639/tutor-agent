@@ -22,11 +22,15 @@ import java.util.Map;
 @RequestMapping("/internal")
 public class InternalController {
     private final FusedRetriever retriever;
+    private final com.tutor.retrieval.AgenticRetriever agenticRetriever;
     private final IntentRouter router;
 
-    public InternalController(FusedRetriever retriever, IntentRouter router,
+    public InternalController(FusedRetriever retriever,
+                              com.tutor.retrieval.AgenticRetriever agenticRetriever,
+                              IntentRouter router,
                               com.tutor.push.PushService pushService) {
         this.retriever = retriever;
+        this.agenticRetriever = agenticRetriever;
         this.router = router;
         this.pushService = pushService;
     }
@@ -35,14 +39,19 @@ public class InternalController {
 
     @PostMapping("/retrieve")
     public Map<String, Object> retrieve(@Valid @RequestBody RetrieveRequest req) {
-        boolean fused = !"vector_only".equals(req.mode());
-        boolean rerank = "fused_rerank".equals(req.mode());
+        String mode = req.mode() == null ? "agentic" : req.mode();
         long t0 = System.currentTimeMillis();
-        List<Evidence> results = retriever.retrieve(
-                req.query(), req.topK() == null ? 5 : req.topK(), "eval", fused, rerank);
+        List<Evidence> results;
+        if ("agentic".equals(mode)) {
+            results = agenticRetriever.retrieve(req.query(), req.topK() == null ? 5 : req.topK(), "eval");
+        } else {
+            boolean fused = !"vector_only".equals(mode);
+            boolean rerank = "fused_rerank".equals(mode);
+            results = retriever.retrieve(req.query(), req.topK() == null ? 5 : req.topK(), "eval", fused, rerank);
+        }
         long ms = System.currentTimeMillis() - t0;
         return Map.of(
-                "mode", rerank ? "fused_rerank" : (fused ? "fused" : "vector_only"),
+                "mode", mode,
                 "latency_ms", ms,
                 "results", results.stream().map(e -> Map.of(
                         "node_id", e.nodeId(), "type", e.nodeType(), "score", e.score())).toList());

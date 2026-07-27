@@ -23,39 +23,43 @@ def sample(arr, n):
     return out
 
 cases = []
-# 类型1
-for s in sample([x for x in skills if len(x['description']) > 20], 15):
+# 类型1: 单跳技能 (60 条, Phase 2 扩量)
+for s in sample([x for x in skills if len(x['description']) > 20], 60):
     cases.append({
         'type': 'single_hop_skill',
         'seed_query': f'围绕技能「{s["name"]}」({s["description"]})提一个学习者会问的问题',
         'gold': [s['id']],
+        'gold_intent': 'learn',
     })
-# 类型2
-for r in sample([x for x in resources if x['teaches']], 15):
+# 类型2: 资源推荐 (80 条)
+for r in sample([x for x in resources if x['teaches']], 80):
     skill = skill_by_id[r['teaches'][0]]
     gold = [x['id'] for x in resources if r['teaches'][0] in x['teaches'] and x['format'] == r['format']]
     cases.append({
         'type': 'resource_rec',
         'seed_query': f'想找学习「{skill["name"]}」的{r["format"]}类资源, 提一个自然的求推荐问题',
         'gold': gold,
+        'gold_intent': 'find_resource',
     })
-# 类型3
-for j in sample([x for x in jobs if len(x['requires']) >= 3], 10):
+# 类型3: 岗位技能拆解 (60 条)
+for j in sample([x for x in jobs if len(x['requires']) >= 3], 60):
     cases.append({
         'type': 'job_requirement',
         'seed_query': f'想了解「{j["title"]}」(公司: {j["company"]})这类岗位需要掌握哪些技能',
         'gold': j['requires'],
+        'gold_intent': 'find_job',
     })
-# 类型4
+# 类型4: 多跳前置链 (100 条, Phase 2 重点切片)
 deep = [s for s in skills if s['prerequisites']
         and any((skill_by_id.get(p) or {}).get('prerequisites') for p in s['prerequisites'])]
-for s in sample(deep, 10):
+for s in sample(deep, 100):
     hop1 = s['prerequisites']
     hop2 = sum([(skill_by_id.get(p) or {}).get('prerequisites', []) for p in hop1], [])
     cases.append({
         'type': 'multi_hop_prereq',
         'seed_query': f'零基础想最终学会「{s["name"]}」, 提一个询问需要先掌握哪些前置知识的问题',
         'gold': list(dict.fromkeys(hop1 + hop2)),
+        'gold_intent': 'learn_path',
     })
 
 def paraphrase(batch):

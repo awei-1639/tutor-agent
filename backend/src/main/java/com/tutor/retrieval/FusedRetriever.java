@@ -75,6 +75,8 @@ public class FusedRetriever {
     private List<Evidence> retrieveFused(String query, int topK, String traceId, boolean fused) {
         float[] qv = gateway.embed(query, traceId);
         List<VectorStore.VectorHit> vecHits = vectorStore.search(qv, VECTOR_TOPN);
+        // 稀疏通道 (Phase 2 V4 2.1): pg_trgm 模糊匹配, 取 TOPN 同样的 20 候选
+        List<VectorStore.VectorHit> sparseHits = vectorStore.sparseSearch(query, VECTOR_TOPN, 0.15);
         if (!fused) {
             return vecHits.stream().limit(topK)
                     .map(h -> new Evidence(h.nodeId(), h.nodeType(), h.chunkText(), h.score(), null))
@@ -87,11 +89,13 @@ public class FusedRetriever {
 
         Map<String, Double> fusedScores = fuse(
                 vecHits.stream().map(VectorStore.VectorHit::nodeId).toList(),
+                sparseHits.stream().map(VectorStore.VectorHit::nodeId).toList(),
                 neighbors, expandSources, isResourceSeeking(query));
 
         // 回捞扩展节点的 chunk 文本; 记录图谱路径 (哪个源节点经哪条边扩出)
         Map<String, VectorStore.VectorHit> byId = new HashMap<>();
         vecHits.forEach(h -> byId.put(h.nodeId(), h));
+        sparseHits.forEach(h -> byId.putIfAbsent(h.nodeId(), h));
         Map<String, String> graphPath = new HashMap<>();
         List<String> missing = new ArrayList<>();
         for (GraphStore.Neighbor n : neighbors) {
@@ -130,10 +134,33 @@ public class FusedRetriever {
                                     List<GraphStore.Neighbor> neighbors,
                                     List<String> expandSources,
                                     boolean resourceSeeking) {
+        return fuse(vectorRanking, List.of(), neighbors, expandSources, resourceSeeking);
+    }
+
+    /**
+     * 三路 RRF (Phase 2 V4 2.1): 稠密+稀疏+图扩展。稀疏通道用 BETA 衰减,
+     * 与 ALPHA 隔离以便独立调参; 阈值见 {@link VectorStore#sparseSearch}。
+     */
+    static Map<String, Double> fuse(List<String> vectorRanking,
+                                    List<String> sparseRanking,
+                                    List<GraphStore.Neighbor> neighbors,
+                                    List<String> expandSources,
+                                    boolean resourceSeeking) {
         Map<String, Double> score = new LinkedHashMap<>();
         for (int i = 0; i < vectorRanking.size(); i++) {
             score.merge(vectorRanking.get(i), 1.0 / (RRF_K + i + 1), Double::sum);
         }
+        // 稀疏通道: 与图扩展相同的 max 抑制策略, 防止同一节点被多个稀疏片段反复加分
+        Map<String, Double> sparseScore = new HashMap<>();
+        for (int i = 0; i < sparseRanking.size(); i++) {
+            String id = sparseRanking.get(i);
+            double contribution = BETA * (1.0 / (RRF_K + i + 1));
+            // 资源查询: 非资源节点稀疏命中也抑制, 防止 trigram 模糊命中技能/岗位挤掉真正的资源 gold
+            if (resourceSeeking && !id.startsWith("res:")) contribution *= NON_RESOURCE_DAMPEN;
+            sparseScore.merge(id, contribution, Double::max);
+        }
+        sparseScore.forEach((id, s) -> score.merge(id, s, Double::sum));
+
         Map<String, Integer> srcRank = new HashMap<>();
         for (int i = 0; i < expandSources.size(); i++) srcRank.put(expandSources.get(i), i + 1);
         Map<String, Double> expandScore = new HashMap<>();
@@ -146,4 +173,8 @@ public class FusedRetriever {
         expandScore.forEach((id, s) -> score.merge(id, s, Double::sum));
         return score;
     }
+
+    /** 稀疏通道权重 (Phase 2 V4 2.1): pg_trgm 兜底专有名词漏召, 不应主导排序。0.3 ≈ 图扩展(0.85)的 1/3,
+     * 仅当向量命中失败时 sparse 命中节点才能进入 top5; BETA 过高会让 trigram 命中挤掉向量近邻导致资源切片退化。 */
+    static final double BETA = 0.3;
 }

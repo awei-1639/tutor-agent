@@ -130,6 +130,22 @@ public class LlmGateway {
     }
 
     /**
+     * 多跳证据充分性判断 (Phase 2 V4 2.1): 给 query+已累积证据, 输出是否充分 + 缺口驱动改写。
+     * 用于 AgenticRetriever 多跳循环的跳出条件; 失败抛由调用方降级为单跳。
+     */
+    public String judgeSufficient(String query, List<String> evidenceNodeIds, String traceId) {
+        String prompt = "查询: " + query + "\n已累积证据节点ID: " + evidenceNodeIds
+                + "\n请判断这些证据是否足以完整回答查询。输出JSON {sufficient: bool, followup_query: string|null, missing: string|null}";
+        return chatJson(Purpose.ROUTER, List.of(
+                dev.langchain4j.data.message.SystemMessage.from(
+                        "你是多跳检索的证据充分性判断器。判断规则: "
+                                + "1) 若证据覆盖了回答问题所需的所有关键概念/前置技能/资源→sufficient=true; "
+                                + "2) 否则→sufficient=false, followup_query=针对缺口的更窄查询, missing=缺失的关键概念关键词; "
+                                + "3) followup_query 不应与原 query 重复, 应聚焦缺失的具体子概念。"),
+                dev.langchain4j.data.message.UserMessage.from(prompt)), traceId);
+    }
+
+    /**
      * 重排序 (SiliconFlow bge-reranker-v2-m3)。返回与docs等长的相关性分数数组。
      * 失败抛出由调用方降级 (降级矩阵: 重排失败→保持融合排序)。
      */

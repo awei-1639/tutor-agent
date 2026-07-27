@@ -75,6 +75,25 @@
       <version>${jtokkit.version}</version>
     </dependency>
 
+    <!-- JWT (Phase 4 V4 4.x): 用户认证与 token 解析 -->
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-api</artifactId>
+      <version>0.12.6</version>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-impl</artifactId>
+      <version>0.12.6</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-jackson</artifactId>
+      <version>0.12.6</version>
+      <scope>runtime</scope>
+    </dependency>
+
     <!-- 简历解析: PDF / DOCX (实现设计 8.3: 仅PDF/DOCX/TXT, ≤5MB) -->
     <dependency>
       <groupId>org.apache.pdfbox</groupId>

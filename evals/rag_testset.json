@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "created_at": "2026-07-27T00:30:54.829381",
+  "created_at": "2026-07-27T23:41:20.536441",
   "note": "gold由图结构确定, LLM仅改写问法 (Python重生成避免bash UTF-8问题)",
   "cases": [
     {
@@ -9,7 +9,8 @@
       "gold": [
         "skill:message-queue"
       ],
-      "query": "消息队列咋保证消息不丢啊？比如Kafka和RabbitMQ有啥区别？"
+      "gold_intent": "learn",
+      "query": "消息队列里的分区到底是啥意思啊，能解决什么问题？"
     },
     {
       "id": "q002",
@@ -17,7 +18,8 @@
       "gold": [
         "skill:supervised-learning"
       ],
-      "query": "学监督学习，逻辑回归和SVM到底啥时候用哪个呀？"
+      "gold_intent": "learn",
+      "query": "逻辑回归明明叫回归，为啥用来分类呢？"
     },
     {
       "id": "q003",
@@ -25,7 +27,8 @@
       "gold": [
         "skill:linux-command-line"
       ],
-      "query": "Linux命令行里怎么批量改文件名？求个简单命令！"
+      "gold_intent": "learn",
+      "query": "Linux里怎么快速查找包含某个关键词的文件呢？"
     },
     {
       "id": "q004",
@@ -33,7 +36,8 @@
       "gold": [
         "skill:kubernetes-basics"
       ],
-      "query": "Kubernetes里Pod和Service到底咋配合工作的？"
+      "gold_intent": "learn",
+      "query": "K8s里Pod和Deployment有啥区别？"
     },
     {
       "id": "q005",
@@ -41,7 +45,8 @@
       "gold": [
         "skill:loss-functions"
       ],
-      "query": "损失函数里交叉熵和均方误差有啥不同？"
+      "gold_intent": "learn",
+      "query": "交叉熵和均方误差，我该选哪个当损失函数？"
     },
     {
       "id": "q006",
@@ -49,7 +54,8 @@
       "gold": [
         "skill:anomaly-detection"
       ],
-      "query": "异常检测用孤立森林靠谱吗？跟LOF比咋样？"
+      "gold_intent": "learn",
+      "query": "异常检测中孤立森林是怎么工作的？"
     },
     {
       "id": "q007",
@@ -57,7 +63,8 @@
       "gold": [
         "skill:bert"
       ],
-      "query": "BERT模型做文本分类，微调要注意啥？"
+      "gold_intent": "learn",
+      "query": "BERT微调时怎么选择合适的学习率？"
     },
     {
       "id": "q008",
@@ -65,7 +72,8 @@
       "gold": [
         "skill:xgboost"
       ],
-      "query": "XGBoost调参怎么调才能防止过拟合？"
+      "gold_intent": "learn",
+      "query": "XGBoost的参数太多，调参有啥技巧吗？"
     },
     {
       "id": "q009",
@@ -73,7 +81,8 @@
       "gold": [
         "skill:unsupervised-learning"
       ],
-      "query": "无监督学习里K-means和DBSCAN选哪个好？"
+      "gold_intent": "learn",
+      "query": "K-means聚类时K值怎么确定？"
     },
     {
       "id": "q010",
@@ -81,7 +90,8 @@
       "gold": [
         "skill:leetcode-practice"
       ],
-      "query": "LeetCode刷题先刷哪个专题？数组还是链表？"
+      "gold_intent": "learn",
+      "query": "LeetCode刷题是先刷easy还是直接hard？"
     },
     {
       "id": "q011",
@@ -89,7 +99,8 @@
       "gold": [
         "skill:data-warehouse-basics"
       ],
-      "query": "数据仓库到底咋学啊？Hive和Snowflake有啥区别？"
+      "gold_intent": "learn",
+      "query": "数据仓库里的维度建模到底是怎么一回事啊？"
     },
     {
       "id": "q012",
@@ -97,7 +108,8 @@
       "gold": [
         "skill:exploratory-data-analysis"
       ],
-      "query": "怎么用图表看数据之间的关系？有没有简单的方法？"
+      "gold_intent": "learn",
+      "query": "做探索性数据分析时，常用哪些图来看数据分布？"
     },
     {
       "id": "q013",
@@ -105,7 +117,8 @@
       "gold": [
         "skill:model-deployment-with-docker"
       ],
-      "query": "怎么把训练好的模型用Docker打包成服务啊？"
+      "gold_intent": "learn",
+      "query": "怎么用Docker把训练好的模型打包成服务啊？"
     },
     {
       "id": "q014",
@@ -113,7 +126,8 @@
       "gold": [
         "skill:generative-adversarial-networks"
       ],
-      "query": "GAN到底怎么生成图片的？有没有通俗的解释？"
+      "gold_intent": "learn",
+      "query": "生成对抗网络里的生成器和判别器是怎么互相打架的？"
     },
     {
       "id": "q015",
@@ -121,10 +135,450 @@
       "gold": [
         "skill:linear-algebra"
       ],
-      "query": "特征值和特征向量在实际中有什么用？"
+      "gold_intent": "learn",
+      "query": "特征值和特征向量在实际中有什么用呢？"
     },
     {
       "id": "q016",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:data-structures-algorithms"
+      ],
+      "gold_intent": "learn",
+      "query": "学数据结构和算法，先看数组还是链表啊？"
+    },
+    {
+      "id": "q017",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:model-evaluation"
+      ],
+      "gold_intent": "learn",
+      "query": "模型评估时，ROC曲线和AUC值哪个更重要？"
+    },
+    {
+      "id": "q018",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:regularization-techniques"
+      ],
+      "gold_intent": "learn",
+      "query": "正则化技术里Dropout是怎么防止过拟合的呀？"
+    },
+    {
+      "id": "q019",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:word-embeddings"
+      ],
+      "gold_intent": "learn",
+      "query": "词向量Word2Vec和GloVe哪个更好用？"
+    },
+    {
+      "id": "q020",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:microservices-basics"
+      ],
+      "gold_intent": "learn",
+      "query": "微服务架构中服务发现是怎么实现的？"
+    },
+    {
+      "id": "q021",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:cloud-deployment"
+      ],
+      "gold_intent": "learn",
+      "query": "刚学云部署，AWS EC2和S3怎么用来部署模型啊？"
+    },
+    {
+      "id": "q022",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:probability-statistics"
+      ],
+      "gold_intent": "learn",
+      "query": "概率论里期望和方差到底有啥用？搞不懂。"
+    },
+    {
+      "id": "q023",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:java-spring-boot-rest-api"
+      ],
+      "gold_intent": "learn",
+      "query": "用Spring Boot写REST API，异常处理怎么搞？"
+    },
+    {
+      "id": "q024",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:optimizers"
+      ],
+      "gold_intent": "learn",
+      "query": "神经网络优化器SGD和Adam有啥区别？哪个好用？"
+    },
+    {
+      "id": "q025",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:etl-pipeline"
+      ],
+      "gold_intent": "learn",
+      "query": "ETL流水线用Airflow和Spark咋搭？"
+    },
+    {
+      "id": "q026",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:hyperparameter-tuning"
+      ],
+      "gold_intent": "learn",
+      "query": "超参数调优的网格搜索和随机搜索有啥不同？"
+    },
+    {
+      "id": "q027",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:sequence-labeling"
+      ],
+      "gold_intent": "learn",
+      "query": "序列标注做NER，BiLSTM+CRF是啥原理？"
+    },
+    {
+      "id": "q028",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:apache-spark"
+      ],
+      "gold_intent": "learn",
+      "query": "Spark的RDD和DataFrame有啥区别？"
+    },
+    {
+      "id": "q029",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:agent-development"
+      ],
+      "gold_intent": "learn",
+      "query": "怎么构建一个能自己调用工具的AI智能体？"
+    },
+    {
+      "id": "q030",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:python-basics"
+      ],
+      "gold_intent": "learn",
+      "query": "Python基础语法学完了，接下来学啥？"
+    },
+    {
+      "id": "q031",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:gpt"
+      ],
+      "gold_intent": "learn",
+      "query": "怎么让GPT模型生成更长的文本？"
+    },
+    {
+      "id": "q032",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:java-basics"
+      ],
+      "gold_intent": "learn",
+      "query": "Java里HashMap和Hashtable有啥区别？"
+    },
+    {
+      "id": "q033",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:variational-autoencoders"
+      ],
+      "gold_intent": "learn",
+      "query": "变分自编码器是怎么生成图像的？"
+    },
+    {
+      "id": "q034",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:image-classification"
+      ],
+      "gold_intent": "learn",
+      "query": "图像分类时ResNet为什么比普通CNN深？"
+    },
+    {
+      "id": "q035",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:transformers"
+      ],
+      "gold_intent": "learn",
+      "query": "Transformer里的自注意力机制到底怎么工作的？"
+    },
+    {
+      "id": "q036",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:bert-fine-tuning"
+      ],
+      "gold_intent": "learn",
+      "query": "微调BERT做情感分析需要改哪些层？"
+    },
+    {
+      "id": "q037",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:transfer-learning"
+      ],
+      "gold_intent": "learn",
+      "query": "迁移学习能帮我在小数据集上训练模型吗？"
+    },
+    {
+      "id": "q038",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:data-wrangling"
+      ],
+      "gold_intent": "learn",
+      "query": "数据清洗时怎么处理缺失值？"
+    },
+    {
+      "id": "q039",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:data-visualization"
+      ],
+      "gold_intent": "learn",
+      "query": "用Matplotlib画折线图怎么加标签？"
+    },
+    {
+      "id": "q040",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:attention-mechanism"
+      ],
+      "gold_intent": "learn",
+      "query": "注意力机制是怎么让模型关注重要信息的？"
+    },
+    {
+      "id": "q041",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:feature-engineering"
+      ],
+      "gold_intent": "learn",
+      "query": "特征缩放和归一化到底有啥区别？我该咋选？"
+    },
+    {
+      "id": "q042",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:transformer-architecture"
+      ],
+      "gold_intent": "learn",
+      "query": "Transformer的自注意力机制是咋工作的？能举个例子吗？"
+    },
+    {
+      "id": "q043",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:behavioral-interview"
+      ],
+      "gold_intent": "learn",
+      "query": "面试官问项目经验，咋用STAR方法回答才出彩？"
+    },
+    {
+      "id": "q044",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:gpt-fine-tuning"
+      ],
+      "gold_intent": "learn",
+      "query": "微调GPT模型做对话，需要多少数据才够？"
+    },
+    {
+      "id": "q045",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:docker"
+      ],
+      "gold_intent": "learn",
+      "query": "Docker里咋把模型打包成镜像？求步骤！"
+    },
+    {
+      "id": "q046",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "gold_intent": "learn",
+      "query": "预训练模型微调时，怎么选冻结哪些层？"
+    },
+    {
+      "id": "q047",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:design-patterns"
+      ],
+      "gold_intent": "learn",
+      "query": "单例模式在Python里咋实现？有啥坑？"
+    },
+    {
+      "id": "q048",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:calculus"
+      ],
+      "gold_intent": "learn",
+      "query": "求导和梯度是啥关系？微积分在ML里咋用？"
+    },
+    {
+      "id": "q049",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:model-monitoring"
+      ],
+      "gold_intent": "learn",
+      "query": "模型上线后，咋监测它是不是变差了？"
+    },
+    {
+      "id": "q050",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:tensorflow-advanced"
+      ],
+      "gold_intent": "learn",
+      "query": "TensorFlow自定义训练循环咋写？比fit好在哪？"
+    },
+    {
+      "id": "q051",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:data-augmentation"
+      ],
+      "gold_intent": "learn",
+      "query": "数据增强里图像旋转和文本回译具体怎么操作的呀？"
+    },
+    {
+      "id": "q052",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:catboost"
+      ],
+      "gold_intent": "learn",
+      "query": "CatBoost对类别特征的支持到底有啥特别的？"
+    },
+    {
+      "id": "q053",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:object-detection"
+      ],
+      "gold_intent": "learn",
+      "query": "目标检测里YOLO和Faster R-CNN哪个更好上手？"
+    },
+    {
+      "id": "q054",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:ensemble-learning"
+      ],
+      "gold_intent": "learn",
+      "query": "随机森林和梯度提升到底有啥区别啊？"
+    },
+    {
+      "id": "q055",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:spring-boot"
+      ],
+      "gold_intent": "learn",
+      "query": "Spring Boot里REST API怎么写才规范？"
+    },
+    {
+      "id": "q056",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:prompt-engineering"
+      ],
+      "gold_intent": "learn",
+      "query": "零样本提示和少样本提示到底怎么用？"
+    },
+    {
+      "id": "q057",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:redis-cache"
+      ],
+      "gold_intent": "learn",
+      "query": "缓存穿透和缓存雪崩怎么解决啊？"
+    },
+    {
+      "id": "q058",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:feature-store"
+      ],
+      "gold_intent": "learn",
+      "query": "特征存储Feast是怎么做到特征共享的？"
+    },
+    {
+      "id": "q059",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:pytorch-advanced"
+      ],
+      "gold_intent": "learn",
+      "query": "PyTorch里自定义数据集咋搞啊？"
+    },
+    {
+      "id": "q060",
+      "type": "single_hop_skill",
+      "gold": [
+        "skill:system-design-interview"
+      ],
+      "gold_intent": "learn",
+      "query": "设计高并发系统面试该从哪入手？"
+    },
+    {
+      "id": "q061",
+      "type": "resource_rec",
+      "gold": [
+        "res:mathematics-for-machine-learning",
+        "res:pattern-recognition-and-machine-learning",
+        "res:statistical-rethinking",
+        "res:information-theory-inference-learning",
+        "res:probabilistic-machine-learning",
+        "res:gaussian-processes-for-machine-learning",
+        "res:foundations-of-data-science",
+        "res:all-of-statistics"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有好的概率论与数理统计书推荐？"
+    },
+    {
+      "id": "q062",
+      "type": "resource_rec",
+      "gold": [
+        "res:gcp-ml-engineer"
+      ],
+      "gold_intent": "find_resource",
+      "query": "云部署基础怎么入门？有文档教程推荐吗？"
+    },
+    {
+      "id": "q063",
+      "type": "resource_rec",
+      "gold": [
+        "res:introduction-to-git-and-github"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想学Git版本控制，有什么好的视频课？"
+    },
+    {
+      "id": "q064",
       "type": "resource_rec",
       "gold": [
         "res:codecademy-learn-python-3",
@@ -137,19 +591,147 @@
         "res:python-basics-with-numpy-and-pandas",
         "res:data-structures-and-algorithms-in-python"
       ],
-      "query": "有没有好的Python入门视频推荐？"
+      "gold_intent": "find_resource",
+      "query": "Python基础视频课哪家强？求推荐！"
     },
     {
-      "id": "q017",
+      "id": "q065",
       "type": "resource_rec",
       "gold": [
-        "res:python-basics-with-numpy-and-pandas",
-        "res:data-wrangling-with-pandas"
+        "res:llmops-course",
+        "res:mlops-specialization-coursera",
+        "res:full-stack-deep-learning"
       ],
-      "query": "Pandas有没有讲的好的视频课？"
+      "gold_intent": "find_resource",
+      "query": "MLOps基础有啥好的视频教程吗？"
     },
     {
-      "id": "q018",
+      "id": "q066",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs231n-convnets",
+        "res:deep-learning-specialization",
+        "res:cs231n",
+        "res:mit-6s191",
+        "res:udacity-dl-nanodegree",
+        "res:deeplearning-ai-tensorflow",
+        "res:cs231n-pytorch"
+      ],
+      "gold_intent": "find_resource",
+      "query": "卷积神经网络的视频课，有推荐的吗？"
+    },
+    {
+      "id": "q067",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs224n-nlp",
+        "res:cs224n",
+        "res:huggingface-course",
+        "res:cs224n-pytorch",
+        "res:fastai-nlp",
+        "res:spacy-nlp-course",
+        "res:rasa-nlp-course"
+      ],
+      "gold_intent": "find_resource",
+      "query": "自然语言处理视频课，哪个比较好？"
+    },
+    {
+      "id": "q068",
+      "type": "resource_rec",
+      "gold": [
+        "res:calculus-for-machine-learning",
+        "res:3blue1brown-calculus",
+        "res:mit-1801-calculus",
+        "res:mit-1802-multivariable-calculus"
+      ],
+      "gold_intent": "find_resource",
+      "query": "微积分视频课，求推荐几个！"
+    },
+    {
+      "id": "q069",
+      "type": "resource_rec",
+      "gold": [
+        "res:zhihu-kaggle-competition-guide",
+        "res:alex-kaggle-ensemble"
+      ],
+      "gold_intent": "find_resource",
+      "query": "集成学习有没有文档教程推荐的？"
+    },
+    {
+      "id": "q070",
+      "type": "resource_rec",
+      "gold": [
+        "res:calculus-for-machine-learning",
+        "res:3blue1brown-calculus",
+        "res:mit-1801-calculus",
+        "res:mit-1802-multivariable-calculus"
+      ],
+      "gold_intent": "find_resource",
+      "query": "微积分网课哪家讲得清楚？求推荐！"
+    },
+    {
+      "id": "q071",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs224n-nlp",
+        "res:cs224n",
+        "res:huggingface-course",
+        "res:cs224n-pytorch",
+        "res:fastai-nlp",
+        "res:spacy-nlp-course",
+        "res:rasa-nlp-course"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有大佬推荐个讲NLP的视频课呀？"
+    },
+    {
+      "id": "q072",
+      "type": "resource_rec",
+      "gold": [
+        "res:deep-learning-book",
+        "res:d2l-pytorch",
+        "res:neural-networks-and-deep-learning",
+        "res:deep-learning-book-goodfellow",
+        "res:fastbook"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想学神经网络，能推荐几本靠谱的书吗？"
+    },
+    {
+      "id": "q073",
+      "type": "resource_rec",
+      "gold": [
+        "res:nlp-with-transformers-book",
+        "res:alex-smola-deep-learning",
+        "res:nlp-books-collection"
+      ],
+      "gold_intent": "find_resource",
+      "query": "哪位大神推荐本讲Transformer的书呀？"
+    },
+    {
+      "id": "q074",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-mobilenet-tutorial",
+        "res:pytorch-onnx-tutorial",
+        "res:made-with-ml",
+        "res:mlflow-docs"
+      ],
+      "gold_intent": "find_resource",
+      "query": "求推荐模型部署的文档教程，最好是手把手那种！"
+    },
+    {
+      "id": "q075",
+      "type": "resource_rec",
+      "gold": [
+        "res:fastai-part1",
+        "res:huggingface-pytorch-course"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有PyTorch入门的视频课推荐啊？"
+    },
+    {
+      "id": "q076",
       "type": "resource_rec",
       "gold": [
         "res:pattern-recognition-and-machine-learning",
@@ -162,133 +744,49 @@
         "res:foundations-of-data-science",
         "res:hands-on-machine-learning"
       ],
-      "query": "机器学习入门看什么书比较好？"
+      "gold_intent": "find_resource",
+      "query": "机器学习基础有什么好书推荐吗？"
     },
     {
-      "id": "q019",
+      "id": "q077",
       "type": "resource_rec",
       "gold": [
-        "res:cs224n-nlp",
-        "res:cs224n",
-        "res:huggingface-course",
-        "res:cs224n-pytorch",
-        "res:fastai-nlp",
-        "res:spacy-nlp-course",
-        "res:rasa-nlp-course"
+        "res:pytorch-forecasting"
       ],
-      "query": "NLP的视频课哪家强？求推荐！"
+      "gold_intent": "find_resource",
+      "query": "时间序列分析有没有好的文档教程呀？"
     },
     {
-      "id": "q020",
+      "id": "q078",
       "type": "resource_rec",
       "gold": [
-        "res:nlp-competition-tutorial",
-        "res:datawhale-nlp-tutorial"
+        "res:d2l-pytorch",
+        "res:fastbook",
+        "res:deep-learning-with-pytorch"
       ],
-      "query": "想找自然语言处理的文档教程，有没有推荐的？"
+      "gold_intent": "find_resource",
+      "query": "求推荐几本PyTorch入门的书！"
     },
     {
-      "id": "q021",
+      "id": "q079",
       "type": "resource_rec",
       "gold": [
-        "res:huggingface-course",
-        "res:huggingface-pytorch-course",
-        "res:huggingface-nlp-course",
-        "res:peft-fine-tuning-deeplearningai",
-        "res:fine-tuning-llm-huggingface",
-        "res:deeplearning-ai-finetuning",
-        "res:llm-apps-with-huggingface"
+        "res:feature-engineering-for-ml"
       ],
-      "query": "各位大佬，有没有关于微调预训练模型的视频课推荐呀？"
+      "gold_intent": "find_resource",
+      "query": "特征工程有什么经典书籍推荐吗？"
     },
     {
-      "id": "q022",
+      "id": "q080",
       "type": "resource_rec",
       "gold": [
-        "res:codecademy-learn-python-3",
-        "res:mit-6-0001-introduction-to-computer-science-and-programming-in-python",
-        "res:google-python-class",
-        "res:python-for-everybody-specialization",
-        "res:data-camp-introduction-to-python",
-        "res:python-programming-net-tutorials",
-        "res:cs50s-introduction-to-programming-with-python",
-        "res:python-basics-with-numpy-and-pandas",
-        "res:data-structures-and-algorithms-in-python"
+        "res:apache-spark-structured-streaming"
       ],
-      "query": "求推荐Python基础视频教程，适合小白的！"
+      "gold_intent": "find_resource",
+      "query": "Apache Spark的文档教程有推荐的吗？"
     },
     {
-      "id": "q023",
-      "type": "resource_rec",
-      "gold": [
-        "res:pytorch-rag-tutorial",
-        "res:langchain-docs",
-        "res:llama-index-tutorials",
-        "res:openai-rag-cookbook",
-        "res:llamaindex-rag-tutorial",
-        "res:datawhale-rag-tutorial"
-      ],
-      "query": "想找RAG的文档教程，有推荐的吗？"
-    },
-    {
-      "id": "q024",
-      "type": "resource_rec",
-      "gold": [
-        "res:kaggle-competitions",
-        "res:driven-data-competitions",
-        "res:signate-competitions",
-        "res:analytics-vidhya-hackathons",
-        "res:kaggle-30-days-of-ml"
-      ],
-      "query": "有没有机器学习的实战项目资源推荐？想练练手~"
-    },
-    {
-      "id": "q025",
-      "type": "resource_rec",
-      "gold": [
-        "res:think-python-2e",
-        "res:cracking-the-coding-interview"
-      ],
-      "query": "求推荐数据结构和算法的书籍，入门级的就行"
-    },
-    {
-      "id": "q026",
-      "type": "resource_rec",
-      "gold": [
-        "res:leetcode-explore"
-      ],
-      "query": "哪里能找到数据结构与算法的刷题资源呀？"
-    },
-    {
-      "id": "q027",
-      "type": "resource_rec",
-      "gold": [
-        "res:data-warehouse-modeling"
-      ],
-      "query": "求推荐数据仓库入门的书籍，零基础那种"
-    },
-    {
-      "id": "q028",
-      "type": "resource_rec",
-      "gold": [
-        "res:deeplearning-ai-rag",
-        "res:langchain-rag-course",
-        "res:agentic-rag-deeplearningai",
-        "res:vector-databases-course"
-      ],
-      "query": "想学RAG，有什么好的视频课推荐吗？"
-    },
-    {
-      "id": "q029",
-      "type": "resource_rec",
-      "gold": [
-        "res:pytorch-onnx-tutorial",
-        "res:onnx-tutorial"
-      ],
-      "query": "ONNX的文档教程有吗？求推荐"
-    },
-    {
-      "id": "q030",
+      "id": "q081",
       "type": "resource_rec",
       "gold": [
         "res:cs231n-convnets",
@@ -299,61 +797,823 @@
         "res:deeplearning-ai-tensorflow",
         "res:cs231n-pytorch"
       ],
-      "query": "卷积神经网络的视频课，谁有推荐呀？"
+      "gold_intent": "find_resource",
+      "query": "有没有讲卷积神经网络的视频课？求推荐！"
     },
     {
-      "id": "q031",
-      "type": "job_requirement",
+      "id": "q082",
+      "type": "resource_rec",
       "gold": [
-        "skill:java-basics",
-        "skill:spring-boot",
-        "skill:python-basics",
-        "skill:docker",
-        "skill:kubernetes-basics",
-        "skill:mlops-basics"
+        "res:redis-cache-patterns"
       ],
-      "query": "广州智云科技的Java后端工程师（AI平台）岗，需要会哪些技术？"
+      "gold_intent": "find_resource",
+      "query": "Redis缓存策略的文档教程有推荐的吗？"
     },
     {
-      "id": "q032",
-      "type": "job_requirement",
+      "id": "q083",
+      "type": "resource_rec",
       "gold": [
-        "skill:natural-language-processing",
-        "skill:gpt",
-        "skill:fine-tuning-pretrained-models",
-        "skill:lora-fine-tuning",
-        "skill:prompt-engineering",
-        "skill:distributed-training"
+        "res:linear-algebra-for-machine-learning",
+        "res:3blue1brown-linear-algebra",
+        "res:mit-1806-linear-algebra"
       ],
-      "query": "智脑科技的NLP算法工程师（大模型方向）要会啥啊？"
+      "gold_intent": "find_resource",
+      "query": "线性代数有什么好的视频课程吗？"
     },
     {
-      "id": "q033",
-      "type": "job_requirement",
+      "id": "q084",
+      "type": "resource_rec",
       "gold": [
-        "skill:apache-spark",
-        "skill:data-warehouse-basics",
-        "skill:sql-advanced",
-        "skill:java-basics",
-        "skill:kafka-basics"
+        "res:leetcode-explore"
       ],
-      "query": "字节跳动数据工程师岗，得掌握什么技能？"
+      "gold_intent": "find_resource",
+      "query": "数据结构与算法的题库哪里有？求推荐！"
     },
     {
-      "id": "q034",
+      "id": "q085",
+      "type": "resource_rec",
+      "gold": [
+        "res:made-with-ml",
+        "res:gcp-ml-engineer",
+        "res:mlflow-docs"
+      ],
+      "gold_intent": "find_resource",
+      "query": "MLOps基础的教程文档有推荐的吗？"
+    },
+    {
+      "id": "q086",
+      "type": "resource_rec",
+      "gold": [
+        "res:kaggle-competitions",
+        "res:driven-data-competitions",
+        "res:signate-competitions",
+        "res:analytics-vidhya-hackathons",
+        "res:kaggle-30-days-of-ml"
+      ],
+      "gold_intent": "find_resource",
+      "query": "机器学习基础有啥实战项目可以练手？"
+    },
+    {
+      "id": "q087",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-lora-tutorial",
+        "res:peft-huggingface",
+        "res:lora-fine-tuning-huggingface",
+        "res:full-finetuning-llama2",
+        "res:datawhale-finetuning-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "LoRA微调的文档教程有推荐的吗？"
+    },
+    {
+      "id": "q088",
+      "type": "resource_rec",
+      "gold": [
+        "res:image-classification-competition"
+      ],
+      "gold_intent": "find_resource",
+      "query": "图像分类的项目实战资源有推荐的吗？"
+    },
+    {
+      "id": "q089",
+      "type": "resource_rec",
+      "gold": [
+        "res:pattern-recognition-and-machine-learning",
+        "res:the-elements-of-statistical-learning",
+        "res:an-introduction-to-statistical-learning",
+        "res:information-theory-inference-learning",
+        "res:probabilistic-machine-learning",
+        "res:gaussian-processes-for-machine-learning",
+        "res:understanding-machine-learning",
+        "res:foundations-of-data-science",
+        "res:hands-on-machine-learning"
+      ],
+      "gold_intent": "find_resource",
+      "query": "机器学习基础有啥好书推荐？"
+    },
+    {
+      "id": "q090",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-lora-tutorial",
+        "res:peft-huggingface",
+        "res:lora-fine-tuning-huggingface",
+        "res:full-finetuning-llama2",
+        "res:datawhale-finetuning-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "LoRA微调的教程文档能推荐一下吗？"
+    },
+    {
+      "id": "q091",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-lora-tutorial",
+        "res:peft-huggingface",
+        "res:lora-fine-tuning-huggingface",
+        "res:full-finetuning-llama2",
+        "res:datawhale-finetuning-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有讲LoRA微调的文档教程推荐啊？"
+    },
+    {
+      "id": "q092",
+      "type": "resource_rec",
+      "gold": [
+        "res:deep-learning-book",
+        "res:hands-on-machine-learning",
+        "res:d2l-pytorch",
+        "res:neural-networks-and-deep-learning",
+        "res:deep-learning-book-goodfellow",
+        "res:fastbook",
+        "res:alex-smola-deep-learning"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想学深度学习基础，有好的书推荐吗？"
+    },
+    {
+      "id": "q093",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-bert-fine-tuning",
+        "res:pytorch-lora-tutorial",
+        "res:pytorch-gpt-fine-tuning",
+        "res:peft-huggingface",
+        "res:lora-fine-tuning-huggingface",
+        "res:full-finetuning-llama2",
+        "res:datawhale-finetuning-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "求推荐预训练模型微调的教程，文档类的！"
+    },
+    {
+      "id": "q094",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs229-machine-learning",
+        "res:ml-course-with-projects"
+      ],
+      "gold_intent": "find_resource",
+      "query": "监督学习有啥好的视频课推荐不？"
+    },
+    {
+      "id": "q095",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-ignite-tutorials",
+        "res:pytorch-lightning-tutorials",
+        "res:pytorch-forecasting",
+        "res:pytorch-quantization-tutorial",
+        "res:pytorch-distributed-tutorial",
+        "res:pytorch-lightning-hydra",
+        "res:transformers-from-scratch"
+      ],
+      "gold_intent": "find_resource",
+      "query": "PyTorch高级用法有没有文档教程？求推荐！"
+    },
+    {
+      "id": "q096",
+      "type": "resource_rec",
+      "gold": [
+        "res:python-official-tutorial",
+        "res:real-python-tutorials",
+        "res:python-tutorial-w3schools",
+        "res:learn-python-in-y-minutes"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想找Python基础的学习资料，文档教程那种"
+    },
+    {
+      "id": "q097",
+      "type": "resource_rec",
+      "gold": [
+        "res:nlp-competition-tutorial",
+        "res:datawhale-nlp-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "自然语言处理有没有文档教程推荐呀？"
+    },
+    {
+      "id": "q098",
+      "type": "resource_rec",
+      "gold": [
+        "res:python-official-tutorial",
+        "res:real-python-tutorials",
+        "res:python-tutorial-w3schools",
+        "res:learn-python-in-y-minutes"
+      ],
+      "gold_intent": "find_resource",
+      "query": "Python入门看什么文档教程好？"
+    },
+    {
+      "id": "q099",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs231n-convnets",
+        "res:deep-learning-specialization",
+        "res:cs231n",
+        "res:mit-6s191",
+        "res:udacity-dl-nanodegree",
+        "res:deeplearning-ai-tensorflow",
+        "res:cs231n-pytorch"
+      ],
+      "gold_intent": "find_resource",
+      "query": "卷积神经网络有什么好的视频课推荐？"
+    },
+    {
+      "id": "q100",
+      "type": "resource_rec",
+      "gold": [
+        "res:deep-learning-book",
+        "res:hands-on-machine-learning",
+        "res:d2l-pytorch",
+        "res:neural-networks-and-deep-learning",
+        "res:deep-learning-book-goodfellow",
+        "res:fastbook",
+        "res:alex-smola-deep-learning"
+      ],
+      "gold_intent": "find_resource",
+      "query": "求推荐深度学习入门的书籍！"
+    },
+    {
+      "id": "q101",
+      "type": "resource_rec",
+      "gold": [
+        "res:deeplearning-ai-tensorflow"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有大佬推荐一下TensorFlow基础的好视频课？"
+    },
+    {
+      "id": "q102",
+      "type": "resource_rec",
+      "gold": [
+        "res:introduction-to-probability-and-statistics",
+        "res:harvard-stat110",
+        "res:probability-and-statistics-for-cs"
+      ],
+      "gold_intent": "find_resource",
+      "query": "概率论与数理统计的网课，哪个讲得比较好啊？"
+    },
+    {
+      "id": "q103",
+      "type": "resource_rec",
+      "gold": [
+        "res:ml-competitions-guide-book",
+        "res:hyperparameter-tuning-competition",
+        "res:pytorch-lightning-hydra"
+      ],
+      "gold_intent": "find_resource",
+      "query": "求一份超参数调优的教程文档！"
+    },
+    {
+      "id": "q104",
+      "type": "resource_rec",
+      "gold": [
+        "res:spring-boot-guides"
+      ],
+      "gold_intent": "find_resource",
+      "query": "Spring Boot的文档教程有没有推荐的？"
+    },
+    {
+      "id": "q105",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-mobilenet-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想找CNN架构的文档教程，谁有好的推荐？"
+    },
+    {
+      "id": "q106",
+      "type": "resource_rec",
+      "gold": [
+        "res:time-series-competition"
+      ],
+      "gold_intent": "find_resource",
+      "query": "时间序列分析的实战项目，求推荐几个！"
+    },
+    {
+      "id": "q107",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs224n-nlp",
+        "res:cs224n",
+        "res:huggingface-course",
+        "res:cs224n-pytorch",
+        "res:huggingface-nlp-course",
+        "res:fastai-nlp",
+        "res:huggingface-agents-course",
+        "res:fine-tuning-llm-huggingface",
+        "res:llm-apps-with-huggingface"
+      ],
+      "gold_intent": "find_resource",
+      "query": "Transformer模型有没有不错的视频课程？"
+    },
+    {
+      "id": "q108",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-agent-tutorial",
+        "res:langchain-docs",
+        "res:llama-index-tutorials",
+        "res:llamaindex-rag-tutorial",
+        "res:autogen-agent-tutorial",
+        "res:datawhale-rag-tutorial",
+        "res:datawhale-agent-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "LangChain框架的文档教程，哪里能找到好的？"
+    },
+    {
+      "id": "q109",
+      "type": "resource_rec",
+      "gold": [
+        "res:agentic-rag-deeplearningai",
+        "res:multi-agent-deeplearningai",
+        "res:langgraph-agent-course",
+        "res:huggingface-agents-course"
+      ],
+      "gold_intent": "find_resource",
+      "query": "智能体开发的视频课，求推荐！"
+    },
+    {
+      "id": "q110",
+      "type": "resource_rec",
+      "gold": [
+        "res:ee364a-convex-optimization",
+        "res:3blue1brown-neural-networks"
+      ],
+      "gold_intent": "find_resource",
+      "query": "梯度下降优化，有没有好的视频讲解？"
+    },
+    {
+      "id": "q111",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-tutorial",
+        "res:datawhale-dl",
+        "res:pytorch-ignite-tutorial",
+        "res:pytorch-official-tutorials",
+        "res:pytorch-gan-tutorial",
+        "res:pytorch-vae-tutorial",
+        "res:the-annotated-transformer"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有PyTorch入门的文档推荐啊？"
+    },
+    {
+      "id": "q112",
+      "type": "resource_rec",
+      "gold": [
+        "res:convex-optimization-boyd"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想找本讲梯度下降优化的书，求推荐！"
+    },
+    {
+      "id": "q113",
+      "type": "resource_rec",
+      "gold": [
+        "res:cnn-explainer",
+        "res:torchvision-object-detection"
+      ],
+      "gold_intent": "find_resource",
+      "query": "卷积神经网络有没有好的教程文档呀？"
+    },
+    {
+      "id": "q114",
+      "type": "resource_rec",
+      "gold": [
+        "res:data-warehouse-modeling"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想学习数据仓库，有啥好书推荐吗？"
+    },
+    {
+      "id": "q115",
+      "type": "resource_rec",
+      "gold": [
+        "res:fastai-practical-deep-learning",
+        "res:deep-learning-specialization",
+        "res:fastai-part1",
+        "res:mit-6s191",
+        "res:kaggle-dl-course",
+        "res:coursera-ai-for-everyone",
+        "res:udacity-dl-nanodegree",
+        "res:statquest-dl",
+        "res:google-ml-crash-course",
+        "res:cs50-ai"
+      ],
+      "gold_intent": "find_resource",
+      "query": "深度学习基础有没有好的视频课？"
+    },
+    {
+      "id": "q116",
+      "type": "resource_rec",
+      "gold": [
+        "res:agentic-rag-deeplearningai",
+        "res:multi-agent-deeplearningai",
+        "res:langgraph-agent-course",
+        "res:huggingface-agents-course"
+      ],
+      "gold_intent": "find_resource",
+      "query": "智能体开发有推荐的视频课程吗？"
+    },
+    {
+      "id": "q117",
+      "type": "resource_rec",
+      "gold": [
+        "res:glue-benchmark",
+        "res:superglue-benchmark",
+        "res:stanford-squad-dataset"
+      ],
+      "gold_intent": "find_resource",
+      "query": "自然语言处理的题库哪里有？"
+    },
+    {
+      "id": "q118",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs224n-nlp",
+        "res:cs224n",
+        "res:huggingface-course",
+        "res:cs224n-pytorch",
+        "res:fastai-nlp",
+        "res:spacy-nlp-course",
+        "res:rasa-nlp-course"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有自然语言处理的视频课推荐？"
+    },
+    {
+      "id": "q119",
+      "type": "resource_rec",
+      "gold": [
+        "res:tensorflow-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "TensorFlow基础文档求推荐！"
+    },
+    {
+      "id": "q120",
+      "type": "resource_rec",
+      "gold": [
+        "res:pattern-recognition-and-machine-learning",
+        "res:the-elements-of-statistical-learning",
+        "res:an-introduction-to-statistical-learning",
+        "res:information-theory-inference-learning",
+        "res:probabilistic-machine-learning",
+        "res:gaussian-processes-for-machine-learning",
+        "res:understanding-machine-learning",
+        "res:foundations-of-data-science",
+        "res:hands-on-machine-learning"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想找机器学习入门的书，求推荐！"
+    },
+    {
+      "id": "q121",
+      "type": "resource_rec",
+      "gold": [
+        "res:sql-advanced-queries"
+      ],
+      "gold_intent": "find_resource",
+      "query": "有没有SQL进阶的题库推荐呀？想刷刷题练练手"
+    },
+    {
+      "id": "q122",
+      "type": "resource_rec",
+      "gold": [
+        "res:aws-ml-specialty"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想学云部署基础，有没有好的视频课推荐？"
+    },
+    {
+      "id": "q123",
+      "type": "resource_rec",
+      "gold": [
+        "res:mathematics-for-machine-learning",
+        "res:linear-algebra-done-right"
+      ],
+      "gold_intent": "find_resource",
+      "query": "线性代数有啥好书推荐吗？想系统看看"
+    },
+    {
+      "id": "q124",
+      "type": "resource_rec",
+      "gold": [
+        "res:python-official-tutorial",
+        "res:real-python-tutorials",
+        "res:python-tutorial-w3schools",
+        "res:learn-python-in-y-minutes"
+      ],
+      "gold_intent": "find_resource",
+      "query": "求Python基础的文档教程，最好详细点的"
+    },
+    {
+      "id": "q125",
+      "type": "resource_rec",
+      "gold": [
+        "res:mathematics-for-machine-learning",
+        "res:pattern-recognition-and-machine-learning",
+        "res:statistical-rethinking",
+        "res:information-theory-inference-learning",
+        "res:probabilistic-machine-learning",
+        "res:gaussian-processes-for-machine-learning",
+        "res:foundations-of-data-science",
+        "res:all-of-statistics"
+      ],
+      "gold_intent": "find_resource",
+      "query": "概率论与数理统计的书，哪本比较适合自学？"
+    },
+    {
+      "id": "q126",
+      "type": "resource_rec",
+      "gold": [
+        "res:pattern-recognition-and-machine-learning",
+        "res:the-elements-of-statistical-learning",
+        "res:an-introduction-to-statistical-learning",
+        "res:information-theory-inference-learning",
+        "res:probabilistic-machine-learning",
+        "res:gaussian-processes-for-machine-learning",
+        "res:understanding-machine-learning",
+        "res:foundations-of-data-science",
+        "res:hands-on-machine-learning"
+      ],
+      "gold_intent": "find_resource",
+      "query": "机器学习基础入门，有啥经典书籍推荐吗？"
+    },
+    {
+      "id": "q127",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs224n-nlp",
+        "res:cs224n",
+        "res:huggingface-course",
+        "res:cs224n-pytorch",
+        "res:huggingface-nlp-course",
+        "res:fastai-nlp",
+        "res:huggingface-agents-course",
+        "res:fine-tuning-llm-huggingface",
+        "res:llm-apps-with-huggingface"
+      ],
+      "gold_intent": "find_resource",
+      "query": "Transformer模型，有没有讲得好的视频课？"
+    },
+    {
+      "id": "q128",
+      "type": "resource_rec",
+      "gold": [
+        "res:calculus-for-machine-learning",
+        "res:3blue1brown-calculus",
+        "res:mit-1801-calculus",
+        "res:mit-1802-multivariable-calculus"
+      ],
+      "gold_intent": "find_resource",
+      "query": "微积分视频课，哪个老师讲得明白？求推荐"
+    },
+    {
+      "id": "q129",
+      "type": "resource_rec",
+      "gold": [
+        "res:peft-fine-tuning-deeplearningai"
+      ],
+      "gold_intent": "find_resource",
+      "query": "LoRA微调，有没有视频教程可以推荐？"
+    },
+    {
+      "id": "q130",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-rag-tutorial",
+        "res:langchain-docs",
+        "res:llama-index-tutorials",
+        "res:openai-rag-cookbook",
+        "res:llamaindex-rag-tutorial",
+        "res:datawhale-rag-tutorial"
+      ],
+      "gold_intent": "find_resource",
+      "query": "检索增强生成，有文档教程吗？想学学"
+    },
+    {
+      "id": "q131",
+      "type": "resource_rec",
+      "gold": [
+        "res:fastai-practical-deep-learning",
+        "res:deep-learning-specialization",
+        "res:fastai-part1",
+        "res:mit-6s191",
+        "res:kaggle-dl-course",
+        "res:coursera-ai-for-everyone",
+        "res:udacity-dl-nanodegree",
+        "res:statquest-dl",
+        "res:google-ml-crash-course",
+        "res:cs50-ai"
+      ],
+      "gold_intent": "find_resource",
+      "query": "大佬们，有没有深度学习入门的视频课推荐？"
+    },
+    {
+      "id": "q132",
+      "type": "resource_rec",
+      "gold": [
+        "res:transformer-paper",
+        "res:attention-is-all-you-need"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想找本讲Transformer的书，谁有推荐？"
+    },
+    {
+      "id": "q133",
+      "type": "resource_rec",
+      "gold": [
+        "res:python-official-tutorial",
+        "res:real-python-tutorials",
+        "res:python-tutorial-w3schools",
+        "res:learn-python-in-y-minutes"
+      ],
+      "gold_intent": "find_resource",
+      "query": "求Python基础文档教程，新手看哪种好？"
+    },
+    {
+      "id": "q134",
+      "type": "resource_rec",
+      "gold": [
+        "res:cs224n-nlp",
+        "res:cs224n",
+        "res:huggingface-course",
+        "res:cs224n-pytorch",
+        "res:huggingface-nlp-course",
+        "res:fastai-nlp",
+        "res:huggingface-agents-course",
+        "res:fine-tuning-llm-huggingface",
+        "res:llm-apps-with-huggingface"
+      ],
+      "gold_intent": "find_resource",
+      "query": "Transformer模型有啥好的视频课吗？"
+    },
+    {
+      "id": "q135",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-tutorial",
+        "res:datawhale-dl",
+        "res:pytorch-ignite-tutorial",
+        "res:pytorch-official-tutorials",
+        "res:pytorch-gan-tutorial",
+        "res:pytorch-vae-tutorial",
+        "res:the-annotated-transformer"
+      ],
+      "gold_intent": "find_resource",
+      "query": "PyTorch基础教程文档有推荐的吗？"
+    },
+    {
+      "id": "q136",
+      "type": "resource_rec",
+      "gold": [
+        "res:nlp-with-transformers-book",
+        "res:gpt-paper"
+      ],
+      "gold_intent": "find_resource",
+      "query": "想读本讲GPT的书，求推荐！"
+    },
+    {
+      "id": "q137",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-ignite-tutorials",
+        "res:pytorch-lightning-tutorials",
+        "res:pytorch-forecasting",
+        "res:pytorch-quantization-tutorial",
+        "res:pytorch-distributed-tutorial",
+        "res:pytorch-lightning-hydra",
+        "res:transformers-from-scratch"
+      ],
+      "gold_intent": "find_resource",
+      "query": "PyTorch进阶有没有好的文档教程？"
+    },
+    {
+      "id": "q138",
+      "type": "resource_rec",
+      "gold": [
+        "res:pytorch-bert-fine-tuning"
+      ],
+      "gold_intent": "find_resource",
+      "query": "BERT微调方面的文档教程，谁有推荐？"
+    },
+    {
+      "id": "q139",
+      "type": "resource_rec",
+      "gold": [
+        "res:kaggle-competitions",
+        "res:driven-data-competitions",
+        "res:signate-competitions",
+        "res:analytics-vidhya-hackathons",
+        "res:kaggle-30-days-of-ml"
+      ],
+      "gold_intent": "find_resource",
+      "query": "机器学习基础有啥实战项目可以练手？"
+    },
+    {
+      "id": "q140",
+      "type": "resource_rec",
+      "gold": [
+        "res:the-annotated-transformer",
+        "res:transformers-from-scratch"
+      ],
+      "gold_intent": "find_resource",
+      "query": "Transformer架构的文档教程，求推荐！"
+    },
+    {
+      "id": "q141",
       "type": "job_requirement",
       "gold": [
         "skill:natural-language-processing",
         "skill:transformers",
-        "skill:bert",
-        "skill:sequence-labeling",
-        "skill:word-embeddings",
-        "skill:pytorch-basics"
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain"
       ],
-      "query": "阿里巴巴的NLP算法工程师，需要哪些能力呀？"
+      "gold_intent": "find_job",
+      "query": "腾讯做对话系统的NLP算法工程师，得会啥技能啊？"
     },
     {
-      "id": "q035",
+      "id": "q142",
+      "type": "job_requirement",
+      "gold": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-basics",
+        "skill:data-augmentation",
+        "skill:transfer-learning"
+      ],
+      "gold_intent": "find_job",
+      "query": "天眼科技招遥感图像CV工程师，需要掌握哪些技术？"
+    },
+    {
+      "id": "q143",
+      "type": "job_requirement",
+      "gold": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:model-quantization",
+        "skill:onnx",
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "gold_intent": "find_job",
+      "query": "移视科技的移动端优化CV岗，要会哪些技能？"
+    },
+    {
+      "id": "q144",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:model-deployment-with-docker"
+      ],
+      "gold_intent": "find_job",
+      "query": "腾讯的大模型应用开发工程师，需要什么能力？"
+    },
+    {
+      "id": "q145",
+      "type": "job_requirement",
+      "gold": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-basics",
+        "skill:model-deployment",
+        "skill:linux-command-line"
+      ],
+      "gold_intent": "find_job",
+      "query": "安视科技做安防监控的CV工程师，得会啥？"
+    },
+    {
+      "id": "q146",
+      "type": "job_requirement",
+      "gold": [
+        "skill:reinforcement-learning-basics",
+        "skill:deep-reinforcement-learning",
+        "skill:python-basics",
+        "skill:pytorch-basics",
+        "skill:probability-statistics",
+        "skill:data-structures-algorithms"
+      ],
+      "gold_intent": "find_job",
+      "query": "百度的强化学习算法实习生，要掌握哪些东西？"
+    },
+    {
+      "id": "q147",
       "type": "job_requirement",
       "gold": [
         "skill:object-detection",
@@ -361,49 +1621,38 @@
         "skill:pytorch-basics",
         "skill:data-augmentation"
       ],
-      "query": "小鹏汽车的算法实习生（自动驾驶感知），要学哪些东西？"
+      "gold_intent": "find_job",
+      "query": "小鹏汽车自动驾驶感知方向的算法实习生，需要啥技能？"
     },
     {
-      "id": "q036",
+      "id": "q148",
       "type": "job_requirement",
       "gold": [
-        "skill:deep-learning-basics",
-        "skill:convolutional-neural-networks",
-        "skill:image-classification",
-        "skill:object-detection",
-        "skill:pytorch-advanced",
-        "skill:data-augmentation"
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning",
+        "skill:model-evaluation"
       ],
-      "query": "阿里机器学习算法工程师岗，需要什么技能？"
+      "gold_intent": "find_job",
+      "query": "百度的高级数据分析师，需要哪些技能？"
     },
     {
-      "id": "q037",
+      "id": "q149",
       "type": "job_requirement",
       "gold": [
-        "skill:object-detection",
-        "skill:image-classification",
         "skill:convolutional-neural-networks",
+        "skill:object-detection",
         "skill:pytorch-advanced",
         "skill:model-quantization",
+        "skill:onnx",
         "skill:distributed-training"
       ],
-      "query": "智驾科技的计算机视觉工程师（自动驾驶感知），得会啥？"
+      "gold_intent": "find_job",
+      "query": "视界未来的高级CV算法工程师，得会啥？"
     },
     {
-      "id": "q038",
-      "type": "job_requirement",
-      "gold": [
-        "skill:java-basics",
-        "skill:spring-boot",
-        "skill:microservices-basics",
-        "skill:redis",
-        "skill:kafka-basics",
-        "skill:design-patterns"
-      ],
-      "query": "北京云帆数据的高级Java后端工程师，需要哪些技术？"
-    },
-    {
-      "id": "q039",
+      "id": "q150",
       "type": "job_requirement",
       "gold": [
         "skill:prompt-engineering",
@@ -413,22 +1662,769 @@
         "skill:gpt",
         "skill:fine-tuning-pretrained-models"
       ],
-      "query": "知源科技的提示词工程师（RAG方向），要掌握什么？"
+      "gold_intent": "find_job",
+      "query": "知源科技的提示词工程师（RAG方向），要掌握哪些技能？"
     },
     {
-      "id": "q040",
+      "id": "q151",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:mlops-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "阿里巴巴的大模型应用开发工程师岗，要会啥技术啊？"
+    },
+    {
+      "id": "q152",
+      "type": "job_requirement",
+      "gold": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:sql-advanced",
+        "skill:java-basics",
+        "skill:docker"
+      ],
+      "gold_intent": "find_job",
+      "query": "腾讯的数据工程师都得掌握哪些技能呢？"
+    },
+    {
+      "id": "q153",
+      "type": "job_requirement",
+      "gold": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:onnx",
+        "skill:model-quantization",
+        "skill:docker"
+      ],
+      "gold_intent": "find_job",
+      "query": "北京智算未来的Java后端工程师，搞AI推理平台那种，需要会啥？"
+    },
+    {
+      "id": "q154",
+      "type": "job_requirement",
+      "gold": [
+        "skill:time-series-analysis",
+        "skill:anomaly-detection",
+        "skill:xgboost",
+        "skill:lightgbm",
+        "skill:python-basics",
+        "skill:pandas"
+      ],
+      "gold_intent": "find_job",
+      "query": "美团的机器学习算法工程师，得具备哪些能力？"
+    },
+    {
+      "id": "q155",
+      "type": "job_requirement",
+      "gold": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:kafka-basics",
+        "skill:docker"
+      ],
+      "gold_intent": "find_job",
+      "query": "远程数据科技的Java后端开发，远程办公那种，要会啥技能？"
+    },
+    {
+      "id": "q156",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "字节跳动的高级NLP算法工程师，都需要哪些本事？"
+    },
+    {
+      "id": "q157",
+      "type": "job_requirement",
+      "gold": [
+        "skill:anomaly-detection",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:pandas"
+      ],
+      "gold_intent": "find_job",
+      "query": "网易的算法实习生，做异常检测方向的，要求会啥？"
+    },
+    {
+      "id": "q158",
+      "type": "job_requirement",
+      "gold": [
+        "skill:gpt",
+        "skill:bert",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "智谱AI的算法实习生，搞大模型应用的，需要掌握哪些技能？"
+    },
+    {
+      "id": "q159",
+      "type": "job_requirement",
+      "gold": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:docker"
+      ],
+      "gold_intent": "find_job",
+      "query": "蚂蚁集团的数据工程师，都得会哪些东西啊？"
+    },
+    {
+      "id": "q160",
+      "type": "job_requirement",
+      "gold": [
+        "skill:time-series-analysis",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:model-evaluation"
+      ],
+      "gold_intent": "find_job",
+      "query": "滴滴出行的算法实习生，做时间序列分析的，需要什么技能？"
+    },
+    {
+      "id": "q161",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:python-basics",
+        "skill:tensorflow-basics",
+        "skill:feature-engineering"
+      ],
+      "gold_intent": "find_job",
+      "query": "科大讯飞的机器学习算法工程师岗，得会哪些技术啊？"
+    },
+    {
+      "id": "q162",
+      "type": "job_requirement",
+      "gold": [
+        "skill:deep-learning-basics",
+        "skill:convolutional-neural-networks",
+        "skill:transformers",
+        "skill:pytorch-basics",
+        "skill:python-basics",
+        "skill:data-augmentation"
+      ],
+      "gold_intent": "find_job",
+      "query": "商汤科技的多模态算法实习生，要掌握什么技能呀？"
+    },
+    {
+      "id": "q163",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:fastapi"
+      ],
+      "gold_intent": "find_job",
+      "query": "百度的大模型应用开发工程师，需要会啥？"
+    },
+    {
+      "id": "q164",
+      "type": "job_requirement",
+      "gold": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:pytorch-advanced",
+        "skill:generative-adversarial-networks",
+        "skill:model-deployment",
+        "skill:data-augmentation"
+      ],
+      "gold_intent": "find_job",
+      "query": "三维视界的计算机视觉工程师（三维重建），得懂哪些东西？"
+    },
+    {
+      "id": "q165",
+      "type": "job_requirement",
+      "gold": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:bert",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:fine-tuning-pretrained-models"
+      ],
+      "gold_intent": "find_job",
+      "query": "灵犀AI的提示词工程师，需要什么能力？"
+    },
+    {
+      "id": "q166",
+      "type": "job_requirement",
+      "gold": [
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:data-augmentation",
+        "skill:model-deployment",
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "gold_intent": "find_job",
+      "query": "工业视觉科技的计算机视觉工程师（工业视觉），要掌握啥技能？"
+    },
+    {
+      "id": "q167",
+      "type": "job_requirement",
+      "gold": [
+        "skill:mlops-basics",
+        "skill:docker",
+        "skill:python-basics",
+        "skill:ci-cd-for-ml",
+        "skill:model-monitoring",
+        "skill:model-deployment"
+      ],
+      "gold_intent": "find_job",
+      "query": "字节跳动的MLOps算法实习生，需要会什么？"
+    },
+    {
+      "id": "q168",
+      "type": "job_requirement",
+      "gold": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:pytorch-basics",
+        "skill:transfer-learning",
+        "skill:data-augmentation",
+        "skill:model-deployment"
+      ],
+      "gold_intent": "find_job",
+      "query": "识人科技的人脸识别算法工程师，得会哪些技术？"
+    },
+    {
+      "id": "q169",
+      "type": "job_requirement",
+      "gold": [
+        "skill:convolutional-neural-networks",
+        "skill:generative-adversarial-networks",
+        "skill:pytorch-basics",
+        "skill:model-deployment",
+        "skill:data-augmentation"
+      ],
+      "gold_intent": "find_job",
+      "query": "幻境科技的AR/VR计算机视觉工程师，需要啥技能？"
+    },
+    {
+      "id": "q170",
+      "type": "job_requirement",
+      "gold": [
+        "skill:machine-learning-fundamentals",
+        "skill:supervised-learning",
+        "skill:unsupervised-learning",
+        "skill:python-basics",
+        "skill:linux-command-line",
+        "skill:git-version-control"
+      ],
+      "gold_intent": "find_job",
+      "query": "华为的机器学习算法工程师，要掌握哪些技能呢？"
+    },
+    {
+      "id": "q171",
+      "type": "job_requirement",
+      "gold": [
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:vector-databases",
+        "skill:gpt"
+      ],
+      "gold_intent": "find_job",
+      "query": "远程未来那个AI产品经理岗，都得会啥技能啊？"
+    },
+    {
+      "id": "q172",
+      "type": "job_requirement",
+      "gold": [
+        "skill:deep-learning-basics",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-advanced",
+        "skill:data-augmentation"
+      ],
+      "gold_intent": "find_job",
+      "query": "快手的机器学习算法工程师，需要掌握哪些技能？"
+    },
+    {
+      "id": "q173",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:text-classification",
+        "skill:feature-engineering",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "舆情科技的NLP算法工程师（情感分析），得会啥呀？"
+    },
+    {
+      "id": "q174",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "视界科技的NLP多模态岗，要求什么技能？"
+    },
+    {
+      "id": "q175",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:bert",
+        "skill:sequence-labeling",
+        "skill:word-embeddings",
+        "skill:pytorch-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "阿里巴巴的NLP算法工程师，需要哪些技能？"
+    },
+    {
+      "id": "q176",
+      "type": "job_requirement",
+      "gold": [
+        "skill:object-detection",
+        "skill:image-classification",
+        "skill:convolutional-neural-networks",
+        "skill:pytorch-advanced",
+        "skill:model-quantization",
+        "skill:distributed-training"
+      ],
+      "gold_intent": "find_job",
+      "query": "智驾科技的自动驾驶感知岗，都得会啥？"
+    },
+    {
+      "id": "q177",
+      "type": "job_requirement",
+      "gold": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:rag"
+      ],
+      "gold_intent": "find_job",
+      "query": "医智云的提示词工程师（医疗健康），需要啥技能？"
+    },
+    {
+      "id": "q178",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:agent-development",
+        "skill:langchain",
+        "skill:python-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "星云智能的对话系统NLP岗，要求哪些技能？"
+    },
+    {
+      "id": "q179",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:langchain"
+      ],
+      "gold_intent": "find_job",
+      "query": "京东的智能客服NLP工程师，需要哪些技能？"
+    },
+    {
+      "id": "q180",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:agent-development",
+        "skill:fastapi"
+      ],
+      "gold_intent": "find_job",
+      "query": "快手的大模型应用开发工程师，需要掌握啥技能？"
+    },
+    {
+      "id": "q181",
+      "type": "job_requirement",
+      "gold": [
+        "skill:java-basics",
+        "skill:spring-boot",
+        "skill:python-basics",
+        "skill:docker",
+        "skill:fastapi",
+        "skill:model-deployment"
+      ],
+      "gold_intent": "find_job",
+      "query": "上海智算科技的Java后端开发偏AI平台，要会点啥呀？"
+    },
+    {
+      "id": "q182",
+      "type": "job_requirement",
+      "gold": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:anomaly-detection"
+      ],
+      "gold_intent": "find_job",
+      "query": "金科智能的提示词工程师搞金融风控，需要哪些技能？"
+    },
+    {
+      "id": "q183",
+      "type": "job_requirement",
+      "gold": [
+        "skill:sql-basics",
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:exploratory-data-analysis",
+        "skill:probability-statistics"
+      ],
+      "gold_intent": "find_job",
+      "query": "知乎的数据分析师岗位，得掌握什么技能？"
+    },
+    {
+      "id": "q184",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:vector-databases",
+        "skill:model-quantization"
+      ],
+      "gold_intent": "find_job",
+      "query": "华为的大模型应用开发工程师，要求哪些技术？"
+    },
+    {
+      "id": "q185",
       "type": "job_requirement",
       "gold": [
         "skill:sql-basics",
         "skill:python-basics",
-        "skill:time-series-analysis",
         "skill:machine-learning-fundamentals",
-        "skill:feature-engineering"
+        "skill:supervised-learning",
+        "skill:model-evaluation"
       ],
-      "query": "携程的高级数据分析师，需要哪些技能？"
+      "gold_intent": "find_job",
+      "query": "美团的高级数据分析师，需要会哪些东西？"
     },
     {
-      "id": "q041",
+      "id": "q186",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:pytorch-basics",
+        "skill:data-structures-algorithms"
+      ],
+      "gold_intent": "find_job",
+      "query": "字节跳动的算法实习生，得具备什么能力？"
+    },
+    {
+      "id": "q187",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:model-deployment"
+      ],
+      "gold_intent": "find_job",
+      "query": "商汤科技的大模型应用开发，需要啥技能？"
+    },
+    {
+      "id": "q188",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:agent-development",
+        "skill:fastapi"
+      ],
+      "gold_intent": "find_job",
+      "query": "科大讯飞的大模型应用开发岗，要会哪些？"
+    },
+    {
+      "id": "q189",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:bert",
+        "skill:data-wrangling",
+        "skill:exploratory-data-analysis",
+        "skill:python-basics",
+        "skill:pandas"
+      ],
+      "gold_intent": "find_job",
+      "query": "数据宝的NLP算法工程师做数据标注，需要哪些技能？"
+    },
+    {
+      "id": "q190",
+      "type": "job_requirement",
+      "gold": [
+        "skill:python-basics",
+        "skill:transformers",
+        "skill:prompt-engineering",
+        "skill:rag",
+        "skill:fastapi",
+        "skill:ci-cd-for-ml"
+      ],
+      "gold_intent": "find_job",
+      "query": "网易的大模型应用开发工程师，要求什么技能？"
+    },
+    {
+      "id": "q191",
+      "type": "job_requirement",
+      "gold": [
+        "skill:convolutional-neural-networks",
+        "skill:image-classification",
+        "skill:object-detection",
+        "skill:pytorch-basics",
+        "skill:natural-language-processing",
+        "skill:data-augmentation"
+      ],
+      "gold_intent": "find_job",
+      "query": "做OCR方向的算法工程师要会啥啊？"
+    },
+    {
+      "id": "q192",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:gpt",
+        "skill:prompt-engineering",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "京东的机器学习岗需要哪些技能？"
+    },
+    {
+      "id": "q193",
+      "type": "job_requirement",
+      "gold": [
+        "skill:machine-learning-fundamentals",
+        "skill:deep-learning-basics",
+        "skill:python-basics",
+        "skill:tensorflow-basics",
+        "skill:data-wrangling"
+      ],
+      "gold_intent": "find_job",
+      "query": "网易的算法岗要求什么呀？"
+    },
+    {
+      "id": "q194",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:attention-mechanism",
+        "skill:sequence-labeling",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "搞机器翻译的NLP工程师要掌握什么？"
+    },
+    {
+      "id": "q195",
+      "type": "job_requirement",
+      "gold": [
+        "skill:reinforcement-learning-basics",
+        "skill:deep-reinforcement-learning",
+        "skill:pytorch-basics",
+        "skill:python-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "快手强化学习实习岗需要啥能力？"
+    },
+    {
+      "id": "q196",
+      "type": "job_requirement",
+      "gold": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:docker"
+      ],
+      "gold_intent": "find_job",
+      "query": "阿里云的数据工程师需要哪些技能？"
+    },
+    {
+      "id": "q197",
+      "type": "job_requirement",
+      "gold": [
+        "skill:prompt-engineering",
+        "skill:gpt",
+        "skill:transformers",
+        "skill:natural-language-processing",
+        "skill:image-classification",
+        "skill:object-detection"
+      ],
+      "gold_intent": "find_job",
+      "query": "多模态提示词工程师要会什么？"
+    },
+    {
+      "id": "q198",
+      "type": "job_requirement",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:transformers",
+        "skill:python-basics",
+        "skill:pytorch-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "阿里NLP算法实习岗要求啥？"
+    },
+    {
+      "id": "q199",
+      "type": "job_requirement",
+      "gold": [
+        "skill:deep-learning-basics",
+        "skill:transformers",
+        "skill:pytorch-advanced",
+        "skill:distributed-training",
+        "skill:python-basics",
+        "skill:data-structures-algorithms"
+      ],
+      "gold_intent": "find_job",
+      "query": "百川智能大模型训练实习岗要啥技能？"
+    },
+    {
+      "id": "q200",
+      "type": "job_requirement",
+      "gold": [
+        "skill:apache-spark",
+        "skill:etl-pipeline",
+        "skill:sql-advanced",
+        "skill:linux-command-line",
+        "skill:kafka-basics"
+      ],
+      "gold_intent": "find_job",
+      "query": "小米的数据工程师需要会什么？"
+    },
+    {
+      "id": "q201",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:technical-interview",
+        "skill:microservices-basics",
+        "skill:redis",
+        "skill:message-queue",
+        "skill:data-structures-algorithms",
+        "skill:spring-boot",
+        "skill:linux-command-line",
+        "skill:java-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "系统设计面试该怎么入门？要先学哪些东西？"
+    },
+    {
+      "id": "q202",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:transformers",
+        "skill:natural-language-processing"
+      ],
+      "gold_intent": "learn_path",
+      "query": "想搞懂GPT模型，得先打什么基础呀？"
+    },
+    {
+      "id": "q203",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:bert",
+        "skill:fine-tuning-pretrained-models",
+        "skill:transformers",
+        "skill:gpt"
+      ],
+      "gold_intent": "learn_path",
+      "query": "BERT微调之前需要掌握些什么？"
+    },
+    {
+      "id": "q204",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:tensorflow-basics",
+        "skill:python-basics",
+        "skill:neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "TensorFlow高级用法，小白要先学啥？"
+    },
+    {
+      "id": "q205",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:image-classification",
+        "skill:cnn-architectures"
+      ],
+      "gold_intent": "learn_path",
+      "query": "目标检测怎么开始学？前置知识有哪些？"
+    },
+    {
+      "id": "q206",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "模型可解释性，零基础要先懂什么？"
+    },
+    {
+      "id": "q207",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:mlops-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:git-version-control"
+      ],
+      "gold_intent": "learn_path",
+      "query": "做模型监控需要先掌握什么？"
+    },
+    {
+      "id": "q208",
       "type": "multi_hop_prereq",
       "gold": [
         "skill:deep-learning-basics",
@@ -436,43 +2432,208 @@
         "skill:calculus",
         "skill:gradient-descent"
       ],
-      "query": "大佬，我完全小白，想学神经网络得先会点啥呀？"
+      "gold_intent": "learn_path",
+      "query": "数据增强要学哪些前置知识？"
     },
     {
-      "id": "q042",
+      "id": "q209",
       "type": "multi_hop_prereq",
       "gold": [
-        "skill:supervised-learning",
-        "skill:recurrent-neural-networks",
-        "skill:machine-learning-fundamentals",
+        "skill:lightgbm",
+        "skill:xgboost"
+      ],
+      "gold_intent": "learn_path",
+      "query": "CatBoost怎么入门？需要先学啥？"
+    },
+    {
+      "id": "q210",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:convolutional-neural-networks",
+        "skill:activation-functions",
         "skill:neural-networks"
       ],
-      "query": "零基础想搞定时间序列分析，得先学哪些东西？"
+      "gold_intent": "learn_path",
+      "query": "CNN架构，新手该先学什么？"
     },
     {
-      "id": "q043",
+      "id": "q211",
       "type": "multi_hop_prereq",
       "gold": [
-        "skill:langchain",
-        "skill:prompt-engineering",
+        "skill:neural-networks",
+        "skill:activation-functions",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "我想学优化器，但完全零基础，得先会点啥啊？"
+    },
+    {
+      "id": "q212",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:machine-learning-fundamentals",
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:calculus"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想搞懂监督学习，之前要学哪些东西？"
+    },
+    {
+      "id": "q213",
+      "type": "multi_hop_prereq",
+      "gold": [
         "skill:python-basics",
-        "skill:gpt",
-        "skill:bert"
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
       ],
-      "query": "我想做智能体开发，但啥都不懂，有啥前置知识吗？"
+      "gold_intent": "learn_path",
+      "query": "要学PyTorch基础，得先掌握什么呀？"
     },
     {
-      "id": "q044",
+      "id": "q214",
       "type": "multi_hop_prereq",
       "gold": [
-        "skill:ensemble-learning",
-        "skill:supervised-learning",
-        "skill:model-evaluation"
+        "skill:linear-algebra",
+        "skill:data-structures-algorithms"
       ],
-      "query": "XGBoost看起来好难，零基础要先学什么呀？"
+      "gold_intent": "learn_path",
+      "query": "微积分零基础入门，需不需要先学别的？"
     },
     {
-      "id": "q045",
+      "id": "q215",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:recurrent-neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "词向量这块，零基础的话得先补啥知识？"
+    },
+    {
+      "id": "q216",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:recurrent-neural-networks",
+        "skill:activation-functions",
+        "skill:neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "想学RNN变体，但啥也不会，先学啥好呢？"
+    },
+    {
+      "id": "q217",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:data-structures-algorithms",
+        "skill:python-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "线性代数零基础怎么开始？要提前看啥不？"
+    },
+    {
+      "id": "q218",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:pandas",
+        "skill:data-visualization",
+        "skill:python-basics",
+        "skill:numpy"
+      ],
+      "gold_intent": "learn_path",
+      "query": "探索性数据分析，零基础得先会啥工具或概念？"
+    },
+    {
+      "id": "q219",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:reinforcement-learning-basics",
+        "skill:cnn-architectures",
+        "skill:neural-networks",
+        "skill:convolutional-neural-networks",
+        "skill:activation-functions"
+      ],
+      "gold_intent": "learn_path",
+      "query": "深度强化学习好难，零基础得先啃哪些前置？"
+    },
+    {
+      "id": "q220",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:pytorch-basics",
+        "skill:tensorflow-basics",
+        "skill:python-basics",
+        "skill:neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "模型部署零基础，需要先学啥才能上手？"
+    },
+    {
+      "id": "q221",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:pandas",
+        "skill:sql-basics",
+        "skill:python-basics",
+        "skill:numpy"
+      ],
+      "gold_intent": "learn_path",
+      "query": "我想学数据清洗和整理，但啥都不会，得先会啥呀？"
+    },
+    {
+      "id": "q222",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础学卷积神经网络，得先掌握哪些基础知识呢？"
+    },
+    {
+      "id": "q223",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:machine-learning-fundamentals",
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:calculus"
+      ],
+      "gold_intent": "learn_path",
+      "query": "想自学无监督学习，有啥前置知识要补的吗？"
+    },
+    {
+      "id": "q224",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:python-basics",
+        "skill:numpy"
+      ],
+      "gold_intent": "learn_path",
+      "query": "数据可视化从零开始，需要先学什么？"
+    },
+    {
+      "id": "q225",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:docker",
+        "skill:linux-command-line"
+      ],
+      "gold_intent": "learn_path",
+      "query": "Kubernetes基础，小白怎么入手，要会啥先？"
+    },
+    {
+      "id": "q226",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "正则化技术是啥？零基础想学，先得会哪些东西？"
+    },
+    {
+      "id": "q227",
       "type": "multi_hop_prereq",
       "gold": [
         "skill:machine-learning-fundamentals",
@@ -481,49 +2642,463 @@
         "skill:calculus",
         "skill:data-structures-algorithms"
       ],
+      "gold_intent": "learn_path",
       "query": "模型评估和调优，新手要先掌握什么？"
     },
     {
-      "id": "q046",
-      "type": "multi_hop_prereq",
-      "gold": [
-        "skill:tensorflow-basics",
-        "skill:python-basics",
-        "skill:neural-networks"
-      ],
-      "query": "想学TensorFlow高级功能，前提得会啥？"
-    },
-    {
-      "id": "q047",
-      "type": "multi_hop_prereq",
-      "gold": [
-        "skill:xgboost",
-        "skill:ensemble-learning"
-      ],
-      "query": "LightGBM这玩意儿，零基础得先学啥？"
-    },
-    {
-      "id": "q048",
+      "id": "q228",
       "type": "multi_hop_prereq",
       "gold": [
         "skill:pytorch-basics",
         "skill:python-basics",
         "skill:neural-networks"
       ],
-      "query": "PyTorch高级用法，小白要补哪些课？"
+      "gold_intent": "learn_path",
+      "query": "PyTorch高级玩法，得有啥基础才能学？"
     },
     {
-      "id": "q049",
+      "id": "q229",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:bert",
+        "skill:gpt",
+        "skill:transformers"
+      ],
+      "gold_intent": "learn_path",
+      "query": "微调预训练模型，零基础该先学啥？"
+    },
+    {
+      "id": "q230",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "激活函数，完全不懂，得先会哪些知识？"
+    },
+    {
+      "id": "q231",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:docker",
+        "skill:fastapi",
+        "skill:model-deployment",
+        "skill:linux-command-line",
+        "skill:python-basics",
+        "skill:pytorch-basics",
+        "skill:tensorflow-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想学Docker部署模型，得先懂哪些东西呀？"
+    },
+    {
+      "id": "q232",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:pytorch-advanced",
+        "skill:tensorflow-advanced",
+        "skill:pytorch-basics",
+        "skill:tensorflow-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想搞分布式训练，之前要学啥？"
+    },
+    {
+      "id": "q233",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:natural-language-processing",
+        "skill:recurrent-neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "对于零基础，学Transformer模型前需要掌握哪些知识？"
+    },
+    {
+      "id": "q234",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:model-evaluation",
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想学超参数调优，得先了解啥？"
+    },
+    {
+      "id": "q235",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:calculus",
+        "skill:machine-learning-fundamentals",
+        "skill:linear-algebra",
+        "skill:probability-statistics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想学梯度下降优化，之前要会哪些？"
+    },
+    {
+      "id": "q236",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:spring-boot",
+        "skill:java-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想学微服务，得先会点啥？"
+    },
+    {
+      "id": "q237",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:data-structures-algorithms",
+        "skill:python-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想通过技术面试，需要先准备哪些知识？"
+    },
+    {
+      "id": "q238",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:probability-statistics",
+        "skill:deep-learning-basics",
+        "skill:data-structures-algorithms"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想学变分自编码器，之前要懂什么？"
+    },
+    {
+      "id": "q239",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想学损失函数，得先知道哪些概念？"
+    },
+    {
+      "id": "q240",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:fine-tuning-pretrained-models",
+        "skill:bert",
+        "skill:gpt"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想学迁移学习，需要先掌握啥？"
+    },
+    {
+      "id": "q241",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:cnn-architectures",
+        "skill:convolutional-neural-networks",
+        "skill:activation-functions"
+      ],
+      "gold_intent": "learn_path",
+      "query": "完全零基础，想学图像分类，得先懂点啥呀？"
+    },
+    {
+      "id": "q242",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:transformers",
+        "skill:natural-language-processing"
+      ],
+      "gold_intent": "learn_path",
+      "query": "我啥都不会，想搞定BERT模型，该从哪些基础学起？"
+    },
+    {
+      "id": "q243",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:xgboost",
+        "skill:ensemble-learning"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础学LightGBM，要提前掌握哪些知识呢？"
+    },
+    {
+      "id": "q244",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:supervised-learning",
+        "skill:machine-learning-fundamentals"
+      ],
+      "gold_intent": "learn_path",
+      "query": "小白一个，想学正则化，得先准备哪些前置技能？"
+    },
+    {
+      "id": "q245",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:onnx",
+        "skill:deep-learning-basics",
+        "skill:pytorch-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:calculus",
+        "skill:gradient-descent"
+      ],
+      "gold_intent": "learn_path",
+      "query": "想学模型量化，零基础的话先学什么好？"
+    },
+    {
+      "id": "q246",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:word-embeddings",
+        "skill:python-basics",
+        "skill:natural-language-processing"
+      ],
+      "gold_intent": "learn_path",
+      "query": "对向量数据库完全不懂，要学哪些前置知识？"
+    },
+    {
+      "id": "q247",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:mlops-basics",
+        "skill:git-version-control",
+        "skill:machine-learning-fundamentals"
+      ],
+      "gold_intent": "learn_path",
+      "query": "想搞ML CI/CD，零基础应该先学啥？"
+    },
+    {
+      "id": "q248",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:machine-learning-fundamentals",
+        "skill:git-version-control",
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:calculus"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础入门MLOps，需要先掌握哪些东西？"
+    },
+    {
+      "id": "q249",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:redis",
+        "skill:linux-command-line"
+      ],
+      "gold_intent": "learn_path",
+      "query": "Redis缓存策略，零基础得先懂什么？"
+    },
+    {
+      "id": "q250",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:apache-spark",
+        "skill:data-warehouse-basics",
+        "skill:python-basics",
+        "skill:sql-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "ETL流水线，小白要从哪里开始学？"
+    },
+    {
+      "id": "q251",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:cnn-architectures",
+        "skill:convolutional-neural-networks",
+        "skill:activation-functions"
+      ],
+      "gold_intent": "learn_path",
+      "query": "生成对抗网络好难啊，零基础的话得先学点啥才能入门呀？"
+    },
+    {
+      "id": "q252",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:python-basics",
+        "skill:numpy"
+      ],
+      "gold_intent": "learn_path",
+      "query": "想学Pandas，但我是小白，请问之前要掌握哪些东西呢？"
+    },
+    {
+      "id": "q253",
       "type": "multi_hop_prereq",
       "gold": [
         "skill:python-basics",
         "skill:neural-networks",
         "skill:deep-learning-basics"
       ],
-      "query": "从头学PyTorch，需要先懂什么？"
+      "gold_intent": "learn_path",
+      "query": "零基础学TensorFlow基础，得先会什么才行啊？"
     },
     {
-      "id": "q050",
+      "id": "q254",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:prompt-engineering",
+        "skill:python-basics",
+        "skill:gpt",
+        "skill:bert"
+      ],
+      "gold_intent": "learn_path",
+      "query": "LangChain框架听起来挺高级的，零基础的话需要先学什么？"
+    },
+    {
+      "id": "q255",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "强化学习基础怎么开始学？零基础得先了解哪些知识？"
+    },
+    {
+      "id": "q256",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:supervised-learning",
+        "skill:model-evaluation",
+        "skill:machine-learning-fundamentals",
+        "skill:probability-statistics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "集成学习是啥？零基础想学的话，之前要学点什么？"
+    },
+    {
+      "id": "q257",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:calculus",
+        "skill:data-structures-algorithms"
+      ],
+      "gold_intent": "learn_path",
+      "query": "机器学习基础从零开始，需要先掌握哪些前置知识？"
+    },
+    {
+      "id": "q258",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:rnn-variants",
+        "skill:recurrent-neural-networks",
+        "skill:activation-functions"
+      ],
+      "gold_intent": "learn_path",
+      "query": "注意力机制零基础能学吗？得先会哪些东西？"
+    },
+    {
+      "id": "q259",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:rnn-variants",
+        "skill:word-embeddings",
+        "skill:recurrent-neural-networks",
+        "skill:activation-functions",
+        "skill:natural-language-processing"
+      ],
+      "gold_intent": "learn_path",
+      "query": "序列标注是什么？零基础想学的话，之前要学啥？"
+    },
+    {
+      "id": "q260",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:machine-learning-fundamentals",
+        "skill:calculus",
+        "skill:gradient-descent",
+        "skill:linear-algebra",
+        "skill:probability-statistics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "深度学习基础零基础怎么学？需要先掌握哪些知识？"
+    },
+    {
+      "id": "q261",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:supervised-learning",
+        "skill:recurrent-neural-networks",
+        "skill:machine-learning-fundamentals",
+        "skill:neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "我想学时间序列分析，但啥都不会，得先学哪些东西啊？"
+    },
+    {
+      "id": "q262",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:unsupervised-learning",
+        "skill:machine-learning-fundamentals"
+      ],
+      "gold_intent": "learn_path",
+      "query": "异常检测好难，零基础的话要打哪些基础？"
+    },
+    {
+      "id": "q263",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:word-embeddings",
+        "skill:cnn-architectures",
+        "skill:rnn-variants",
+        "skill:natural-language-processing",
+        "skill:convolutional-neural-networks",
+        "skill:activation-functions",
+        "skill:recurrent-neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "文本分类怎么入门？需要先掌握什么知识？"
+    },
+    {
+      "id": "q264",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:spring-boot",
+        "skill:java-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础想搞Spring Boot REST API，前面要学啥？"
+    },
+    {
+      "id": "q265",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:neural-networks",
+        "skill:deep-learning-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "循环神经网络好高大上，零基础得先学哪些？"
+    },
+    {
+      "id": "q266",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:gpt",
+        "skill:fine-tuning-pretrained-models",
+        "skill:transformers",
+        "skill:bert"
+      ],
+      "gold_intent": "learn_path",
+      "query": "GPT微调听起来好难，小白要先掌握什么？"
+    },
+    {
+      "id": "q267",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:ensemble-learning",
+        "skill:supervised-learning",
+        "skill:model-evaluation"
+      ],
+      "gold_intent": "learn_path",
+      "query": "XGBoost怎么学？零基础要补哪些课？"
+    },
+    {
+      "id": "q268",
       "type": "multi_hop_prereq",
       "gold": [
         "skill:transformers",
@@ -531,7 +3106,153 @@
         "skill:natural-language-processing",
         "skill:rnn-variants"
       ],
-      "query": "Transformer架构，零基础得先学哪些知识？"
+      "gold_intent": "learn_path",
+      "query": "想搞懂Transformer架构，先要学哪些基础？"
+    },
+    {
+      "id": "q269",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:langchain",
+        "skill:prompt-engineering",
+        "skill:python-basics",
+        "skill:gpt",
+        "skill:bert"
+      ],
+      "gold_intent": "learn_path",
+      "query": "智能体开发需要哪些前置知识？求指点！"
+    },
+    {
+      "id": "q270",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:recurrent-neural-networks",
+        "skill:neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "自然语言处理零基础入门，先学什么好？"
+    },
+    {
+      "id": "q271",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:pandas",
+        "skill:machine-learning-fundamentals",
+        "skill:python-basics",
+        "skill:numpy",
+        "skill:linear-algebra",
+        "skill:probability-statistics",
+        "skill:calculus"
+      ],
+      "gold_intent": "learn_path",
+      "query": "我想搞特征工程，得先学啥呀？"
+    },
+    {
+      "id": "q272",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:message-queue",
+        "skill:java-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "零基础学Kafka，之前要掌握哪些东西？"
+    },
+    {
+      "id": "q273",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:deep-learning-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:calculus",
+        "skill:gradient-descent"
+      ],
+      "gold_intent": "learn_path",
+      "query": "想学神经网络，但啥都不会，该从哪儿开始？"
+    },
+    {
+      "id": "q274",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:data-structures-algorithms",
+        "skill:python-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "学概率论和统计，需要先会啥？"
+    },
+    {
+      "id": "q275",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:data-structures-algorithms",
+        "skill:python-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "刷LeetCode之前，得先懂哪些基础？"
+    },
+    {
+      "id": "q276",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:feature-engineering",
+        "skill:mlops-basics",
+        "skill:pandas",
+        "skill:machine-learning-fundamentals",
+        "skill:git-version-control"
+      ],
+      "gold_intent": "learn_path",
+      "query": "特征存储是啥？要入门得先学啥？"
+    },
+    {
+      "id": "q277",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:gpt",
+        "skill:bert",
+        "skill:transformers"
+      ],
+      "gold_intent": "learn_path",
+      "query": "提示工程咋入门？需要哪些前置知识？"
+    },
+    {
+      "id": "q278",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:prompt-engineering",
+        "skill:vector-databases",
+        "skill:gpt",
+        "skill:bert",
+        "skill:word-embeddings",
+        "skill:python-basics"
+      ],
+      "gold_intent": "learn_path",
+      "query": "RAG这玩意儿，零基础要学啥才能搞？"
+    },
+    {
+      "id": "q279",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:fine-tuning-pretrained-models",
+        "skill:gpt",
+        "skill:bert",
+        "skill:transformers"
+      ],
+      "gold_intent": "learn_path",
+      "query": "LoRA微调，小白得先掌握啥？"
+    },
+    {
+      "id": "q280",
+      "type": "multi_hop_prereq",
+      "gold": [
+        "skill:deep-learning-basics",
+        "skill:pytorch-basics",
+        "skill:machine-learning-fundamentals",
+        "skill:calculus",
+        "skill:gradient-descent",
+        "skill:python-basics",
+        "skill:neural-networks"
+      ],
+      "gold_intent": "learn_path",
+      "query": "ONNX是啥？想学的话要先会啥？"
     }
   ]
 }

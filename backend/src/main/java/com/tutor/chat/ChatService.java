@@ -14,7 +14,9 @@ import com.tutor.expert.ExpertRunner;
 import com.tutor.expert.IntentRouter;
 import com.tutor.llm.LlmGateway;
 import com.tutor.memory.ConversationStore;
+import com.tutor.memory.EpisodeSummarizer;
 import com.tutor.profile.ProfileService;
+import com.tutor.retrieval.AgenticRetriever;
 import com.tutor.retrieval.FusedRetriever;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -50,6 +52,7 @@ public class ChatService {
     private static final long DEV_USER_ID = 1L; // 单用户模式 (V3 ADR)
 
     private final FusedRetriever retriever;
+    private final AgenticRetriever agenticRetriever;
     private final PromptAssembler promptAssembler;
     private final ProfileSection profileSection;
     private final TokenBudget tokenBudget;
@@ -62,17 +65,22 @@ public class ChatService {
     private final TraceRecorder trace;
     private final com.tutor.resume.ResumeService resumeService;
     private final com.tutor.memory.SummaryFolder summaryFolder;
+    private final EpisodeSummarizer episodeSummarizer;
+    private final com.tutor.guard.CitationGuard citationGuard;
     private final ObjectMapper mapper = new ObjectMapper();
     private final ExecutorService background = Executors.newVirtualThreadPerTaskExecutor();
 
-    public ChatService(FusedRetriever retriever, PromptAssembler promptAssembler,
+    public ChatService(FusedRetriever retriever, AgenticRetriever agenticRetriever, PromptAssembler promptAssembler,
                        ProfileSection profileSection, TokenBudget tokenBudget,
                        LlmGateway gateway, ConversationStore conversations,
                        ProfileService profileService, IntentRouter router,
                        ExpertRunner expertRunner, Aggregator aggregator, TraceRecorder trace,
                        com.tutor.resume.ResumeService resumeService,
-                       com.tutor.memory.SummaryFolder summaryFolder) {
+                       com.tutor.memory.SummaryFolder summaryFolder,
+                       EpisodeSummarizer episodeSummarizer,
+                       com.tutor.guard.CitationGuard citationGuard) {
         this.retriever = retriever;
+        this.agenticRetriever = agenticRetriever;
         this.promptAssembler = promptAssembler;
         this.profileSection = profileSection;
         this.tokenBudget = tokenBudget;
@@ -85,6 +93,8 @@ public class ChatService {
         this.trace = trace;
         this.resumeService = resumeService;
         this.summaryFolder = summaryFolder;
+        this.episodeSummarizer = episodeSummarizer;
+        this.citationGuard = citationGuard;
     }
 
     public interface TurnEvents {
@@ -122,7 +132,7 @@ public class ChatService {
             if (intent != Intent.OUT_OF_SCOPE) {
                 events.onStage("retrieving");
                 t0 = System.currentTimeMillis();
-                evidences = retriever.retrieve(question, TOP_K, traceId);
+                evidences = agenticRetriever.retrieve(question, TOP_K, traceId);
                 trace.span(traceId, convId, "retrieve", t0, false);
                 events.onCitations(evidences);
             }
@@ -166,6 +176,8 @@ public class ChatService {
                     events.onDone(msgId, fullText);
                     background.submit(() -> profileService.updateFromMessage(DEV_USER_ID, question, traceId));
                     background.submit(() -> summaryFolder.maybeFold(convId, traceId));
+                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, DEV_USER_ID, traceId));
+                    background.submit(() -> citationGuard.guard(fullText, finalEvidences, traceId));
                 }
 
                 @Override public void onError(Throwable error) {
@@ -207,6 +219,8 @@ public class ChatService {
                 events.onDone(msgId, text);
                 background.submit(() -> profileService.updateFromMessage(DEV_USER_ID, question, traceId));
                 background.submit(() -> summaryFolder.maybeFold(convId, traceId));
+                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, DEV_USER_ID, traceId));
+                    background.submit(() -> citationGuard.guard(text, finalEvidences, traceId));
             }
 
             @Override public void onError(Throwable error) {
