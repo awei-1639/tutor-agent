@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body, #root { height: 100%; }
+body { font-feature-settings: 'cv02', 'cv03', 'cv11'; }
+
+/* 卡片悬停 */
+.card { @apply bg-white border border-ink-100 rounded-lg shadow-soft transition; }
+.card:hover { @apply shadow-lift border-ink-200; }
+
+/* 引用标号 */
+.cite-ref {
+  @apply inline-block px-1.5 py-0.5 mx-0.5 text-xs font-medium text-accent-700 bg-accent-50 rounded cursor-pointer;
+  vertical-align: baseline;
+}
+.cite-ref:hover { @apply bg-accent-500 text-white; }
+
+/* Markdown 渲染基础样式 */
+.prose-chat h1 { @apply text-xl font-semibold mt-4 mb-2; }
+.prose-chat h2 { @apply text-lg font-semibold mt-3 mb-2; }
+.prose-chat h3 { @apply text-base font-semibold mt-2 mb-1; }
+.prose-chat p { @apply my-2 leading-relaxed; }
+.prose-chat ul { @apply list-disc list-inside my-2; }
+.prose-chat ol { @apply list-decimal list-inside my-2; }
+.prose-chat code { @apply px-1 py-0.5 bg-ink-100 rounded text-sm font-mono; }
+.prose-chat pre { @apply bg-ink-900 text-ink-50 p-3 rounded my-2 overflow-x-auto; }
+.prose-chat pre code { @apply bg-transparent text-ink-50 p-0; }
+.prose-chat blockquote { @apply border-l-4 border-ink-200 pl-3 my-2 text-ink-700; }
