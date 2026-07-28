@@ -14,7 +14,14 @@ public class ConversationStore {
         this.jdbc = jdbc;
     }
 
-    public record Msg(String role, String content) {}
+    public static class Msg {
+        public final String role;
+        public final String content;
+        public String citations; // mutable: 历史消息可补
+        public Msg(String role, String content) {
+            this.role = role; this.content = content;
+        }
+    }
 
     public long ensureConversation(Long conversationId, long userId) {
         if (conversationId != null) {
@@ -38,11 +45,16 @@ public class ConversationStore {
                 Long.class, conversationId, role, content, intent, citationsJson, tokenCount);
     }
 
-    /** 最近N轮原文, 时间正序 */
+    /** 最近N轮原文, 时间正序 (含 citations: 已用于回填溯源面板) */
     public List<Msg> recentMessages(long conversationId, int limit) {
         List<Msg> desc = jdbc.query(
-                "SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
-                (rs, i) -> new Msg(rs.getString(1), rs.getString(2)), conversationId, limit);
+                "SELECT role, content, citations FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+                (rs, i) -> {
+                    String citations = rs.getString(3);
+                    Msg m = new Msg(rs.getString(1), rs.getString(2));
+                    m.citations = citations; // 字符串 JSON, 前端按 string 处理
+                    return m;
+                }, conversationId, limit);
         return desc.reversed();
     }
 

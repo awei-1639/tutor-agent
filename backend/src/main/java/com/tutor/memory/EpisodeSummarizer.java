@@ -51,8 +51,8 @@ public class EpisodeSummarizer {
 
             StringBuilder convo = new StringBuilder();
             for (var m : msgs) {
-                convo.append(m.role().equals("user") ? "用户: " : "助手: ")
-                     .append(m.content(), 0, Math.min(m.content().length(), 400))
+                convo.append(m.role.equals("user") ? "用户: " : "助手: ")
+                     .append(m.content, 0, Math.min(m.content.length(), 400))
                      .append('\n');
             }
 

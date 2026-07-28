@@ -27,7 +27,7 @@ export default function ChatPage() {
     api.listConversations().then(setConvs).catch(() => {});
   }, [convId]);
 
-  // 加载选中会话历史
+  // 加载选中会话历史 (历史消息只恢复文本, 引用需重新生成才有溯源数据)
   async function loadConv(id: number) {
     const msgs = await api.getMessages(id);
     setMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));

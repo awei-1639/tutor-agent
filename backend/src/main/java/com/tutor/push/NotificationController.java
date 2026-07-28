@@ -1,5 +1,6 @@
 package com.tutor.push;
 
+import com.tutor.auth.AuthContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,11 +14,15 @@ import java.util.Map;
 /** 站内消息 (实现设计 8.1: GET /notifications 拉取 + 已读标记) */
 @RestController
 public class NotificationController {
-    private static final long DEV_USER_ID = 1L;
     private final JdbcTemplate jdbc;
 
     public NotificationController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    private static long uid() {
+        Long u = AuthContext.currentUserId();
+        return u == null ? 1L : u;
     }
 
     @GetMapping("/notifications")
@@ -29,7 +34,7 @@ public class NotificationController {
                 """, (rs, i) -> Map.of(
                 "id", rs.getLong(1), "type", rs.getString(2), "payload", rs.getString(3),
                 "read", rs.getBoolean(4), "created_at", rs.getTimestamp(5).toInstant().toString()),
-                DEV_USER_ID, unreadOnly);
+                uid(), unreadOnly);
     }
 
     public record ReadRequest(List<Long> ids) {}
@@ -39,7 +44,7 @@ public class NotificationController {
         if (req.ids() == null || req.ids().isEmpty()) return Map.of("updated", 0);
         String placeholders = String.join(",", req.ids().stream().map(x -> "?").toList());
         Object[] args = new Object[req.ids().size() + 1];
-        args[0] = DEV_USER_ID;
+        args[0] = uid();
         for (int i = 0; i < req.ids().size(); i++) args[i + 1] = req.ids().get(i);
         int n = jdbc.update("UPDATE notifications SET read=TRUE WHERE user_id=? AND id IN (" + placeholders + ")", args);
         return Map.of("updated", n);

@@ -5,6 +5,7 @@ import com.tutor.context.PromptAssembler;
 import com.tutor.context.TokenBudget;
 import com.tutor.context.TurnContextView;
 import com.tutor.context.sections.ProfileSection;
+import com.tutor.auth.AuthContext;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.Intent;
@@ -49,7 +50,7 @@ public class ChatService {
     private static final Pattern CITE = Pattern.compile("\\[S(\\d)]");
     private static final int TOP_K = 5;
     private static final int HISTORY_TURNS = 6;
-    private static final long DEV_USER_ID = 1L; // 单用户模式 (V3 ADR)
+    private static long currentUserId() { return AuthContext.currentUserId() == null ? 1L : AuthContext.currentUserId(); }
 
     private final FusedRetriever retriever;
     private final AgenticRetriever agenticRetriever;
@@ -110,17 +111,17 @@ public class ChatService {
     public void turn(Long conversationId, String question, TurnEvents events) {
         String traceId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         try {
-            long convId = conversations.ensureConversation(conversationId, DEV_USER_ID);
+            long convId = conversations.ensureConversation(conversationId, currentUserId());
             events.onMeta(convId, traceId);
             List<ConversationStore.Msg> history = conversations.recentMessages(convId, HISTORY_TURNS * 2);
             conversations.appendMessage(convId, "user", question, null, null, question.length() / 2);
-            Map<String, Object> profile = profileService.snapshot(DEV_USER_ID);
+            Map<String, Object> profile = profileService.snapshot(currentUserId());
 
             // --- router 节点 ---
             events.onStage("routing");
             long t0 = System.currentTimeMillis();
             List<String> recentUser = history.stream()
-                    .filter(m -> m.role().equals("user")).map(ConversationStore.Msg::content)
+                    .filter(m -> m.role.equals("user")).map(m -> m.content)
                     .collect(java.util.stream.Collectors.collectingAndThen(java.util.stream.Collectors.toList(),
                             l -> l.subList(Math.max(0, l.size() - 2), l.size())));
             Intent intent = router.route(question, recentUser, traceId);
@@ -145,7 +146,7 @@ public class ChatService {
 
             // --- 专家扇出节点 (简报=画像+结构化简历+证据+问题, 不带闲聊历史) ---
             String profileText = profileSection.render(new TurnContextView(profile, List.of()), tokenBudget);
-            String resumeText = resumeService.latestStructuredCompact(DEV_USER_ID, 900); // 约300 token (实现设计3.4)
+            String resumeText = resumeService.latestStructuredCompact(currentUserId(), 900); // 约300 token (实现设计3.4)
             String briefing = expertRunner.briefing(profileText + '\n' + resumeText, evidences, question);
             for (String name : expertNames) events.onStage("expert:" + name);
             t0 = System.currentTimeMillis();
@@ -174,9 +175,9 @@ public class ChatService {
                             clarified ? "clarify" : intent.name().toLowerCase(),
                             citationsJson(fullText, finalEvidences), fullText.length() / 2);
                     events.onDone(msgId, fullText);
-                    background.submit(() -> profileService.updateFromMessage(DEV_USER_ID, question, traceId));
+                    background.submit(() -> profileService.updateFromMessage(currentUserId(), question, traceId));
                     background.submit(() -> summaryFolder.maybeFold(convId, traceId));
-                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, DEV_USER_ID, traceId));
+                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, currentUserId(), traceId));
                     background.submit(() -> citationGuard.guard(fullText, finalEvidences, traceId));
                 }
 
@@ -200,7 +201,7 @@ public class ChatService {
         messages.add(SystemMessage.from(
                 promptAssembler.assemble(new TurnContextView(profile, evidences, summary), traceId)));
         for (ConversationStore.Msg m : history) {
-            messages.add(m.role().equals("user") ? UserMessage.from(m.content()) : AiMessage.from(m.content()));
+            messages.add(m.role.equals("user") ? UserMessage.from(m.content) : AiMessage.from(m.content));
         }
         messages.add(UserMessage.from(question));
 
@@ -217,9 +218,9 @@ public class ChatService {
                 long msgId = conversations.appendMessage(convId, "assistant", text,
                         intent.name().toLowerCase(), citationsJson(text, finalEvidences), text.length() / 2);
                 events.onDone(msgId, text);
-                background.submit(() -> profileService.updateFromMessage(DEV_USER_ID, question, traceId));
+                background.submit(() -> profileService.updateFromMessage(currentUserId(), question, traceId));
                 background.submit(() -> summaryFolder.maybeFold(convId, traceId));
-                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, DEV_USER_ID, traceId));
+                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, currentUserId(), traceId));
                     background.submit(() -> citationGuard.guard(text, finalEvidences, traceId));
             }
 

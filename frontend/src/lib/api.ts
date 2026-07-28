@@ -39,10 +39,15 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 
 export const api = {
   // Auth
-  login: (name: string) => request<{ user_id: number; token: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ name }) }),
+  login: (email: string, password: string) =>
+    request<{ user_id: number; token: string; name: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  register: (email: string, password: string, name?: string) =>
+    request<{ user_id: number; token: string; name: string }>('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
+  devLogin: (name: string) =>
+    request<{ user_id: number; token: string; name: string }>('/auth/dev-login', { method: 'POST', body: JSON.stringify({ name }) }),
   // Conversations
   listConversations: () => request<any[]>('/conversations'),
-  getMessages: (id: number) => request<{ role: string; content: string }[]>(`/conversations/${id}/messages`),
+  getMessages: (id: number) => request<{ role: string; content: string; citations?: string }[]>(`/conversations/${id}/messages`),
   // Profile
   getProfile: () => request<{ data: any; updated_at: string }>('/profile'),
   confirmProfile: (field: string, accept: boolean) =>

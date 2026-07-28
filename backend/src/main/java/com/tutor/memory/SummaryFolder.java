@@ -50,8 +50,8 @@ public class SummaryFolder {
             }
             sb.append("新增对话:\n");
             for (ConversationStore.Msg m : toFold) {
-                sb.append(m.role().equals("user") ? "用户: " : "助手: ")
-                        .append(m.content(), 0, Math.min(m.content().length(), 500)).append('\n');
+                sb.append(m.role.equals("user") ? "用户: " : "助手: ")
+                        .append(m.content, 0, Math.min(m.content.length(), 500)).append('\n');
             }
             String json = gateway.chatJson(Purpose.SUMMARY,
                     List.of(SystemMessage.from(SYS), UserMessage.from(sb.toString())), traceId);

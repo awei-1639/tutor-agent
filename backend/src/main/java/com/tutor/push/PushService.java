@@ -1,5 +1,7 @@
 package com.tutor.push;
 
+import com.tutor.auth.AuthContext;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.profile.ProfileService;
 import com.tutor.profile.SkillAlignService;
@@ -54,27 +56,31 @@ public class PushService {
     /** 返回本次运行摘要 (also served by /internal/push-run) */
     @SuppressWarnings("unchecked")
     public Map<String, Object> runOnce() {
-        // 1) Mock注水释放: 模拟"每日新增岗位" (V3 6.x — 静态数据下扫描新增永远为空的问题)
+        // userId: admin/eval 调用无 AuthContext, fallback DEV_USER_ID=1
+        Long ul = AuthContext.currentUserId();
+        long uid = ul == null ? DEV_USER_ID : ul;
+
+        // 1) Mock注水释放
         int released = jdbc.update("""
                 UPDATE jobs SET released = TRUE, fetched_at = now()
                 WHERE id IN (SELECT id FROM jobs WHERE NOT released ORDER BY id LIMIT ?)
                 """, releaseBatch);
 
         // 2) 画像与冷启动检查
-        Map<String, Object> profile = profileService.snapshot(DEV_USER_ID);
+        Map<String, Object> profile = profileService.snapshot(uid);
         List<Map<String, Object>> skills = profile.get("skills") instanceof List<?> l
                 ? (List<Map<String, Object>>) l : List.of();
         if (skills.isEmpty()) {
-            guideOnce("完善你的技能画像或上传简历后，我就能开始为你推送匹配的岗位了");
+            guideOnce(uid, "完善你的技能画像或上传简历后，我就能开始为你推送匹配的岗位了");
             return Map.of("released", released, "pushed", 0, "reason", "empty_profile_guide");
         }
 
-        // 3) 技能对齐 (name→node_id)
+        // 3) 技能对齐
         List<String> names = skills.stream().map(s -> String.valueOf(s.get("name"))).toList();
         Map<String, String> aligned = alignService.align(names);
         List<String> profileIds = aligned.values().stream().filter(x -> x != null).distinct().toList();
 
-        // 4) 候选岗位: 已释放且未推送过
+        // 4) 候选岗位
         record Candidate(long id, String nodeId, String title, String company, String city,
                          String salary, List<String> requires) {}
         List<Candidate> candidates = jdbc.query("""
@@ -82,24 +88,19 @@ public class PushService {
                 WHERE released AND id NOT IN (SELECT job_id FROM push_tasks WHERE user_id = ? AND job_id IS NOT NULL)
                 """, (rs, i) -> new Candidate(rs.getLong(1), rs.getString(2), rs.getString(3),
                 rs.getString(4), rs.getString(5), rs.getString(6),
-                List.of((String[]) rs.getArray(7).getArray())), DEV_USER_ID);
+                List.of((String[]) rs.getArray(7).getArray())), uid);
         if (candidates.isEmpty()) return Map.of("released", released, "pushed", 0, "reason", "no_new_jobs");
 
-        // 5) 可速成集合 (全部缺口一次性查图)
         Set<String> profileIdSet = new HashSet<>(profileIds);
-        List<String> allMissing = candidates.stream()
-                .flatMap(c -> c.requires().stream())
-                .filter(r -> !profileIdSet.contains(r))
-                .distinct().toList();
+        List<String> allMissing = candidates.stream().flatMap(c -> c.requires().stream())
+                .filter(r -> !profileIdSet.contains(r)).distinct().toList();
         Set<String> speedupables = alignService.speedupables(profileIds, allMissing);
 
-        // 6) 简历向量 (无简历→null, 冷启动规则生效)
         List<String> resumeVec = jdbc.query(
                 "SELECT embedding::text FROM resumes WHERE user_id=? ORDER BY id DESC LIMIT 1",
-                (rs, i) -> rs.getString(1), DEV_USER_ID);
+                (rs, i) -> rs.getString(1), uid);
         boolean hasResume = !resumeVec.isEmpty();
 
-        // 7) 打分推送
         List<Map<String, Object>> pushed = new ArrayList<>();
         var scored = new ArrayList<Map.Entry<Candidate, MatchScorer.MatchResult>>();
         for (Candidate c : candidates) {
@@ -126,31 +127,29 @@ public class PushService {
                         Map.entry("coverage", Math.round(r.coverage() * 100) / 100.0),
                         Map.entry("matched", r.matched()), Map.entry("speedup", r.speedup()),
                         Map.entry("missing", r.missing())));
-                jdbc.update("INSERT INTO push_tasks (user_id, job_id, status) VALUES (?,?,'sent')",
-                        DEV_USER_ID, c.id());
-                jdbc.update("INSERT INTO notifications (user_id, type, payload) VALUES (?,'job_push',?::jsonb)",
-                        DEV_USER_ID, payload);
+                jdbc.update("INSERT INTO push_tasks (user_id, job_id, status) VALUES (?,?,'sent')", uid, c.id());
+                jdbc.update("INSERT INTO notifications (user_id, type, payload) VALUES (?,'job_push',?::jsonb)", uid, payload);
                 pushed.add(Map.of("title", c.title(), "score", r.score()));
             } catch (Exception ex) {
                 jdbc.update("INSERT INTO push_tasks (user_id, job_id, status, retry_count, error) VALUES (?,?,'failed',0,?)",
-                        DEV_USER_ID, c.id(), ex.getMessage());
+                        uid, c.id(), ex.getMessage());
                 log.error("推送失败 job={}", c.id(), ex);
             }
         }
-        log.info("推送完成: released={} candidates={} pushed={}", released, candidates.size(), pushed.size());
+        log.info("推送完成 user={} released={} candidates={} pushed={}", uid, released, candidates.size(), pushed.size());
         return Map.of("released", released, "candidates", candidates.size(),
                 "aligned_skills", profileIds.size(), "has_resume", hasResume, "pushed", pushed);
     }
 
     /** 引导消息去重: 存在未读引导则不重复发 */
-    private void guideOnce(String text) {
+    private void guideOnce(long uid, String text) {
         Integer unreadGuides = jdbc.queryForObject(
                 "SELECT count(*) FROM notifications WHERE user_id=? AND type='guide' AND NOT read",
-                Integer.class, DEV_USER_ID);
+                Integer.class, uid);
         if (unreadGuides != null && unreadGuides > 0) return;
         try {
             jdbc.update("INSERT INTO notifications (user_id, type, payload) VALUES (?,'guide',?::jsonb)",
-                    DEV_USER_ID, mapper.writeValueAsString(Map.of("text", text)));
+                    uid, mapper.writeValueAsString(Map.of("text", text)));
         } catch (Exception ignored) {}
     }
 }
