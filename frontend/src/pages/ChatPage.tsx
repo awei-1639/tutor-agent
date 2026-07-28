@@ -17,6 +17,7 @@ export default function ChatPage() {
   const [hoverCite, setHoverCite] = useState<Citation | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [convs, setConvs] = useState<Conv[]>([]);
+  const [pinnedCite, setPinnedCite] = useState<Citation | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const userId = Number(localStorage.getItem('tutor_user_id') ?? 1);
@@ -144,7 +145,15 @@ export default function ChatPage() {
                if (cit) { setHoverCite(cit); setTooltipPos({ x: e.clientX, y: e.clientY }); }
              }
            }}
-           onMouseMove={e => hoverCite && setTooltipPos({ x: e.clientX, y: e.clientY })}>
+           onMouseMove={e => hoverCite && setTooltipPos({ x: e.clientX, y: e.clientY })}
+           onClick={e => {
+             const t = e.target as HTMLElement;
+             if (t.classList.contains('cite-ref')) {
+               const sid = t.dataset.sid!;
+               const cit = lastCiteRef.current?.get(sid);
+               if (cit) setPinnedCite(cit);
+             }
+           }}>
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.length === 0 && (
@@ -217,6 +226,40 @@ export default function ChatPage() {
             <div className="font-medium mb-1">{hoverCite.sid} · {hoverCite.title}</div>
             <div className="text-ink-200 whitespace-pre-wrap">{hoverCite.text?.slice(0, 240)}…</div>
           </div>
+        )}
+
+        {/* 持久引用详情面板 (右侧) */}
+        {pinnedCite && (
+          <aside className="w-72 border-l border-ink-100 bg-white flex flex-col">
+            <div className="px-4 py-3 border-b border-ink-100 flex items-center justify-between">
+              <div className="text-sm font-semibold text-ink-900">参考材料</div>
+              <button onClick={() => setPinnedCite(null)} className="text-xs text-ink-500 hover:text-ink-900">关闭</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {lastCiteRef.current && [...lastCiteRef.current.values()].map(c => (
+                <button
+                  key={c.sid}
+                  onClick={() => setPinnedCite(c)}
+                  className={`w-full text-left p-3 rounded-md border transition ${
+                    pinnedCite?.sid === c.sid ? 'bg-accent-50 border-accent-500' : 'bg-white border-ink-100 hover:border-ink-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium text-accent-700">{c.sid}</span>
+                    <span className="text-sm font-medium text-ink-900 truncate">{c.title || c.node_id}</span>
+                  </div>
+                  <div className="text-[10px] text-ink-500">{c.node_id}</div>
+                  <div className="text-xs text-ink-700 mt-1.5 line-clamp-3">{c.text?.slice(0, 200)}</div>
+                </button>
+              ))}
+            </div>
+            <div className="px-4 py-3 border-t border-ink-100">
+              <div className="text-xs text-ink-500 mb-1">详情</div>
+              <div className="text-sm font-medium text-ink-900">{pinnedCite.title || pinnedCite.node_id}</div>
+              <div className="text-xs text-ink-500 mt-1">{pinnedCite.node_id} · {pinnedCite.type}</div>
+              <div className="text-sm text-ink-700 mt-3 whitespace-pre-wrap">{pinnedCite.text}</div>
+            </div>
+          </aside>
         )}
       </div>
     </div>
