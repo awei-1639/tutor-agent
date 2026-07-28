@@ -56,16 +56,35 @@ function typeLabel(t: string) {
 }
 
 function PayloadView({ p }: { p: any }) {
-  if (!p) return null;
-  if (p.job_title) {
+  // 后端 payload 是 JSON string (PG JSONB 反序列化), 先解析
+  let obj: any = p;
+  if (typeof p === 'string') {
+    try { obj = JSON.parse(p); } catch { return <pre className="text-xs text-ink-500 whitespace-pre-wrap">{p}</pre>; }
+  }
+  if (!obj) return null;
+  if (obj.job_title || obj.title) {
     return (
       <div>
-        <div className="font-medium text-ink-900">{p.job_title} <span className="text-ink-500 font-normal">· {p.company}</span></div>
-        {p.matched_skills && <div className="text-xs text-ink-500 mt-1">匹配: {p.matched_skills.join(', ')}</div>}
-        {p.match_score && <div className="text-xs text-accent-700 mt-1">得分: {p.match_score}</div>}
+        <div className="font-medium text-ink-900">{obj.job_title ?? obj.title} <span className="text-ink-500 font-normal">· {obj.company}</span></div>
+        <div className="text-xs text-ink-500 mt-1 space-x-3">
+          {obj.city && <span>📍 {obj.city}</span>}
+          {obj.salary && <span>💰 {obj.salary}</span>}
+        </div>
+        {Array.isArray(obj.matched) && obj.matched.length > 0 && (
+          <div className="text-xs text-ink-500 mt-1">✅ 匹配: {obj.matched.join(', ')}</div>
+        )}
+        {Array.isArray(obj.missing) && obj.missing.length > 0 && (
+          <div className="text-xs text-ink-500 mt-0.5">⚠️ 缺失: {obj.missing.join(', ')}</div>
+        )}
+        {Array.isArray(obj.speedup) && obj.speedup.length > 0 && (
+          <div className="text-xs text-accent-700 mt-0.5">⚡ 已具备: {obj.speedup.join(', ')}</div>
+        )}
+        {typeof obj.score === 'number' && (
+          <div className="text-xs text-accent-700 mt-1">匹配分: {obj.score.toFixed(2)}</div>
+        )}
       </div>
     );
   }
-  if (p.task) return <div className="text-sm text-ink-700">{p.task}</div>;
-  return <pre className="text-xs text-ink-500 whitespace-pre-wrap">{JSON.stringify(p, null, 2)}</pre>;
+  if (obj.task) return <div className="text-sm text-ink-700">{obj.task}</div>;
+  return <pre className="text-xs text-ink-500 whitespace-pre-wrap">{JSON.stringify(obj, null, 2)}</pre>;
 }

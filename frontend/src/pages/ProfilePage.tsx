@@ -28,21 +28,26 @@ export default function ProfilePage() {
           <h2 className="text-sm font-semibold text-ink-700 uppercase tracking-wide mb-3">基础属性</h2>
           <div className="divide-y divide-ink-100">
             {scalars.length === 0 && <div className="text-sm text-ink-500 py-2">暂无数据</div>}
-            {scalars.map(([k, v]) => (
-              <div key={k} className="py-2.5 flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="text-xs text-ink-500">{k}</div>
-                  <div className="text-sm text-ink-900 mt-0.5">{String(v ?? '—')}</div>
+            {scalars.map(([k, v]) => {
+              // 标量值是 {value, source, confidence} 嵌套对象; 取 .value 显示
+              const display = (v && typeof v === 'object' && 'value' in v) ? String((v as any).value ?? '—') : String(v ?? '—');
+              const confirmed = (v && typeof v === 'object' && 'confirmed' in v) ? (v as any).confirmed : false;
+              return (
+                <div key={k} className="py-2.5 flex items-center justify-between">
+                  <div className="min-w-0">
+                    <div className="text-xs text-ink-500">{k}</div>
+                    <div className="text-sm text-ink-900 mt-0.5">{display}</div>
+                  </div>
+                  <button
+                    onClick={() => confirm.mutate({ field: k, accept: true })}
+                    disabled={confirm.isPending || confirmed}
+                    className={`text-xs px-2.5 py-1 rounded ${confirmed ? 'text-ink-400 cursor-not-allowed' : 'text-accent-700 hover:bg-accent-50'}`}
+                  >
+                    {confirmed ? '✓ 已确认' : '✓ 确认'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => confirm.mutate({ field: k, accept: true })}
-                  disabled={confirm.isPending}
-                  className="text-xs px-2.5 py-1 text-accent-700 hover:bg-accent-50 rounded"
-                >
-                  ✓ 确认
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

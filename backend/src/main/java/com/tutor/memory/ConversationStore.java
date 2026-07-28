@@ -46,6 +46,23 @@ public class ConversationStore {
         return desc.reversed();
     }
 
+    /** 用户会话列表 (按最后活跃时间倒序) */
+    public List<java.util.Map<String, Object>> listConversations(long userId) {
+        return jdbc.query(
+                "SELECT c.id, c.last_active_at, " +
+                        "  (SELECT content FROM messages WHERE conversation_id=c.id AND role='user' ORDER BY id LIMIT 1) AS title, " +
+                        "  (SELECT count(*) FROM messages WHERE conversation_id=c.id) AS msg_count " +
+                        "FROM conversations c WHERE c.user_id=? ORDER BY c.last_active_at DESC NULLS LAST LIMIT 50",
+                (rs, i) -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", rs.getLong(1));
+                    m.put("last_active_at", rs.getTimestamp(2) == null ? null : rs.getTimestamp(2).toInstant().toString());
+                    m.put("title", rs.getString(3));
+                    m.put("msg_count", rs.getLong(4));
+                    return m;
+                }, userId);
+    }
+
     public record SummaryState(String summary, long uptoMsgId) {}
 
     public SummaryState summaryState(long conversationId) {
