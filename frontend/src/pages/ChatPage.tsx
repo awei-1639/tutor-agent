@@ -98,14 +98,31 @@ export default function ChatPage() {
     setStreaming(false); setStage(null);
   }
 
-  // 引用缓存
+  // 引用缓存: 累积所有 assistant 消息的 citations (key=sid → 最新版本)
   const lastCiteRef = useRef<Map<string, Citation> | null>(null);
   useEffect(() => {
     const m: Map<string, Citation> = new Map();
-    const last = [...messages].reverse().find(x => x.role === 'assistant');
-    last?.citations?.forEach(c => m.set(c.sid, c));
+    for (const msg of messages) {
+      if (msg.role === 'assistant') msg.citations?.forEach(c => m.set(c.sid, c));
+    }
     lastCiteRef.current = m;
   }, [messages]);
+
+  // 全局点击委托: dangerouslySetInnerHTML 渲染的 .cite-ref 不触发 React 合成事件
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      const ref = t.closest('.cite-ref') as HTMLElement | null;
+      if (!ref) return;
+      const sid = ref.dataset.sid;
+      if (!sid) return;
+      const cit = lastCiteRef.current?.get(sid);
+      if (cit) setPinnedCite(cit);
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
 
   return (
     <div className="h-full flex">
@@ -139,21 +156,14 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col"
            onMouseOver={e => {
              const t = e.target as HTMLElement;
-             if (t.classList.contains('cite-ref')) {
-               const sid = t.dataset.sid!;
-               const cit = lastCiteRef.current?.get(sid);
+             if (t.closest('.cite-ref')) {
+               const ref = t.closest('.cite-ref') as HTMLElement;
+               const sid = ref.dataset.sid;
+               const cit = sid ? lastCiteRef.current?.get(sid) : null;
                if (cit) { setHoverCite(cit); setTooltipPos({ x: e.clientX, y: e.clientY }); }
              }
            }}
-           onMouseMove={e => hoverCite && setTooltipPos({ x: e.clientX, y: e.clientY })}
-           onClick={e => {
-             const t = e.target as HTMLElement;
-             if (t.classList.contains('cite-ref')) {
-               const sid = t.dataset.sid!;
-               const cit = lastCiteRef.current?.get(sid);
-               if (cit) setPinnedCite(cit);
-             }
-           }}>
+           onMouseMove={e => hoverCite && setTooltipPos({ x: e.clientX, y: e.clientY })}>
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.length === 0 && (
