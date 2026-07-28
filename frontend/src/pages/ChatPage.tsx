@@ -3,7 +3,7 @@ import { api, streamChat } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 
 interface Citation { sid: string; node_id: string; type: string; title: string; text: string; }
-interface Msg { role: 'user' | 'assistant'; content: string; citations?: Citation[]; clarify?: string; trace_id?: string; }
+interface Msg { role: 'user' | 'assistant'; content: string; citations?: Citation[]; clarify?: string; trace_id?: string; locked?: boolean; }
 interface Conv { id: number; last_active_at: string | null; title: string | null; msg_count: number; }
 
 const STAGES = ['routing', 'retrieving', 'expert:planner', 'expert:resume', 'expert:career', 'aggregating'];
@@ -47,7 +47,10 @@ export default function ChatPage() {
     if (!text || streaming) return;
     setInput('');
     const userMsg: Msg = { role: 'user', content: text };
-    setMessages(m => [...m, userMsg]);
+    // 标记本次轮次: 同时 push user + assistant 占位, 后续 onToken 直接追加到占位
+    // 避免异步 setMessages 闭包竞态 (race: push 顺序错乱)
+    const assistantPlaceholder: Msg = { role: 'assistant', content: '' };
+    setMessages(m => [...m, userMsg, assistantPlaceholder]);
     setStreaming(true);
     setStage('routing');
 
@@ -57,11 +60,17 @@ export default function ChatPage() {
         onMeta: e => setConvId(e.conversation_id),
         onStage: e => setStage(e.phase),
         onToken: t => {
+          // 用 ref 索引避免闭包竞态: 始终找最后一条 assistant 累加
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant') last.content += t;
-            else copy.push({ role: 'assistant', content: t });
+            if (last && last.role === 'assistant' && !last.locked) {
+              last.content = (last.content ?? '') + t;
+            } else if (last && last.role === 'assistant' && last.locked) {
+              // onToken 在 done 后到达 → 丢弃
+            } else {
+              copy.push({ role: 'assistant', content: t });
+            }
             return copy;
           });
         },
@@ -83,7 +92,18 @@ export default function ChatPage() {
             return copy;
           });
         },
-        onDone: () => { setStreaming(false); setStage(null); api.listConversations().then(setConvs).catch(() => {}); },
+        onDone: () => {
+          // 标记 assistant 消息 locked: 后续到达的 onToken 不再追加 (避免重复)
+          setMessages(m => {
+            const copy = [...m];
+            const last = copy[copy.length - 1];
+            if (last && last.role === 'assistant') last.locked = true;
+            return copy;
+          });
+          setStreaming(false);
+          setStage(null);
+          api.listConversations().then(setConvs).catch(() => {});
+        },
         onError: msg => {
           setStreaming(false); setStage(null);
           setMessages(m => [...m, { role: 'assistant', content: '⚠️ ' + msg }]);
