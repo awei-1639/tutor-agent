@@ -42,7 +42,8 @@ export const api = {
   login: (name: string) => request<{ user_id: number; token: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ name }) }),
   // Profile
   getProfile: () => request<{ data: any; updated_at: string }>('/profile'),
-  confirmProfile: (payload: any) => request('/profile/confirm', { method: 'POST', body: JSON.stringify(payload) }),
+  confirmProfile: (field: string, accept: boolean) =>
+    request('/profile/confirm', { method: 'POST', body: JSON.stringify({ field, accept }) }),
   // Resume
   uploadResume: async (file: File) => {
     const form = new FormData();
@@ -57,7 +58,7 @@ export const api = {
   },
   // Notifications
   listNotifications: () => request<any[]>('/notifications'),
-  markRead: (id: number) => request(`/notifications/${id}/read`, { method: 'POST' }),
+  markRead: (id: number) => request(`/notifications/read`, { method: 'POST', body: JSON.stringify({ ids: [id] }) }),
   // Plans
   generatePlan: (body: { goal: string; currentSkills?: string; checkinHistory?: string }) =>
     request('/plans', { method: 'POST', body: JSON.stringify(body) }),

@@ -58,8 +58,11 @@ public class PlanService {
             // 写 plans
             long planId = jdbc.queryForObject(
                     "INSERT INTO plans (user_id, goal, week_start, week_end, status) " +
-                            "VALUES (?,?,?,?,'active') RETURNING id",
-                    Long.class, userId, goalSummary, monday, monday.plusDays(6));
+                            "VALUES (?,?,?::date,?::date,?) RETURNING id",
+                    Long.class, userId, goalSummary,
+                    java.sql.Date.valueOf(monday),
+                    java.sql.Date.valueOf(monday.plusDays(6)),
+                    "active");
 
             // 写 plan_tasks
             int taskCount = 0;
@@ -67,8 +70,8 @@ public class PlanService {
                 LocalDate day = monday.plusDays(taskCount % 7);
                 jdbc.update(
                         "INSERT INTO plan_tasks (plan_id, user_id, day, content, kind, related_node_ids, estimated_minutes) " +
-                                "VALUES (?,?,?,?,?,?,?)",
-                        planId, userId, day,
+                                "VALUES (?,?,?,?,?,?::text[],?)",
+                        planId, userId, java.sql.Date.valueOf(day),
                         dayNode.path("content").asText(""),
                         dayNode.path("kind").asText("learn"),
                         toTextArray(dayNode.path("related_skills")),
