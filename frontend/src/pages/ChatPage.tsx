@@ -266,7 +266,7 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      {/* 主区: 消息流 + 底部输入 */}
+      {/* 主区: 顶部固定 header + 消息流 + 底部输入 */}
       <div className="flex-1 flex flex-col min-w-0"
            onMouseMove={onMouseMove}
            onMouseLeave={() => setHoverCite(null)}
@@ -278,6 +278,19 @@ export default function ChatPage() {
                if (sid) { setPinnedSid(sid); setPanelOpen(true); }
              }
            }}>
+        {/* 顶部固定: 标题 + 上下滚动提示 */}
+        <header className="shrink-0 px-6 py-3 border-b border-ink-100 bg-white flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold text-ink-900">
+              {convId ? `对话 #${convId}` : '新对话'}
+            </div>
+            <div className="text-xs text-ink-500 mt-0.5">个人 AI 学习与求职教练 · 引用 [S#] 可溯源</div>
+          </div>
+          <div className="text-xs text-ink-500">
+            {streaming && stage && <span className="text-accent-600">● {stageLabel(stage)}</span>}
+          </div>
+        </header>
+
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.length === 0 && (
@@ -305,12 +318,6 @@ export default function ChatPage() {
                 </div>
               </div>
             ))}
-            {streaming && stage && (
-              <div className="text-xs text-ink-500 flex items-center gap-2 pl-2">
-                <span className="inline-block w-2 h-2 bg-accent-500 rounded-full animate-pulse" />
-                <span>{stageLabel(stage)}</span>
-              </div>
-            )}
           </div>
         </div>
 
