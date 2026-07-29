@@ -3,7 +3,7 @@ import { api, streamChat } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 
 interface Citation { sid: string; node_id: string; type: string; title: string; text: string; }
-interface Msg { role: 'user' | 'assistant'; content: string; citations?: Citation[]; clarify?: string; trace_id?: string; locked?: boolean; }
+interface Msg { role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; clarify?: string; trace_id?: string; locked?: boolean; }
 interface Conv { id: number; last_active_at: string | null; title: string | null; msg_count: number; }
 
 const STAGES = ['routing', 'retrieving', 'expert:planner', 'expert:resume', 'expert:career', 'aggregating'];
@@ -20,6 +20,9 @@ export default function ChatPage() {
   const [pinnedCite, setPinnedCite] = useState<Citation | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // 当前活跃 SSE 流 ID: dev mode StrictMode 双 effect/HMR 重连时,
+  // 多个 streamChat 并行 fetch, 仅第一个的事件能更新 UI。
+  const activeStreamId = useRef<string | null>(null);
   const userId = Number(localStorage.getItem('tutor_user_id') ?? 1);
 
   // 加载会话列表
@@ -47,53 +50,56 @@ export default function ChatPage() {
     if (!text || streaming) return;
     setInput('');
     const userMsg: Msg = { role: 'user', content: text };
-    // 标记本次轮次: 同时 push user + assistant 占位, 后续 onToken 直接追加到占位
-    // 避免异步 setMessages 闭包竞态 (race: push 顺序错乱)
-    const assistantPlaceholder: Msg = { role: 'assistant', content: '' };
+    const assistantPlaceholder: Msg = { role: 'assistant', content: '', tokens: '' };
     setMessages(m => [...m, userMsg, assistantPlaceholder]);
     setStreaming(true);
     setStage('routing');
 
+    // 流 ID: 检测 React StrictMode dev 模式双 effect + HMR 重连导致的重复流
+    // 仅第一个流的事件能更新 assistant 占位, 其后到达的事件丢弃
+    const myStreamId = Math.random().toString(36).slice(2);
+    activeStreamId.current = myStreamId;
+
     const ctrl = streamChat(
       { conversationId: convId, message: text },
       {
+        isActive: () => activeStreamId.current === myStreamId,
         onMeta: e => setConvId(e.conversation_id),
         onStage: e => setStage(e.phase),
         onToken: t => {
-          // 用 ref 索引避免闭包竞态: 始终找最后一条 assistant 累加
+          if (activeStreamId.current !== myStreamId) return; // 后续流丢弃, 防重复
+          assistantPlaceholder.tokens += t;
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
             if (last && last.role === 'assistant' && !last.locked) {
-              last.content = (last.content ?? '') + t;
-            } else if (last && last.role === 'assistant' && last.locked) {
-              // onToken 在 done 后到达 → 丢弃
-            } else {
-              copy.push({ role: 'assistant', content: t });
+              last.content = assistantPlaceholder.tokens ?? '';
             }
             return copy;
           });
         },
         onCitation: c => {
+          if (activeStreamId.current !== myStreamId) return;
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant') {
+            if (last && last.role === 'assistant' && !last.locked) {
               last.citations = [...(last.citations ?? []), c];
             }
             return copy;
           });
         },
         onClarify: q => {
+          if (activeStreamId.current !== myStreamId) return;
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant') last.clarify = q;
+            if (last && last.role === 'assistant' && !last.locked) last.clarify = q;
             return copy;
           });
         },
         onDone: () => {
-          // 标记 assistant 消息 locked: 后续到达的 onToken 不再追加 (避免重复)
+          if (activeStreamId.current !== myStreamId) return;
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
@@ -102,9 +108,11 @@ export default function ChatPage() {
           });
           setStreaming(false);
           setStage(null);
+          activeStreamId.current = null;
           api.listConversations().then(setConvs).catch(() => {});
         },
         onError: msg => {
+          if (activeStreamId.current !== myStreamId) return;
           setStreaming(false); setStage(null);
           setMessages(m => [...m, { role: 'assistant', content: '⚠️ ' + msg }]);
         },
@@ -115,6 +123,7 @@ export default function ChatPage() {
 
   function stop() {
     abortRef.current?.abort();
+    activeStreamId.current = null;
     setStreaming(false); setStage(null);
   }
 

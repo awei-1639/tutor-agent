@@ -85,6 +85,7 @@ export const api = {
 /**
  * SSE 流式 chat: 回调按事件类型分发
  * events: meta/citation/stage/token/done/error/clarify
+ * isActive: 可选回调, 每读一行检查; 返回 false 立即中断 (应对重复流竞争)
  */
 export function streamChat(
   body: { conversationId?: number | null; message: string },
@@ -96,6 +97,7 @@ export function streamChat(
     onClarify?: (question: string) => void;
     onDone?: (e: { message_id: number }) => void;
     onError?: (msg: string) => void;
+    isActive?: () => boolean;
   }
 ) {
   const ctrl = new AbortController();
@@ -118,6 +120,11 @@ export function streamChat(
     const dec = new TextDecoder();
     let buf = '';
     while (true) {
+      // 读之前先检查是否仍活跃 (StrictMode 双流竞争 / 新 send 中断旧流)
+      if (handlers.isActive && !handlers.isActive()) {
+        try { await reader.cancel(); } catch {}
+        return;
+      }
       const { value, done } = await reader.read();
       if (done) break;
       buf += dec.decode(value, { stream: true });
