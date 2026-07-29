@@ -6,7 +6,97 @@ interface Citation { sid: string; node_id: string; type: string; title: string; 
 interface Msg { role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; clarify?: string; trace_id?: string; locked?: boolean; }
 interface Conv { id: number; last_active_at: string | null; title: string | null; msg_count: number; }
 
-const STAGES = ['routing', 'retrieving', 'expert:planner', 'expert:resume', 'expert:career', 'aggregating'];
+// hover 浮卡 (Qwen 风格: 黑底卡片 + 标题 + node_id + text 前 200 字 + 跳转)
+function CiteHover({ cite, x, y }: { cite: Citation; x: number; y: number }) {
+  const handleOpen = () => {
+    const url = cite.node_id.startsWith('res:')
+      ? `https://www.google.com/search?q=${encodeURIComponent(cite.title)}`
+      : `https://www.google.com/search?q=${encodeURIComponent(cite.node_id + ' ' + cite.title)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+  return (
+    <div className="fixed z-50 max-w-md bg-ink-900 text-ink-50 text-xs px-3.5 py-3 rounded-lg shadow-lift pointer-events-auto"
+         style={{ left: x + 12, top: y + 12 }}>
+      <div className="font-semibold mb-1.5 flex items-center gap-2">
+        <span className="text-accent-400">{cite.sid}</span>
+        <span>{cite.title}</span>
+      </div>
+      <div className="text-ink-300 text-[10px] mb-1.5">{cite.node_id}</div>
+      <div className="text-ink-200 whitespace-pre-wrap leading-relaxed mb-2">
+        {cite.text?.slice(0, 200)}…
+      </div>
+      <button onClick={handleOpen}
+              className="text-accent-400 hover:text-accent-300 flex items-center gap-1">
+        <span>↗</span><span>查看来源</span>
+      </button>
+    </div>
+  );
+}
+
+// 右侧溯源面板 (Qwen 风格: 列表 + 详情, 选中高亮)
+function ReferencePanel({ citations, pinnedSid, onPin, onClose }: {
+  citations: Citation[];
+  pinnedSid: string | null;
+  onPin: (sid: string) => void;
+  onClose: () => void;
+}) {
+  const pinned = citations.find(c => c.sid === pinnedSid) ?? citations[0];
+  return (
+    <aside className="w-80 border-l border-ink-100 bg-ink-50/50 flex flex-col">
+      <div className="px-4 py-3 border-b border-ink-100 flex items-center justify-between bg-white">
+        <div className="text-sm font-semibold text-ink-900">参考材料</div>
+        <button onClick={onClose} className="text-xs text-ink-500 hover:text-ink-900">关闭</button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {citations.length === 0 && <div className="text-xs text-ink-500 py-4 text-center">本次回答未引用材料</div>}
+        {citations.map(c => (
+          <button key={c.sid} onClick={() => onPin(c.sid)}
+                  className={`w-full text-left p-2.5 rounded-md border transition ${
+                    pinnedSid === c.sid ? 'bg-white border-accent-500 shadow-soft' : 'bg-white border-ink-100 hover:border-ink-300'
+                  }`}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[10px] font-medium text-accent-600">{c.sid}</span>
+              <span className="text-xs font-medium text-ink-900 truncate">{c.title}</span>
+            </div>
+            <div className="text-[10px] text-ink-500 truncate">{c.node_id}</div>
+          </button>
+        ))}
+      </div>
+      {pinned && (
+        <div className="border-t border-ink-100 bg-white p-4 max-h-72 overflow-y-auto">
+          <div className="text-xs text-ink-500 mb-1">详情</div>
+          <div className="text-sm font-semibold text-ink-900 mb-1">{pinned.title}</div>
+          <div className="text-xs text-ink-500 mb-3">{pinned.node_id} · {pinned.type}</div>
+          <div className="text-xs text-ink-700 whitespace-pre-wrap leading-relaxed">{pinned.text}</div>
+          <button onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(pinned.node_id + ' ' + pinned.title)}`, '_blank')}
+                  className="mt-3 text-xs text-accent-600 hover:text-accent-700 flex items-center gap-1">
+            <span>↗</span><span>查看来源</span>
+          </button>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+// 对话分组 (Qwen 风格: 今天 / 昨天 / 过去 7 天 / 过去 30 天)
+function groupConvs(convs: Conv[]): { label: string; items: Conv[] }[] {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterday = today - 86400000;
+  const week = today - 7 * 86400000;
+  const month = today - 30 * 86400000;
+  const groups = { 今天: [] as Conv[], 昨天: [] as Conv[], '过去 7 天': [] as Conv[], '过去 30 天': [] as Conv[] };
+  for (const c of convs) {
+    const t = c.last_active_at ? new Date(c.last_active_at).getTime() : 0;
+    if (t >= today) groups.今天.push(c);
+    else if (t >= yesterday) groups.昨天.push(c);
+    else if (t >= week) groups['过去 7 天'].push(c);
+    else if (t >= month) groups['过去 30 天'].push(c);
+  }
+  return (['今天', '昨天', '过去 7 天', '过去 30 天'] as const)
+    .filter(k => groups[k].length > 0)
+    .map(k => ({ label: k, items: groups[k] }));
+}
 
 export default function ChatPage() {
   const [convId, setConvId] = useState<number | null>(null);
@@ -14,36 +104,31 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
-  const [hoverCite, setHoverCite] = useState<Citation | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [convs, setConvs] = useState<Conv[]>([]);
-  const [pinnedCite, setPinnedCite] = useState<Citation | null>(null);
+  const [hoverCite, setHoverCite] = useState<{ c: Citation; x: number; y: number } | null>(null);
+  const [pinnedSid, setPinnedSid] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // 当前活跃 SSE 流 ID: dev mode StrictMode 双 effect/HMR 重连时,
-  // 多个 streamChat 并行 fetch, 仅第一个的事件能更新 UI。
   const activeStreamId = useRef<string | null>(null);
-  const userId = Number(localStorage.getItem('tutor_user_id') ?? 1);
 
-  // 加载会话列表
-  useEffect(() => {
-    api.listConversations().then(setConvs).catch(() => {});
-  }, [convId]);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }); }, [messages, stage]);
 
-  // 加载选中会话历史 (历史消息只恢复文本, 引用需重新生成才有溯源数据)
+  useEffect(() => { api.listConversations().then(setConvs).catch(() => {}); }, [convId]);
+
   async function loadConv(id: number) {
     const msgs = await api.getMessages(id);
     setMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
     setConvId(id);
+    setPanelOpen(false); setPinnedSid(null);
   }
 
   function newChat() {
     setConvId(null);
     setMessages([]);
     setStage(null);
+    setPanelOpen(false); setPinnedSid(null);
   }
-
-  useEffect(() => { scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }); }, [messages, stage]);
 
   function send() {
     const text = input.trim();
@@ -54,9 +139,8 @@ export default function ChatPage() {
     setMessages(m => [...m, userMsg, assistantPlaceholder]);
     setStreaming(true);
     setStage('routing');
+    setPanelOpen(false); setPinnedSid(null);
 
-    // 流 ID: 检测 React StrictMode dev 模式双 effect + HMR 重连导致的重复流
-    // 仅第一个流的事件能更新 assistant 占位, 其后到达的事件丢弃
     const myStreamId = Math.random().toString(36).slice(2);
     activeStreamId.current = myStreamId;
 
@@ -67,8 +151,8 @@ export default function ChatPage() {
         onMeta: e => setConvId(e.conversation_id),
         onStage: e => setStage(e.phase),
         onToken: t => {
-          if (activeStreamId.current !== myStreamId) return; // 后续流丢弃, 防重复
-          assistantPlaceholder.tokens += t;
+          if (activeStreamId.current !== myStreamId) return;
+          assistantPlaceholder.tokens = (assistantPlaceholder.tokens ?? '') + t;
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
@@ -106,9 +190,17 @@ export default function ChatPage() {
             if (last && last.role === 'assistant') last.locked = true;
             return copy;
           });
-          setStreaming(false);
-          setStage(null);
+          setStreaming(false); setStage(null);
           activeStreamId.current = null;
+          // 引用数量 > 0 自动展开右侧面板
+          setMessages(m => {
+            const last = [...m].reverse().find(x => x.role === 'assistant');
+            if (last && last.citations && last.citations.length > 0) {
+              setPanelOpen(true);
+              setPinnedSid(last.citations[0].sid);
+            }
+            return m;
+          });
           api.listConversations().then(setConvs).catch(() => {});
         },
         onError: msg => {
@@ -127,72 +219,65 @@ export default function ChatPage() {
     setStreaming(false); setStage(null);
   }
 
-  // 引用缓存: 累积所有 assistant 消息的 citations (key=sid → 最新版本)
-  const lastCiteRef = useRef<Map<string, Citation> | null>(null);
-  useEffect(() => {
-    const m: Map<string, Citation> = new Map();
-    for (const msg of messages) {
-      if (msg.role === 'assistant') msg.citations?.forEach(c => m.set(c.sid, c));
-    }
-    lastCiteRef.current = m;
-  }, [messages]);
+  // 累积所有 assistant 的 citations (跨多轮)
+  const allCitations: Citation[] = (() => {
+    const m: Record<string, Citation> = {};
+    for (const msg of messages) if (msg.role === 'assistant') msg.citations?.forEach(c => m[c.sid] = c);
+    return Object.values(m);
+  })();
 
-  // 全局点击委托: dangerouslySetInnerHTML 渲染的 .cite-ref 不触发 React 合成事件
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      const t = e.target as HTMLElement | null;
-      if (!t) return;
-      const ref = t.closest('.cite-ref') as HTMLElement | null;
-      if (!ref) return;
+  function onMouseMove(e: React.MouseEvent) {
+    const t = e.target as HTMLElement;
+    const ref = t.closest('.cite-ref') as HTMLElement | null;
+    if (ref) {
       const sid = ref.dataset.sid;
-      if (!sid) return;
-      const cit = lastCiteRef.current?.get(sid);
-      if (cit) setPinnedCite(cit);
+      const c = allCitations.find(x => x.sid === sid);
+      if (c) setHoverCite({ c, x: e.clientX, y: e.clientY });
+    } else {
+      setHoverCite(null);
     }
-    document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
-  }, []);
+  }
 
   return (
     <div className="h-full flex">
-      {/* 左侧会话列表 */}
-      <aside className="w-56 border-r border-ink-100 bg-white flex flex-col">
-        <div className="p-3 border-b border-ink-100">
-          <button onClick={newChat} className="w-full px-3 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-md text-sm font-medium">
-            + 新对话
+      {/* 左侧会话列表 (Qwen 风格: 分组 + 时间) */}
+      <aside className="w-64 border-r border-ink-100 bg-white flex flex-col">
+        <div className="px-4 py-4 border-b border-ink-100">
+          <button onClick={newChat} className="w-full px-3 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-md text-sm font-medium flex items-center justify-center gap-1.5">
+            <span>+</span><span>新建对话</span>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {convs.length === 0 && <div className="text-xs text-ink-500 px-2 py-3">还没有会话</div>}
-          {convs.map(c => (
-            <button
-              key={c.id}
-              onClick={() => loadConv(c.id)}
-              className={`w-full text-left px-2.5 py-2 rounded-md text-sm transition ${
-                convId === c.id ? 'bg-accent-50 text-accent-700' : 'text-ink-700 hover:bg-ink-50'
-              }`}
-            >
-              <div className="truncate">{c.title || '(无标题)'}</div>
-              <div className="text-[10px] text-ink-500 mt-0.5">
-                {c.msg_count} 条 · {c.last_active_at ? new Date(c.last_active_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }) : ''}
+        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-3">
+          {groupConvs(convs).map(g => (
+            <div key={g.label}>
+              <div className="px-2 py-1 text-[10px] font-medium text-ink-500 uppercase tracking-wide">{g.label}</div>
+              <div className="space-y-0.5">
+                {g.items.map(c => (
+                  <button key={c.id} onClick={() => loadConv(c.id)}
+                          className={`w-full text-left px-2.5 py-2 rounded-md text-sm transition ${
+                            convId === c.id ? 'bg-accent-50 text-accent-700 font-medium' : 'text-ink-700 hover:bg-ink-50'
+                          }`}>
+                    <div className="truncate text-xs">{c.title || '(无标题)'}</div>
+                  </button>
+                ))}
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </aside>
 
-      {/* 主区 */}
-      <div className="flex-1 flex flex-col"
-           onMouseOver={e => {
+      {/* 主区: 消息流 + 底部输入 */}
+      <div className="flex-1 flex flex-col min-w-0"
+           onMouseMove={onMouseMove}
+           onMouseLeave={() => setHoverCite(null)}
+           onClick={e => {
              const t = e.target as HTMLElement;
-             if (t.closest('.cite-ref')) {
-               const ref = t.closest('.cite-ref') as HTMLElement;
+             const ref = t.closest('.cite-ref') as HTMLElement | null;
+             if (ref) {
                const sid = ref.dataset.sid;
-               const cit = sid ? lastCiteRef.current?.get(sid) : null;
-               if (cit) { setHoverCite(cit); setTooltipPos({ x: e.clientX, y: e.clientY }); }
+               if (sid) { setPinnedSid(sid); setPanelOpen(true); }
              }
-           }}
-           onMouseMove={e => hoverCite && setTooltipPos({ x: e.clientX, y: e.clientY })}>
+           }}>
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.length === 0 && (
@@ -215,16 +300,6 @@ export default function ChatPage() {
                   {m.clarify && (
                     <div className="mt-2 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">
                       ❓ 追问: {m.clarify}
-                    </div>
-                  )}
-                  {m.citations && m.citations.length > 0 && (
-                    <div className="mt-3 pt-2 border-t border-ink-100 flex flex-wrap gap-1">
-                      {m.citations.map(c => (
-                        <span key={c.sid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-ink-50 text-ink-700 text-xs rounded">
-                          <span className="text-accent-600 font-medium">{c.sid}</span>
-                          <span>{c.title?.slice(0, 18) || c.node_id}</span>
-                        </span>
-                      ))}
                     </div>
                   )}
                 </div>
@@ -257,50 +332,11 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {hoverCite && (
-          <div
-            className="fixed z-50 max-w-md bg-ink-900 text-ink-50 text-xs px-3 py-2 rounded shadow-lift pointer-events-none"
-            style={{ left: tooltipPos.x + 12, top: tooltipPos.y + 12 }}
-          >
-            <div className="font-medium mb-1">{hoverCite.sid} · {hoverCite.title}</div>
-            <div className="text-ink-200 whitespace-pre-wrap">{hoverCite.text?.slice(0, 240)}…</div>
-          </div>
-        )}
-
-        {/* 持久引用详情面板 (右侧) */}
-        {pinnedCite && (
-          <aside className="w-72 border-l border-ink-100 bg-white flex flex-col">
-            <div className="px-4 py-3 border-b border-ink-100 flex items-center justify-between">
-              <div className="text-sm font-semibold text-ink-900">参考材料</div>
-              <button onClick={() => setPinnedCite(null)} className="text-xs text-ink-500 hover:text-ink-900">关闭</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {lastCiteRef.current && [...lastCiteRef.current.values()].map(c => (
-                <button
-                  key={c.sid}
-                  onClick={() => setPinnedCite(c)}
-                  className={`w-full text-left p-3 rounded-md border transition ${
-                    pinnedCite?.sid === c.sid ? 'bg-accent-50 border-accent-500' : 'bg-white border-ink-100 hover:border-ink-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-accent-700">{c.sid}</span>
-                    <span className="text-sm font-medium text-ink-900 truncate">{c.title || c.node_id}</span>
-                  </div>
-                  <div className="text-[10px] text-ink-500">{c.node_id}</div>
-                  <div className="text-xs text-ink-700 mt-1.5 line-clamp-3">{c.text?.slice(0, 200)}</div>
-                </button>
-              ))}
-            </div>
-            <div className="px-4 py-3 border-t border-ink-100">
-              <div className="text-xs text-ink-500 mb-1">详情</div>
-              <div className="text-sm font-medium text-ink-900">{pinnedCite.title || pinnedCite.node_id}</div>
-              <div className="text-xs text-ink-500 mt-1">{pinnedCite.node_id} · {pinnedCite.type}</div>
-              <div className="text-sm text-ink-700 mt-3 whitespace-pre-wrap">{pinnedCite.text}</div>
-            </div>
-          </aside>
-        )}
+        {hoverCite && <CiteHover cite={hoverCite.c} x={hoverCite.x} y={hoverCite.y} />}
       </div>
+
+      {/* 右侧参考材料面板 (Qwen 风格: 列表 + 详情) */}
+      {panelOpen && <ReferencePanel citations={allCitations} pinnedSid={pinnedSid} onPin={setPinnedSid} onClose={() => setPanelOpen(false)} />}
     </div>
   );
 }
