@@ -136,7 +136,7 @@ export default function ChatPage() {
     if (!text || streaming) return;
     setInput('');
     const userMsg: Msg = { role: 'user', content: text };
-    const assistantPlaceholder: Msg = { role: 'assistant', content: '', tokens: '' };
+    const assistantPlaceholder: Msg & { citations?: Citation[]; tokens?: string; clarify?: string } = { role: 'assistant', content: '', tokens: '' };
     setMessages(m => [...m, userMsg, assistantPlaceholder]);
     setStreaming(true);
     setStage('routing');
@@ -165,17 +165,20 @@ export default function ChatPage() {
         },
         onCitation: c => {
           if (activeStreamId.current !== myStreamId) return;
+          // 累积到 placeholder.citations (避免 setMessages 闭包 m 竞态)
+          assistantPlaceholder.citations = [...(assistantPlaceholder.citations ?? []), c];
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
             if (last && last.role === 'assistant' && !last.locked) {
-              last.citations = [...(last.citations ?? []), c];
+              last.citations = assistantPlaceholder.citations;
             }
             return copy;
           });
         },
         onClarify: q => {
           if (activeStreamId.current !== myStreamId) return;
+          assistantPlaceholder.clarify = q;
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
