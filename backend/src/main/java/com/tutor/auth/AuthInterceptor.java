@@ -22,7 +22,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler) {
+    public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler) throws Exception {
         String path = req.getRequestURI();
         if (path.startsWith("/internal") || path.startsWith("/auth")) {
             req.setAttribute(USER_ID_ATTR, DEV_USER_ID);
@@ -30,14 +30,26 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         String auth = req.getHeader("Authorization");
-        long userId = DEV_USER_ID;
-        if (auth != null && auth.startsWith("Bearer ")) {
-            Long uid = jwt.parse(auth.substring(7));
-            if (uid != null) userId = uid;
+        // 业务端点必须带 token, 没带 / 格式错 / 解析失败都返 401
+        // 不能再 fallback 到 DEV_USER_ID=1 (会泄露其他用户数据)
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            sendUnauthorized(res, "missing or invalid Authorization header");
+            return false;
         }
-        req.setAttribute(USER_ID_ATTR, userId);
-        AuthContext.set(userId);
+        Long uid = jwt.parse(auth.substring(7));
+        if (uid == null) {
+            sendUnauthorized(res, "invalid or expired token");
+            return false;
+        }
+        req.setAttribute(USER_ID_ATTR, uid);
+        AuthContext.set(uid);
         return true;
+    }
+
+    private void sendUnauthorized(HttpServletResponse res, String msg) throws java.io.IOException {
+        res.setStatus(401);
+        res.setContentType("application/json");
+        res.getWriter().write("{\"error\":\"" + msg + "\"}");
     }
 
     @Override

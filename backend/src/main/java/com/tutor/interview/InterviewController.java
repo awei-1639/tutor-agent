@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,6 +39,8 @@ public class InterviewController {
 
     @GetMapping("/report/{sessionId}")
     public InterviewSession.Report report(@PathVariable String sessionId) {
-        return sessions.report(sessionId);
+        InterviewSession.Report r = sessions.report(sessionId);
+        // 不存在 session 时返空 Report (而非 null → 前端 JSON 解析崩)
+        return r == null ? new InterviewSession.Report(0, 0.0, List.of(), List.of(), List.of()) : r;
     }
 }

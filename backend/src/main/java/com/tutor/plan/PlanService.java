@@ -88,6 +88,14 @@ public class PlanService {
 
     /** 用户打卡 */
     public Checkin checkin(long taskId, long userId, String status, String feedback) {
+        // 先校验 task 存在 (FK 违反会转 500, 这里预检查返 404)
+        Integer exists = jdbc.queryForObject(
+                "SELECT count(*) FROM plan_tasks WHERE id=? AND user_id=?",
+                Integer.class, taskId, userId);
+        if (exists == null || exists == 0) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "task 不存在: id=" + taskId);
+        }
         long id = jdbc.queryForObject(
                 "INSERT INTO checkins (task_id, user_id, status, feedback) VALUES (?,?,?,?) RETURNING id",
                 Long.class, taskId, userId, status, feedback);
