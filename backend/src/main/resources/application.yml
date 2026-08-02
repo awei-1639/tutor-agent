@@ -15,6 +15,16 @@ spring:
   flyway:
     enabled: true
 
+tutor:
+  auth:
+    # 本地演示便利入口；生产 profile 会强制关闭。
+    dev-login-enabled: ${DEV_LOGIN_ENABLED:true}
+  jwt:
+    secret: ${JWT_SECRET:tutor_dev_secret_min_32bytes_for_hs256_xx}
+  internal:
+    # evals 使用的检索/路由/手动推送端点；生产 profile 会强制关闭。
+    enabled: ${INTERNAL_ENDPOINTS_ENABLED:true}
+
 security:
   # 简历原文与PII映射的对称加密密钥 (pgcrypto pgp_sym_encrypt); 缺失时拒绝上传
   resume-enc-key: ${RESUME_ENC_KEY:}

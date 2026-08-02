@@ -25,11 +25,14 @@ public class ConversationStore {
 
     public long ensureConversation(Long conversationId, long userId) {
         if (conversationId != null) {
-            Integer n = jdbc.queryForObject("SELECT count(*) FROM conversations WHERE id=?", Integer.class, conversationId);
+            Integer n = jdbc.queryForObject(
+                    "SELECT count(*) FROM conversations WHERE id=? AND user_id=?",
+                    Integer.class, conversationId, userId);
             if (n != null && n > 0) {
-                jdbc.update("UPDATE conversations SET last_active_at=now() WHERE id=?", conversationId);
+                jdbc.update("UPDATE conversations SET last_active_at=now() WHERE id=? AND user_id=?", conversationId, userId);
                 return conversationId;
             }
+            throw new IllegalStateException("会话不存在或无访问权限");
         }
         jdbc.update("INSERT INTO users (id) VALUES (?) ON CONFLICT DO NOTHING", userId);
         return jdbc.queryForObject(
@@ -56,6 +59,28 @@ public class ConversationStore {
                     return m;
                 }, conversationId, limit);
         return desc.reversed();
+    }
+
+    /** 对外读取必须验证会话归属，防止通过递增 ID 枚举其他用户的消息。 */
+    public List<Msg> recentMessagesForUser(long conversationId, long userId, int limit) {
+        List<Msg> desc = jdbc.query("""
+                SELECT m.role, m.content, m.citations
+                FROM messages m JOIN conversations c ON c.id=m.conversation_id
+                WHERE m.conversation_id=? AND c.user_id=?
+                ORDER BY m.id DESC LIMIT ?
+                """, (rs, i) -> {
+                    Msg m = new Msg(rs.getString(1), rs.getString(2));
+                    m.citations = rs.getString(3);
+                    return m;
+                }, conversationId, userId, limit);
+        return desc.reversed();
+    }
+
+    public boolean belongsToUser(long conversationId, long userId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT count(*) FROM conversations WHERE id=? AND user_id=?",
+                Integer.class, conversationId, userId);
+        return count != null && count > 0;
     }
 
     /** 用户会话列表 (按最后活跃时间倒序) */

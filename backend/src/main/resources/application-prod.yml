@@ -1,0 +1,24 @@
+# 生产环境必须显式提供所有敏感配置；缺失任意变量时应用启动失败。
+spring:
+  datasource:
+    password: ${POSTGRES_PASSWORD}
+
+neo4j:
+  password: ${NEO4J_PASSWORD}
+
+security:
+  resume-enc-key: ${RESUME_ENC_KEY}
+
+tutor:
+  auth:
+    dev-login-enabled: false
+  internal:
+    enabled: false
+  jwt:
+    secret: ${JWT_SECRET}
+
+llm:
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY}
+  siliconflow:
+    api-key: ${SILICONFLOW_API_KEY}

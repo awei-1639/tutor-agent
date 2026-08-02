@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,9 +21,12 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthService auth;
+    private final boolean devLoginEnabled;
 
-    public AuthController(AuthService auth) {
+    public AuthController(AuthService auth,
+                          @Value("${tutor.auth.dev-login-enabled:true}") boolean devLoginEnabled) {
         this.auth = auth;
+        this.devLoginEnabled = devLoginEnabled;
     }
 
     public record RegisterRequest(
@@ -60,6 +64,9 @@ public class AuthController {
     /** Dev 兼容: 单字段 name 登录, 自动创建 user_id=1 占位 */
     @PostMapping("/dev-login")
     public Map<String, Object> devLogin(@Valid @RequestBody DevLoginRequest req) {
+        if (!devLoginEnabled) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "endpoint not available");
+        }
         try {
             AuthService.AuthResult r = auth.register("dev@" + req.name() + ".local",
                     "devpass", req.name());

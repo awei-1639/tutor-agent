@@ -2,13 +2,14 @@ package com.tutor.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
  * JWT 拦截器 (Phase 4 V4 4.x): 解析 Authorization Bearer → 注入 userId。
  * 未带 token → 设为 DEV_USER_ID=1 (向后兼容 dev)。
- * 内部 /internal/* 与 /auth/* 端点跳过 (评估/登录接口免认证)。
+ * /auth/* 端点跳过；/internal/* 仅允许本地评估环境启用。
  */
 @Component
 public class AuthInterceptor implements HandlerInterceptor {
@@ -16,15 +17,27 @@ public class AuthInterceptor implements HandlerInterceptor {
     public static final long DEV_USER_ID = 1L;
 
     private final JwtService jwt;
+    private final boolean internalEndpointsEnabled;
 
-    public AuthInterceptor(JwtService jwt) {
+    public AuthInterceptor(JwtService jwt,
+                           @Value("${tutor.internal.enabled:true}") boolean internalEndpointsEnabled) {
         this.jwt = jwt;
+        this.internalEndpointsEnabled = internalEndpointsEnabled;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler) throws Exception {
         String path = req.getRequestURI();
-        if (path.startsWith("/internal") || path.startsWith("/auth")) {
+        if (path.startsWith("/internal")) {
+            if (!internalEndpointsEnabled) {
+                res.setStatus(404);
+                return false;
+            }
+            req.setAttribute(USER_ID_ATTR, DEV_USER_ID);
+            AuthContext.set(DEV_USER_ID);
+            return true;
+        }
+        if (path.startsWith("/auth")) {
             req.setAttribute(USER_ID_ATTR, DEV_USER_ID);
             AuthContext.set(DEV_USER_ID);
             return true;
