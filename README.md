@@ -59,6 +59,8 @@ npm run dev
 
 前端开发服务器通过 `/api` 代理到 `8180`。首次使用可以注册账号，也可以在本地启用的开发登录入口快速体验。
 
+容器或反向代理可使用以下无需 JWT 的探针：`GET /healthz` 仅检查进程存活；`GET /readyz` 额外检查 PostgreSQL 与 Neo4j，任一依赖不可用时返回 `503`。
+
 ## 验证
 
 ```powershell

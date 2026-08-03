@@ -31,6 +31,15 @@ class AuthInterceptorTest {
     }
 
     @Test
+    void publicHealthEndpointDoesNotRequireToken() throws Exception {
+        HttpServletRequest request = request("/readyz", null);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
+        verifyNoInteractions(jwt);
+    }
+
+    @Test
     void protectedEndpointRejectsMissingToken() throws Exception {
         HttpServletRequest request = request("/profile", null);
         HttpServletResponse response = responseWithWriter();

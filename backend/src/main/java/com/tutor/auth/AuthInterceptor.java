@@ -37,7 +37,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             AuthContext.set(DEV_USER_ID);
             return true;
         }
-        if (path.startsWith("/auth")) {
+        if (path.startsWith("/auth") || path.equals("/healthz") || path.equals("/readyz")) {
             req.setAttribute(USER_ID_ATTR, DEV_USER_ID);
             AuthContext.set(DEV_USER_ID);
             return true;
