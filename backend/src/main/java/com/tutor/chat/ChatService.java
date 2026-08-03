@@ -111,11 +111,13 @@ public class ChatService {
     public void turn(Long conversationId, String question, TurnEvents events) {
         String traceId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         try {
-            long convId = conversations.ensureConversation(conversationId, currentUserId());
+            // LLM 回调和后台任务会切换线程；在请求线程中一次性固定身份，不能在回调中再读 ThreadLocal。
+            long userId = currentUserId();
+            long convId = conversations.ensureConversation(conversationId, userId);
             events.onMeta(convId, traceId);
             List<ConversationStore.Msg> history = conversations.recentMessages(convId, HISTORY_TURNS * 2);
             conversations.appendMessage(convId, "user", question, null, null, traceId, question.length() / 2);
-            Map<String, Object> profile = profileService.snapshot(currentUserId());
+            Map<String, Object> profile = profileService.snapshot(userId);
 
             // --- router 节点 ---
             events.onStage("routing");
@@ -140,13 +142,13 @@ public class ChatService {
 
             List<String> expertNames = ExpertRunner.expertsFor(intent);
             if (expertNames.isEmpty()) {
-                directStream(convId, question, profile, evidences, history, intent, traceId, events);
+                directStream(convId, userId, question, profile, evidences, history, intent, traceId, events);
                 return;
             }
 
             // --- 专家扇出节点 (简报=画像+结构化简历+证据+问题, 不带闲聊历史) ---
             String profileText = profileSection.render(new TurnContextView(profile, List.of()), tokenBudget);
-            String resumeText = resumeService.latestStructuredCompact(currentUserId(), 900); // 约300 token (实现设计3.4)
+            String resumeText = resumeService.latestStructuredCompact(userId, 900); // 约300 token (实现设计3.4)
             String briefing = expertRunner.briefing(profileText + '\n' + resumeText, evidences, question);
             for (String name : expertNames) events.onStage("expert:" + name);
             t0 = System.currentTimeMillis();
@@ -156,7 +158,7 @@ public class ChatService {
 
             if (outputs.isEmpty()) { // 降级矩阵: 全部缺席 → 回落直答
                 log.warn("全部专家缺席, 回落直答 trace={}", traceId);
-                directStream(convId, question, profile, evidences, history, intent, traceId, events);
+                directStream(convId, userId, question, profile, evidences, history, intent, traceId, events);
                 return;
             }
 
@@ -175,9 +177,9 @@ public class ChatService {
                             clarified ? "clarify" : intent.name().toLowerCase(),
                             citationsJson(fullText, finalEvidences), traceId, fullText.length() / 2);
                     events.onDone(msgId, fullText);
-                    background.submit(() -> profileService.updateFromMessage(currentUserId(), question, traceId));
+                    background.submit(() -> profileService.updateFromMessage(userId, question, traceId));
                     background.submit(() -> summaryFolder.maybeFold(convId, traceId));
-                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, currentUserId(), traceId));
+                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, userId, traceId));
                     background.submit(() -> citationGuard.guard(fullText, finalEvidences, traceId));
                 }
 
@@ -193,7 +195,7 @@ public class ChatService {
     }
 
     /** 直答路径: chat/out_of_scope/专家全缺席回落 */
-    private void directStream(long convId, String question, Map<String, Object> profile,
+    private void directStream(long convId, long userId, String question, Map<String, Object> profile,
                               List<Evidence> evidences, List<ConversationStore.Msg> history,
                               Intent intent, String traceId, TurnEvents events) {
         List<ChatMessage> messages = new ArrayList<>();
@@ -218,9 +220,9 @@ public class ChatService {
                 long msgId = conversations.appendMessage(convId, "assistant", text,
                         intent.name().toLowerCase(), citationsJson(text, finalEvidences), traceId, text.length() / 2);
                 events.onDone(msgId, text);
-                background.submit(() -> profileService.updateFromMessage(currentUserId(), question, traceId));
+                background.submit(() -> profileService.updateFromMessage(userId, question, traceId));
                 background.submit(() -> summaryFolder.maybeFold(convId, traceId));
-                    background.submit(() -> episodeSummarizer.maybeSummarize(convId, currentUserId(), traceId));
+                background.submit(() -> episodeSummarizer.maybeSummarize(convId, userId, traceId));
                     background.submit(() -> citationGuard.guard(text, finalEvidences, traceId));
             }
 
