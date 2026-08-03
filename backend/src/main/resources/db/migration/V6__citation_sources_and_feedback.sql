@@ -9,7 +9,7 @@ ALTER TABLE kg_chunks ADD COLUMN IF NOT EXISTS retrieved_at TIMESTAMPTZ;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS trace_id VARCHAR(64);
 CREATE INDEX IF NOT EXISTS idx_messages_trace ON messages(trace_id) WHERE trace_id IS NOT NULL;
 
-CREATE TABLE message_feedback (
+CREATE TABLE IF NOT EXISTS message_feedback (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id),
   conversation_id BIGINT NOT NULL REFERENCES conversations(id),
@@ -22,4 +22,4 @@ CREATE TABLE message_feedback (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (user_id, message_id)
 );
-CREATE INDEX idx_message_feedback_trace ON message_feedback(trace_id) WHERE trace_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_message_feedback_trace ON message_feedback(trace_id) WHERE trace_id IS NOT NULL;
