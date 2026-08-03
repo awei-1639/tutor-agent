@@ -144,7 +144,11 @@ public class PushService {
                         Map.entry("coverage", Math.round(r.coverage() * 100) / 100.0),
                         Map.entry("matched", r.matched()), Map.entry("speedup", r.speedup()),
                         Map.entry("missing", r.missing())));
-                jdbc.update("INSERT INTO push_tasks (user_id, job_id, status) VALUES (?,?,'sent')", uid, c.id());
+                int inserted = jdbc.update("""
+                        INSERT INTO push_tasks (user_id, job_id, status) VALUES (?,?,'sent')
+                        ON CONFLICT (user_id, job_id) WHERE job_id IS NOT NULL DO NOTHING
+                        """, uid, c.id());
+                if (inserted == 0) continue; // 与定时/手动并发时，已由另一轮推送成功领取。
                 jdbc.update("INSERT INTO notifications (user_id, type, payload) VALUES (?,'job_push',?::jsonb)", uid, payload);
                 pushed.add(Map.of("title", c.title(), "score", r.score()));
             } catch (Exception ex) {
