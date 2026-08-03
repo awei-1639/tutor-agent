@@ -35,6 +35,9 @@ export default function ProfilePage() {
   const { data, isLoading } = useQuery({ queryKey: ['profile'], queryFn: () => api.getProfile() });
   const { data: events = [] } = useQuery({ queryKey: ['profile-events'], queryFn: () => api.getProfileEvents() });
   const { data: gaps = [] } = useQuery({ queryKey: ['career-gaps'], queryFn: () => api.getCareerGaps() });
+  const addGapTasks = useMutation({
+    mutationFn: (gap: CareerGapCard) => api.addGapTasks(gap.jobId, [...gap.speedup, ...gap.missing]),
+  });
   const confirm = useMutation({
     mutationFn: (vars: { field: string; accept: boolean }) => api.confirmProfile(vars.field, vars.accept),
     onSuccess: () => {
@@ -108,6 +111,11 @@ export default function ProfilePage() {
               <GapLine label="已具备" values={gap.matched} tone="text-emerald-700" />
               <GapLine label="可速成" values={gap.speedup} tone="text-accent-700" />
               <GapLine label="待补齐" values={gap.missing} tone="text-amber-700" />
+              {[...gap.speedup, ...gap.missing].length > 0 && <button
+                disabled={addGapTasks.isPending}
+                onClick={() => addGapTasks.mutate(gap)}
+                className="mt-3 text-xs px-2.5 py-1.5 rounded bg-accent-50 text-accent-700 hover:bg-accent-100 disabled:opacity-50"
+              >{addGapTasks.isPending ? '加入中…' : '加入本周学习计划'}</button>}
             </div>)}
           </div>}
         </section>

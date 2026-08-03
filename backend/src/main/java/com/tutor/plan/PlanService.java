@@ -41,7 +41,8 @@ public class PlanService {
     }
 
     public record Plan(long id, long userId, String goal, LocalDate weekStart, LocalDate weekEnd, String status) {}
-    public record PlanTask(long id, long planId, LocalDate day, String content, String kind, int minutes) {}
+    public record PlanTask(long id, long planId, LocalDate day, String content, String kind,
+                           int minutes, String evidenceHint) {}
     public record Checkin(long id, long taskId, String status, String feedback) {}
 
     /** 生成新周计划: 调 LLM + 解析 + 入库 */
@@ -127,11 +128,43 @@ public class PlanService {
     /** 拉本周活跃计划的任务, 推送服务用 */
     public List<PlanTask> todayTasks(long userId) {
         return jdbc.query(
-                "SELECT id, plan_id, day, content, kind, estimated_minutes FROM plan_tasks " +
+                "SELECT id, plan_id, day, content, kind, estimated_minutes, evidence_hint FROM plan_tasks " +
                         "WHERE user_id=? AND day = current_date ORDER BY id",
                 (rs, i) -> new PlanTask(rs.getLong(1), rs.getLong(2),
-                        rs.getDate(3).toLocalDate(), rs.getString(4), rs.getString(5), rs.getInt(6)),
+                        rs.getDate(3).toLocalDate(), rs.getString(4), rs.getString(5), rs.getInt(6), rs.getString(7)),
                 userId);
+    }
+
+    /** 将已验证的能力缺口转为本周可执行任务；同技能本周只创建一次。 */
+    public List<PlanTask> createEvidenceTasks(long userId, String goal, List<String> skillIds) {
+        LocalDate today = LocalDate.now();
+        LocalDate monday = today.minusDays(today.getDayOfWeek().getValue() - 1L);
+        LocalDate sunday = monday.plusDays(6);
+        Long planId = jdbc.query("SELECT id FROM plans WHERE user_id=? AND status='active' AND week_start=?::date " +
+                        "ORDER BY id DESC LIMIT 1", (rs, i) -> rs.getLong(1), userId, java.sql.Date.valueOf(monday))
+                .stream().findFirst().orElseGet(() -> jdbc.queryForObject(
+                        "INSERT INTO plans (user_id, goal, week_start, week_end, status) VALUES (?,?,?,?, 'active') RETURNING id",
+                        Long.class, userId, goal, java.sql.Date.valueOf(monday), java.sql.Date.valueOf(sunday)));
+        List<PlanTask> created = new ArrayList<>();
+        int offset = 0;
+        for (String skillId : skillIds.stream().distinct().limit(3).toList()) {
+            Integer exists = jdbc.queryForObject("SELECT count(*) FROM plan_tasks WHERE user_id=? AND " +
+                            "related_node_ids @> ?::text[] AND day BETWEEN ?::date AND ?::date", Integer.class,
+                    userId, toTextArray(List.of(skillId)), java.sql.Date.valueOf(today), java.sql.Date.valueOf(sunday));
+            if (exists != null && exists > 0) continue;
+            LocalDate day = today.plusDays(Math.min(offset++, Math.max(0, sunday.toEpochDay() - today.toEpochDay())));
+            String display = skillId.replace("skill:", "").replace('-', ' ');
+            PlanTask task = jdbc.queryForObject("""
+                    INSERT INTO plan_tasks (plan_id, user_id, day, content, kind, related_node_ids, estimated_minutes, evidence_hint)
+                    VALUES (?,?,?,?,?,?::text[],?,?)
+                    RETURNING id, plan_id, day, content, kind, estimated_minutes, evidence_hint
+                    """, (rs, i) -> new PlanTask(rs.getLong(1), rs.getLong(2), rs.getDate(3).toLocalDate(),
+                    rs.getString(4), rs.getString(5), rs.getInt(6), rs.getString(7)),
+                    planId, userId, java.sql.Date.valueOf(day), "完成「" + display + "」的一个针对性练习", "practice",
+                    toTextArray(List.of(skillId)), 45, "提交可运行示例、练习答案或复盘笔记之一。");
+            created.add(task);
+        }
+        return created;
     }
 
     private String toTextArray(com.fasterxml.jackson.databind.JsonNode arr) {
@@ -144,5 +177,10 @@ public class PlanService {
             first = false;
         }
         return sb.append('}').toString();
+    }
+
+    private String toTextArray(List<String> values) {
+        return "{" + values.stream().map(value -> "\"" + value.replace("\"", "\\\"") + "\"")
+                .collect(java.util.stream.Collectors.joining(",")) + "}";
     }
 }

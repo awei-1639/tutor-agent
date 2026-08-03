@@ -25,7 +25,7 @@ class PlanControllerTest {
     void loadsTasksForAuthenticatedUserInsteadOfDefaultAccount() throws Exception {
         PlanService service = mock(PlanService.class);
         when(service.todayTasks(42L)).thenReturn(List.of(new PlanService.PlanTask(
-                9L, 3L, LocalDate.now(), "完成一个练习", "practice", 30)));
+                9L, 3L, LocalDate.now(), "完成一个练习", "practice", 30, "提交练习答案")));
         AuthContext.set(42L);
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new PlanController(service)).build();
 

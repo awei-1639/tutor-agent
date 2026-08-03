@@ -86,6 +86,7 @@ export default function PlansPage() {
                   <div className="flex-1">
                     <div className="text-sm text-ink-900">{t.content}</div>
                     <div className="text-xs text-ink-500">预计 {t.estimatedMinutes ?? t.minutes ?? 60} 分钟</div>
+                    {t.evidenceHint && <div className="text-xs text-accent-700 mt-1">完成证据：{t.evidenceHint}</div>}
                   </div>
                   <button onClick={() => checkin.mutate({ taskId: t.id, status: 'done' })}
                     className="text-xs px-2 py-1 text-accent-700 hover:bg-accent-50 rounded">

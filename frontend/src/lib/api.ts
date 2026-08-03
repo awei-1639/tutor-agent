@@ -56,6 +56,9 @@ export const api = {
   getProfile: () => request<{ data: any; updated_at: string }>('/profile'),
   getProfileEvents: (limit = 12) => request<ProfileEvent[]>(`/profile/events?limit=${limit}`),
   getCareerGaps: () => request<CareerGapCard[]>('/career/gaps'),
+  addGapTasks: (jobId: number, skillIds: string[]) => request<PlanTask[]>('/career/gaps/tasks', {
+    method: 'POST', body: JSON.stringify({ jobId, skillIds }),
+  }),
   confirmProfile: (field: string, accept: boolean) =>
     request('/profile/confirm', { method: 'POST', body: JSON.stringify({ field, accept }) }),
   // Resume
@@ -105,6 +108,10 @@ export interface CareerGapCard {
   matched: string[];
   speedup: string[];
   missing: string[];
+}
+
+export interface PlanTask {
+  id: number; planId: number; day: string; content: string; kind: string; minutes: number; evidenceHint?: string;
 }
 
 /**

@@ -2,6 +2,7 @@ package com.tutor.push;
 
 import com.tutor.profile.ProfileService;
 import com.tutor.profile.SkillAlignService;
+import com.tutor.plan.PlanService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,11 +17,22 @@ public class CareerGapService {
     private final JdbcTemplate jdbc;
     private final ProfileService profiles;
     private final SkillAlignService alignments;
+    private final PlanService plans;
 
-    public CareerGapService(JdbcTemplate jdbc, ProfileService profiles, SkillAlignService alignments) {
+    public CareerGapService(JdbcTemplate jdbc, ProfileService profiles, SkillAlignService alignments, PlanService plans) {
         this.jdbc = jdbc;
         this.profiles = profiles;
         this.alignments = alignments;
+        this.plans = plans;
+    }
+
+    public List<PlanService.PlanTask> addGapTasks(long userId, long jobId, List<String> skillIds) {
+        Job job = jdbc.query("SELECT id, title, company, city, requires_raw FROM jobs WHERE id=? AND released", this::mapJob, jobId)
+                .stream().findFirst().orElseThrow(() -> new IllegalArgumentException("岗位不存在或不可用"));
+        List<String> verified = skillIds == null ? List.of() : skillIds.stream()
+                .filter(job.requires::contains).distinct().limit(3).toList();
+        if (verified.isEmpty()) throw new IllegalArgumentException("请选择该岗位的待补齐技能");
+        return plans.createEvidenceTasks(userId, "补齐「" + job.title + "」所需能力", verified);
     }
 
     @SuppressWarnings("unchecked")
