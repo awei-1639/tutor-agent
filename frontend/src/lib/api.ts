@@ -118,7 +118,7 @@ export function streamChat(
     signal: ctrl.signal,
   }).then(async (res) => {
     if (!res.ok || !res.body) {
-      handlers.onError?.(`HTTP ${res.status}`);
+      handlers.onError?.(res.status === 429 ? '请求过于频繁，请稍后再试。' : `HTTP ${res.status}`);
       return;
     }
     const reader = res.body.getReader();

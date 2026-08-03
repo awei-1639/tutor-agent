@@ -18,7 +18,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -47,7 +46,7 @@ public class ChatController {
         }
         SseEmitter emitter = new SseEmitter(120_000L);
         AtomicLong tokenSequence = new AtomicLong();
-        Executors.newVirtualThreadPerTaskExecutor().submit(() ->
+        Thread.startVirtualThread(() ->
                 chatService.turn(req.conversationId(), req.message(), new ChatService.TurnEvents() {
                     @Override public void onMeta(long conversationId, String traceId) {
                         send(emitter, "meta", Map.of("conversation_id", conversationId, "trace_id", traceId));
