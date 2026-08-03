@@ -47,26 +47,43 @@ public class PushService {
     @Scheduled(cron = "${push.cron:0 0 8,20 * * *}")
     public void scheduledRun() {
         try {
-            runOnce();
+            int released = releaseAvailableJobs();
+            List<Long> userIds = jdbc.queryForList("SELECT id FROM users ORDER BY id", Long.class);
+            int processed = 0;
+            for (Long userId : userIds) {
+                try {
+                    runForUser(userId, released);
+                    processed++;
+                } catch (Exception e) {
+                    // 单个用户的画像/岗位数据异常不应中断其余用户的推送。
+                    log.error("定时推送失败 user={}", userId, e);
+                }
+            }
+            log.info("定时推送完成 users={} released={}", processed, released);
         } catch (Exception e) {
-            log.error("定时推送失败", e); // 定时任务失败不抛出, 下轮重试
+            log.error("定时推送任务初始化失败", e);
         }
     }
 
-    /** 返回本次运行摘要 (also served by /internal/push-run) */
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> runOnce() {
-        // userId: admin/eval 调用无 AuthContext, fallback DEV_USER_ID=1
-        Long ul = AuthContext.currentUserId();
-        long uid = ul == null ? DEV_USER_ID : ul;
-
-        // 1) Mock注水释放
-        int released = jdbc.update("""
+    private int releaseAvailableJobs() {
+        return jdbc.update("""
                 UPDATE jobs SET released = TRUE, fetched_at = now()
                 WHERE id IN (SELECT id FROM jobs WHERE NOT released ORDER BY id LIMIT ?)
                 """, releaseBatch);
+    }
 
-        // 2) 画像与冷启动检查
+    /** 返回当前用户本次运行摘要 (also served by /internal/push-run) */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> runOnce() {
+        // /internal 调用会注入演示用户；定时任务走 scheduledRun()，覆盖全部用户。
+        Long ul = AuthContext.currentUserId();
+        long uid = ul == null ? DEV_USER_ID : ul;
+        return runForUser(uid, releaseAvailableJobs());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> runForUser(long uid, int released) {
+        // 画像与冷启动检查
         Map<String, Object> profile = profileService.snapshot(uid);
         List<Map<String, Object>> skills = profile.get("skills") instanceof List<?> l
                 ? (List<Map<String, Object>>) l : List.of();
@@ -75,12 +92,12 @@ public class PushService {
             return Map.of("released", released, "pushed", 0, "reason", "empty_profile_guide");
         }
 
-        // 3) 技能对齐
+        // 技能对齐
         List<String> names = skills.stream().map(s -> String.valueOf(s.get("name"))).toList();
         Map<String, String> aligned = alignService.align(names);
         List<String> profileIds = aligned.values().stream().filter(x -> x != null).distinct().toList();
 
-        // 4) 候选岗位
+        // 候选岗位
         record Candidate(long id, String nodeId, String title, String company, String city,
                          String salary, List<String> requires) {}
         List<Candidate> candidates = jdbc.query("""
