@@ -46,7 +46,10 @@ public class ChatController {
         }
         SseEmitter emitter = new SseEmitter(120_000L);
         AtomicLong tokenSequence = new AtomicLong();
-        Thread.startVirtualThread(() ->
+        // AuthContext 使用 ThreadLocal，虚拟线程不会自动继承请求线程的身份。
+        Thread.startVirtualThread(() -> {
+            AuthContext.set(userId);
+            try {
                 chatService.turn(req.conversationId(), req.message(), new ChatService.TurnEvents() {
                     @Override public void onMeta(long conversationId, String traceId) {
                         send(emitter, "meta", Map.of("conversation_id", conversationId, "trace_id", traceId));
@@ -85,7 +88,11 @@ public class ChatController {
                         send(emitter, "error", Map.of("code", "TURN_FAILED", "message", message));
                         emitter.complete();
                     }
-                }));
+                });
+            } finally {
+                AuthContext.clear();
+            }
+        });
         return emitter;
     }
 
