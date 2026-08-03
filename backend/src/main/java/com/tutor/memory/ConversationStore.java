@@ -15,11 +15,17 @@ public class ConversationStore {
     }
 
     public static class Msg {
+        public final long id;
         public final String role;
         public final String content;
         public String citations; // mutable: 历史消息可补
+        public String traceId;
+        public String feedback;
         public Msg(String role, String content) {
-            this.role = role; this.content = content;
+            this(0, role, content);
+        }
+        public Msg(long id, String role, String content) {
+            this.id = id; this.role = role; this.content = content;
         }
     }
 
@@ -42,20 +48,26 @@ public class ConversationStore {
 
     public long appendMessage(long conversationId, String role, String content,
                               String intent, String citationsJson, int tokenCount) {
+        return appendMessage(conversationId, role, content, intent, citationsJson, null, tokenCount);
+    }
+
+    public long appendMessage(long conversationId, String role, String content,
+                              String intent, String citationsJson, String traceId, int tokenCount) {
         return jdbc.queryForObject(
-                "INSERT INTO messages (conversation_id, role, content, intent, citations, token_count) " +
-                        "VALUES (?,?,?,?,?::jsonb,?) RETURNING id",
-                Long.class, conversationId, role, content, intent, citationsJson, tokenCount);
+                "INSERT INTO messages (conversation_id, role, content, intent, citations, trace_id, token_count) " +
+                        "VALUES (?,?,?,?,?::jsonb,?,?) RETURNING id",
+                Long.class, conversationId, role, content, intent, citationsJson, traceId, tokenCount);
     }
 
     /** 最近N轮原文, 时间正序 (含 citations: 已用于回填溯源面板) */
     public List<Msg> recentMessages(long conversationId, int limit) {
         List<Msg> desc = jdbc.query(
-                "SELECT role, content, citations FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+                "SELECT id, role, content, citations, trace_id FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
                 (rs, i) -> {
-                    String citations = rs.getString(3);
-                    Msg m = new Msg(rs.getString(1), rs.getString(2));
+                    String citations = rs.getString(4);
+                    Msg m = new Msg(rs.getLong(1), rs.getString(2), rs.getString(3));
                     m.citations = citations; // 字符串 JSON, 前端按 string 处理
+                    m.traceId = rs.getString(5);
                     return m;
                 }, conversationId, limit);
         return desc.reversed();
@@ -64,15 +76,18 @@ public class ConversationStore {
     /** 对外读取必须验证会话归属，防止通过递增 ID 枚举其他用户的消息。 */
     public List<Msg> recentMessagesForUser(long conversationId, long userId, int limit) {
         List<Msg> desc = jdbc.query("""
-                SELECT m.role, m.content, m.citations
+                SELECT m.id, m.role, m.content, m.citations, m.trace_id, mf.rating
                 FROM messages m JOIN conversations c ON c.id=m.conversation_id
+                LEFT JOIN message_feedback mf ON mf.message_id=m.id AND mf.user_id=?
                 WHERE m.conversation_id=? AND c.user_id=?
                 ORDER BY m.id DESC LIMIT ?
                 """, (rs, i) -> {
-                    Msg m = new Msg(rs.getString(1), rs.getString(2));
-                    m.citations = rs.getString(3);
+                    Msg m = new Msg(rs.getLong(1), rs.getString(2), rs.getString(3));
+                    m.citations = rs.getString(4);
+                    m.traceId = rs.getString(5);
+                    m.feedback = rs.getString(6);
                     return m;
-                }, conversationId, userId, limit);
+                }, userId, conversationId, userId, limit);
         return desc.reversed();
     }
 

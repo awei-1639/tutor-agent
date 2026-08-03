@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * POST /chat — SSE 事件流。事件契约见实现设计 8.1:
@@ -35,6 +36,7 @@ public class ChatController {
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chat(@Valid @RequestBody ChatRequest req) {
         SseEmitter emitter = new SseEmitter(120_000L);
+        AtomicLong tokenSequence = new AtomicLong();
         Executors.newVirtualThreadPerTaskExecutor().submit(() ->
                 chatService.turn(req.conversationId(), req.message(), new ChatService.TurnEvents() {
                     @Override public void onMeta(long conversationId, String traceId) {
@@ -54,14 +56,15 @@ public class ChatController {
                             Evidence e = evidences.get(i);
                             send(emitter, "citation", Map.of(
                                     "sid", "S" + (i + 1), "node_id", e.nodeId(), "type", e.nodeType(),
-                                    "title", e.chunkText().split("\\|", 3)[1],
+                                    "title", evidenceTitle(e),
                                     "text", e.chunkText(),  // 前端悬浮卡与忠实度评估共用
-                                    "graph_path", e.graphPath() == null ? "" : e.graphPath()));
+                                    "graph_path", e.graphPath() == null ? "" : e.graphPath(),
+                                    "source_url", e.sourceUrl() == null ? "" : e.sourceUrl()));
                         }
                     }
 
                     @Override public void onToken(String token) {
-                        send(emitter, "token", Map.of("text", token));
+                        send(emitter, "token", Map.of("text", token, "seq", tokenSequence.getAndIncrement()));
                     }
 
                     @Override public void onDone(long messageId, String fullText) {
@@ -83,5 +86,10 @@ public class ChatController {
         } catch (IOException | IllegalStateException e) {
             // 客户端断开: 停止推送即可, 消息已在服务侧落库
         }
+    }
+
+    private String evidenceTitle(Evidence evidence) {
+        String[] parts = evidence.chunkText().split("\\|", 3);
+        return parts.length > 1 ? parts[1] : evidence.nodeId();
     }
 }

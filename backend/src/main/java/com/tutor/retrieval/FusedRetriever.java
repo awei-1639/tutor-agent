@@ -63,7 +63,7 @@ public class FusedRetriever {
                     .limit(topK)
                     .map(i -> {
                         Evidence e = candidates.get(i);
-                        return new Evidence(e.nodeId(), e.nodeType(), e.chunkText(), scores[i], e.graphPath());
+                        return new Evidence(e.nodeId(), e.nodeType(), e.chunkText(), scores[i], e.graphPath(), e.sourceUrl());
                     })
                     .toList();
         } catch (RuntimeException ex) {
@@ -79,7 +79,7 @@ public class FusedRetriever {
         List<VectorStore.VectorHit> sparseHits = vectorStore.sparseSearch(query, VECTOR_TOPN, 0.15);
         if (!fused) {
             return vecHits.stream().limit(topK)
-                    .map(h -> new Evidence(h.nodeId(), h.nodeType(), h.chunkText(), h.score(), null))
+                    .map(h -> new Evidence(h.nodeId(), h.nodeType(), h.chunkText(), h.score(), null, h.sourceUrl()))
                     .toList();
         }
 
@@ -110,7 +110,7 @@ public class FusedRetriever {
                 .map(e -> {
                     VectorStore.VectorHit h = byId.get(e.getKey());
                     if (h == null) return null;
-                    return new Evidence(h.nodeId(), h.nodeType(), h.chunkText(), e.getValue(), graphPath.get(h.nodeId()));
+                    return new Evidence(h.nodeId(), h.nodeType(), h.chunkText(), e.getValue(), graphPath.get(h.nodeId()), h.sourceUrl());
                 })
                 .filter(x -> x != null)
                 .toList();

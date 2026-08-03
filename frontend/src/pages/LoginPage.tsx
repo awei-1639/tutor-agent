@@ -48,26 +48,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="h-full flex items-center justify-center bg-gradient-to-br from-ink-50 to-white">
-      <div className="w-96 bg-white rounded-xl shadow-lift border border-ink-100 p-8">
-        <div className="text-2xl font-semibold text-ink-900 mb-1">欢迎回来</div>
-        <div className="text-sm text-ink-500 mb-6">
+    <div className="login-shell relative h-full min-h-[680px] flex items-center justify-center overflow-hidden p-6">
+      <div className="relative w-full max-w-[440px] bg-white rounded-2xl shadow-lift border border-ink-100 p-8 sm:p-9">
+        <div className="flex items-center gap-3 mb-7">
+          <div className="brand-mark h-11 w-11 rounded-xl text-white flex items-center justify-center text-lg font-black">T</div>
+          <div><div className="text-sm font-semibold text-ink-900">学习与求职助手</div><div className="text-[11px] text-ink-500 mt-0.5">你的成长工作台</div></div>
+        </div>
+        <div className="text-2xl font-semibold tracking-tight text-ink-900 mb-1">{mode === 'login' ? '欢迎回来' : '开启你的成长之旅'}</div>
+        <div className="text-sm text-ink-500 mb-6 leading-relaxed">
           {mode === 'login' ? '登录继续你的学习' : '创建账号开始'}
         </div>
 
         {/* Tab 切换 */}
-        <div className="flex gap-1 mb-5 p-1 bg-ink-50 rounded-md">
+        <div className="flex gap-1 mb-6 p-1 bg-ink-100/70 rounded-xl">
           <button
             type="button"
             onClick={() => setMode('login')}
-            className={`flex-1 py-1.5 text-sm rounded ${mode === 'login' ? 'bg-white text-ink-900 shadow-soft font-medium' : 'text-ink-500'}`}
+            className={`flex-1 py-2 text-sm rounded-lg transition ${mode === 'login' ? 'bg-white text-ink-900 shadow-soft font-medium' : 'text-ink-500 hover:text-ink-700'}`}
           >
             登录
           </button>
           <button
             type="button"
             onClick={() => setMode('register')}
-            className={`flex-1 py-1.5 text-sm rounded ${mode === 'register' ? 'bg-white text-ink-900 shadow-soft font-medium' : 'text-ink-500'}`}
+            className={`flex-1 py-2 text-sm rounded-lg transition ${mode === 'register' ? 'bg-white text-ink-900 shadow-soft font-medium' : 'text-ink-500 hover:text-ink-700'}`}
           >
             注册
           </button>
@@ -79,7 +83,7 @@ export default function LoginPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="昵称 (可选, 默认取邮箱前缀)"
-              className="w-full px-4 py-3 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500"
+              className="w-full px-4 py-3 border border-ink-200 bg-ink-50/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-accent-500/15 focus:border-accent-500 transition"
             />
           )}
           <input
@@ -89,7 +93,7 @@ export default function LoginPage() {
             placeholder="邮箱"
             autoComplete="email"
             required
-            className="w-full px-4 py-3 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500"
+            className="w-full px-4 py-3 border border-ink-200 bg-ink-50/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-accent-500/15 focus:border-accent-500 transition"
           />
           <input
             type="password"
@@ -99,32 +103,32 @@ export default function LoginPage() {
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             required
             minLength={6}
-            className="w-full px-4 py-3 border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500"
+            className="w-full px-4 py-3 border border-ink-200 bg-ink-50/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-accent-500/15 focus:border-accent-500 transition"
           />
           {err && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{err}</div>}
           <button
             type="submit"
             disabled={loading || !email.trim() || !password}
-            className="w-full px-4 py-3 bg-accent-500 hover:bg-accent-600 disabled:bg-ink-200 text-white rounded-md font-medium transition"
+            className="w-full px-4 py-3 bg-accent-600 hover:bg-accent-700 disabled:bg-ink-200 text-white rounded-xl font-medium transition"
           >
             {loading ? '处理中…' : mode === 'login' ? '登录' : '注册并登录'}
           </button>
         </form>
 
-        <div className="mt-5 pt-5 border-t border-ink-100">
-          <div className="text-xs text-ink-500 mb-2">dev 模式 (单用户快速进入)</div>
+        <div className="mt-6 pt-5 border-t border-ink-100">
+          <div className="text-xs text-ink-500 mb-2">开发模式 · 单用户快速进入</div>
           <div className="flex gap-2">
             <input
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="昵称"
-              className="flex-1 px-3 py-2 border border-ink-200 rounded-md text-sm"
+              className="flex-1 px-3 py-2 border border-ink-200 bg-ink-50/50 rounded-lg text-sm"
             />
             <button
               type="button"
               onClick={devLogin}
               disabled={loading || !name.trim()}
-              className="px-3 py-2 bg-ink-100 hover:bg-ink-200 disabled:bg-ink-50 text-ink-700 rounded-md text-sm"
+              className="px-3 py-2 bg-ink-100 hover:bg-ink-200 disabled:bg-ink-50 text-ink-700 rounded-lg text-sm transition"
             >
               dev 进入
             </button>

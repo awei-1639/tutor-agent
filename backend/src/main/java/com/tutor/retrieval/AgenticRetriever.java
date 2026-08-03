@@ -63,7 +63,8 @@ public class AgenticRetriever {
                 double finalScore = e.score() * hopDecay;
                 byId.merge(e.nodeId(), e, (old, fresh) ->
                         new Evidence(old.nodeId(), old.nodeType(), old.chunkText(),
-                                old.score() + finalScore, old.graphPath() != null ? old.graphPath() : fresh.graphPath()));
+                                old.score() + finalScore, old.graphPath() != null ? old.graphPath() : fresh.graphPath(),
+                                old.sourceUrl() != null ? old.sourceUrl() : fresh.sourceUrl()));
             }
 
             // 最后一跳不再 judge, 直接退出 (节省成本)

@@ -47,7 +47,11 @@ export const api = {
     request<{ user_id: number; token: string; name: string }>('/auth/dev-login', { method: 'POST', body: JSON.stringify({ name }) }),
   // Conversations
   listConversations: () => request<any[]>('/conversations'),
-  getMessages: (id: number) => request<{ role: string; content: string; citations?: string }[]>(`/conversations/${id}/messages`),
+  getMessages: (id: number) => request<{ id: number; role: string; content: string; citations?: string; traceId?: string; feedback?: string }[]>(`/conversations/${id}/messages`),
+  submitMessageFeedback: (messageId: number, rating: 'helpful' | 'not_helpful', reason?: string) =>
+    request<{ id: number; messageId: number; rating: string; traceId?: string }>('/feedback', {
+      method: 'POST', body: JSON.stringify({ messageId, rating, reason }),
+    }),
   // Profile
   getProfile: () => request<{ data: any; updated_at: string }>('/profile'),
   confirmProfile: (field: string, accept: boolean) =>
@@ -86,16 +90,17 @@ export const api = {
  * SSE 流式 chat: 回调按事件类型分发
  * events: meta/citation/stage/token/done/error/clarify
  * isActive: 可选回调, 每读一行检查; 返回 false 立即中断 (应对重复流竞争)
+ * token 事件带 seq；同一连接内按序缓冲，并忽略已处理序号，避免重放或并发推送造成错序、重复拼接。
  */
 export function streamChat(
   body: { conversationId?: number | null; message: string },
   handlers: {
     onMeta?: (e: { conversation_id: number; trace_id: string }) => void;
     onStage?: (e: { phase: string }) => void;
-    onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string }) => void;
-    onToken?: (text: string) => void;
+    onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string }) => void;
+    onToken?: (text: string, seq?: number) => void;
     onClarify?: (question: string) => void;
-    onDone?: (e: { message_id: number }) => void;
+    onDone?: (e: { message_id: number; trace_id?: string }) => void;
     onError?: (msg: string) => void;
     isActive?: () => boolean;
   }
@@ -119,6 +124,8 @@ export function streamChat(
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
+    let nextTokenSequence = 0;
+    const pendingTokens = new Map<number, string>();
     while (true) {
       // 读之前先检查是否仍活跃 (StrictMode 双流竞争 / 新 send 中断旧流)
       if (handlers.isActive && !handlers.isActive()) {
@@ -138,7 +145,18 @@ export function streamChat(
           if ('conversation_id' in evt) handlers.onMeta?.(evt);
           else if ('phase' in evt) handlers.onStage?.(evt);
           else if ('sid' in evt) handlers.onCitation?.(evt);
-          else if (typeof evt.text === 'string') handlers.onToken?.(evt.text);
+          else if (typeof evt.text === 'string') {
+            if (typeof evt.seq === 'number') {
+              if (evt.seq < nextTokenSequence) continue;
+              pendingTokens.set(evt.seq, evt.text);
+              while (pendingTokens.has(nextTokenSequence)) {
+                const text = pendingTokens.get(nextTokenSequence)!;
+                pendingTokens.delete(nextTokenSequence);
+                handlers.onToken?.(text, nextTokenSequence);
+                nextTokenSequence += 1;
+              }
+            } else handlers.onToken?.(evt.text);
+          }
           else if ('question' in evt) handlers.onClarify?.(evt);
           else if ('message_id' in evt) handlers.onDone?.(evt);
           else if ('message' in evt) handlers.onError?.(evt.message);

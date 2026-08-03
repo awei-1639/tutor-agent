@@ -6,5 +6,11 @@ public record Evidence(
         String nodeType,      // skill / resource / job / company
         String chunkText,
         double score,         // RRF 融合分
-        String graphPath      // 一跳关系摘要, 可为 null
-) {}
+        String graphPath,     // 一跳关系摘要, 可为 null
+        String sourceUrl      // 原始材料链接, 可为 null
+) {
+    /** 兼容没有来源元数据的旧检索结果和测试构造。 */
+    public Evidence(String nodeId, String nodeType, String chunkText, double score, String graphPath) {
+        this(nodeId, nodeType, chunkText, score, graphPath, null);
+    }
+}

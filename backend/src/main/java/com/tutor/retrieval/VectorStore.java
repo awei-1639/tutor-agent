@@ -16,14 +16,18 @@ public class VectorStore {
         this.jdbc = jdbc;
     }
 
-    public record VectorHit(String nodeId, String nodeType, String chunkText, double score) {}
+    public record VectorHit(String nodeId, String nodeType, String chunkText, double score, String sourceUrl) {
+        public VectorHit(String nodeId, String nodeType, String chunkText, double score) {
+            this(nodeId, nodeType, chunkText, score, null);
+        }
+    }
 
     public List<VectorHit> search(float[] queryVec, int topK) {
         String vec = toVectorLiteral(queryVec);
         return jdbc.query(
-                "SELECT node_id, node_type, chunk_text, 1 - (embedding <=> ?::vector) AS score " +
+                "SELECT node_id, node_type, chunk_text, 1 - (embedding <=> ?::vector) AS score, source_url " +
                         "FROM kg_chunks ORDER BY embedding <=> ?::vector LIMIT ?",
-                (rs, i) -> new VectorHit(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4)),
+                (rs, i) -> new VectorHit(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getString(5)),
                 vec, vec, topK);
     }
 
@@ -34,9 +38,9 @@ public class VectorStore {
      */
     public List<VectorHit> sparseSearch(String query, int topK, double minSimilarity) {
         return jdbc.query(
-                "SELECT node_id, node_type, chunk_text, similarity(chunk_text, ?) AS sim " +
+                "SELECT node_id, node_type, chunk_text, similarity(chunk_text, ?) AS sim, source_url " +
                         "FROM kg_chunks WHERE chunk_text % ? ORDER BY sim DESC LIMIT ?",
-                (rs, i) -> new VectorHit(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4)),
+                (rs, i) -> new VectorHit(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getString(5)),
                 query, query, topK).stream()
                 .filter(h -> h.score() >= minSimilarity)
                 .toList();
@@ -47,8 +51,8 @@ public class VectorStore {
         if (nodeIds.isEmpty()) return Map.of();
         String in = nodeIds.stream().map(x -> "?").collect(Collectors.joining(","));
         return jdbc.query(
-                "SELECT node_id, node_type, chunk_text FROM kg_chunks WHERE node_id IN (" + in + ")",
-                (rs, i) -> new VectorHit(rs.getString(1), rs.getString(2), rs.getString(3), 0),
+                "SELECT node_id, node_type, chunk_text, source_url FROM kg_chunks WHERE node_id IN (" + in + ")",
+                (rs, i) -> new VectorHit(rs.getString(1), rs.getString(2), rs.getString(3), 0, rs.getString(4)),
                 nodeIds.toArray()).stream().collect(Collectors.toMap(VectorHit::nodeId, h -> h));
     }
 

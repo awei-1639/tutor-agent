@@ -4,11 +4,37 @@
 
 :root { color-scheme: light; }
 html, body, #root { height: 100%; }
-body { font-feature-settings: 'cv02', 'cv03', 'cv11'; }
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv11';
+  color: #111a2e;
+  background: #f7f8fc;
+}
+
+::selection { background: rgba(118, 87, 246, .2); }
+
+.app-shell {
+  background: #f7f8fc;
+}
+
+.app-sidebar {
+  background: linear-gradient(165deg, #17213d 0%, #11182d 58%, #0c1223 100%);
+  box-shadow: 18px 0 45px rgba(17, 24, 39, .08);
+}
+
+.brand-mark {
+  background: #6045d5;
+  box-shadow: none;
+}
+
+.glass-panel {
+  background: #fff;
+  border: 1px solid #e5e8f0;
+  box-shadow: 0 4px 18px rgba(33, 39, 76, .06);
+}
 
 /* 卡片悬停 */
-.card { @apply bg-white border border-ink-100 rounded-lg shadow-soft transition; }
-.card:hover { @apply shadow-lift border-ink-200; }
+.card { @apply bg-white/80 border border-white rounded-xl shadow-soft transition; }
+.card:hover { @apply shadow-lift border-white; }
 
 /* 引用标号 */
 .cite-ref {
@@ -28,3 +54,7 @@ body { font-feature-settings: 'cv02', 'cv03', 'cv11'; }
 .prose-chat pre { @apply bg-ink-900 text-ink-50 p-3 rounded my-2 overflow-x-auto; }
 .prose-chat pre code { @apply bg-transparent text-ink-50 p-0; }
 .prose-chat blockquote { @apply border-l-4 border-ink-200 pl-3 my-2 text-ink-700; }
+
+.login-shell {
+  background: #f5f7fb;
+}

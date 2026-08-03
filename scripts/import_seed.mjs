@@ -20,7 +20,13 @@ const load = f => JSON.parse(readFileSync(new URL(`../graph_data/${f}`, import.m
 const { skills } = load('seed_skills.json');
 const { resources } = load('seed_resources.json');
 const { jobs } = load('seed_jobs.json');
+const sourceOverrides = load('source_overrides.json');
 const skillById = new Map(skills.map(s => [s.id, s]));
+
+for (const [id, url] of Object.entries(sourceOverrides)) {
+  if (!resources.some(r => r.id === id)) throw new Error(`source override has unknown resource: ${id}`);
+  if (!/^https?:\/\//.test(url)) throw new Error(`source override must be http(s): ${id}`);
+}
 
 const esc = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const sqlEsc = s => String(s ?? '').replace(/'/g, "''");
@@ -71,13 +77,14 @@ const names = ids => ids.map(i => skillById.get(i)?.name || i).join(',');
 const chunks = [];
 for (const s of skills) {
   const leads = jobs.filter(j => j.requires[0] === s.id).slice(0, 3).map(j => j.title).join(',');
-  chunks.push([s.id, 'skill', `skill|${s.name}|别名:${s.aliases.join('/')}|难度:${s.difficulty},约${s.est_hours}小时|${s.description}|前置:${names(s.prerequisites || []) || '无'} 进阶:${names(s.advances_to || []) || '无'}${leads ? ' 通往:' + leads : ''}`]);
+  chunks.push([s.id, 'skill', `skill|${s.name}|别名:${s.aliases.join('/')}|难度:${s.difficulty},约${s.est_hours}小时|${s.description}|前置:${names(s.prerequisites || []) || '无'} 进阶:${names(s.advances_to || []) || '无'}${leads ? ' 通往:' + leads : ''}`, null, s.name]);
 }
 for (const r of resources) {
-  chunks.push([r.id, 'resource', `resource|${r.title}|${r.format},${r.language},约${r.duration_hours}小时,难度:${r.difficulty}|${r.description}|教授:${names(r.teaches)}`]);
+  const sourceUrl = r.url || sourceOverrides[r.id] || null;
+  chunks.push([r.id, 'resource', `resource|${r.title}|${r.format},${r.language},约${r.duration_hours}小时,难度:${r.difficulty}|${r.description}|教授:${names(r.teaches)}`, sourceUrl, r.title]);
 }
 for (const j of jobs) {
-  chunks.push([j.id, 'job', `job|${j.title}-${j.company}(${j.city})|薪资:${j.salary},学历:${j.education}|要求:${names(j.requires)}|${j.jd_snapshot}`]);
+  chunks.push([j.id, 'job', `job|${j.title}-${j.company}(${j.city})|薪资:${j.salary},学历:${j.education}|要求:${names(j.requires)}|${j.jd_snapshot}`, null, `${j.title} - ${j.company}`]);
 }
 
 // ============ 3. embedding ============
@@ -101,7 +108,8 @@ console.log();
 // ============ 4. SQL ============
 let kgSql = 'TRUNCATE kg_chunks;\n';
 chunks.forEach((c, i) => {
-  kgSql += `INSERT INTO kg_chunks (node_id, node_type, chunk_text, embedding) VALUES ('${c[0]}', '${c[1]}', '${sqlEsc(c[2])}', '[${vecs[i].join(',')}]');\n`;
+  const sourceUrl = c[3] ? `'${sqlEsc(c[3])}'` : 'NULL';
+  kgSql += `INSERT INTO kg_chunks (node_id, node_type, chunk_text, embedding, source_url, source_title, retrieved_at) VALUES ('${c[0]}', '${c[1]}', '${sqlEsc(c[2])}', '[${vecs[i].join(',')}]', ${sourceUrl}, '${sqlEsc(c[4])}', now());\n`;
 });
 writeFileSync(join(OUT, 'kg_chunks.sql'), kgSql);
 

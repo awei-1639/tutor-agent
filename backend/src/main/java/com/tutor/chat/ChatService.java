@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 @Service
 public class ChatService {
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
-    private static final Pattern CITE = Pattern.compile("\\[S(\\d)]");
+    private static final Pattern CITE = Pattern.compile("\\[S(\\d+)]");
     private static final int TOP_K = 5;
     private static final int HISTORY_TURNS = 6;
     private static long currentUserId() { return AuthContext.currentUserId() == null ? 1L : AuthContext.currentUserId(); }
@@ -114,7 +114,7 @@ public class ChatService {
             long convId = conversations.ensureConversation(conversationId, currentUserId());
             events.onMeta(convId, traceId);
             List<ConversationStore.Msg> history = conversations.recentMessages(convId, HISTORY_TURNS * 2);
-            conversations.appendMessage(convId, "user", question, null, null, question.length() / 2);
+            conversations.appendMessage(convId, "user", question, null, null, traceId, question.length() / 2);
             Map<String, Object> profile = profileService.snapshot(currentUserId());
 
             // --- router 节点 ---
@@ -173,7 +173,7 @@ public class ChatService {
                     trace.span(traceId, convId, "aggregate", aggStart, clarified);
                     long msgId = conversations.appendMessage(convId, "assistant", fullText,
                             clarified ? "clarify" : intent.name().toLowerCase(),
-                            citationsJson(fullText, finalEvidences), fullText.length() / 2);
+                            citationsJson(fullText, finalEvidences), traceId, fullText.length() / 2);
                     events.onDone(msgId, fullText);
                     background.submit(() -> profileService.updateFromMessage(currentUserId(), question, traceId));
                     background.submit(() -> summaryFolder.maybeFold(convId, traceId));
@@ -216,7 +216,7 @@ public class ChatService {
             @Override public void onCompleteResponse(ChatResponse response) {
                 String text = full.toString();
                 long msgId = conversations.appendMessage(convId, "assistant", text,
-                        intent.name().toLowerCase(), citationsJson(text, finalEvidences), text.length() / 2);
+                        intent.name().toLowerCase(), citationsJson(text, finalEvidences), traceId, text.length() / 2);
                 events.onDone(msgId, text);
                 background.submit(() -> profileService.updateFromMessage(currentUserId(), question, traceId));
                 background.submit(() -> summaryFolder.maybeFold(convId, traceId));
@@ -233,14 +233,26 @@ public class ChatService {
 
     /** 解析回答中实际使用的 [S#], 映射回 node_id 存入 citations (实现设计 3.2 引用闭环) */
     private String citationsJson(String text, List<Evidence> evidences) {
-        Set<String> used = new LinkedHashSet<>();
+        Set<Integer> used = new LinkedHashSet<>();
         Matcher m = CITE.matcher(text);
         while (m.find()) {
             int idx = Integer.parseInt(m.group(1)) - 1;
-            if (idx >= 0 && idx < evidences.size()) used.add(evidences.get(idx).nodeId());
+            if (idx >= 0 && idx < evidences.size()) used.add(idx);
         }
         try {
-            return mapper.writeValueAsString(used);
+            // 保留卡片所需的完整引用信息，历史会话恢复后也能查看溯源。
+            return mapper.writeValueAsString(used.stream().map(idx -> {
+                Evidence e = evidences.get(idx);
+                String[] parts = e.chunkText().split("\\|", 3);
+                return Map.of(
+                        "sid", "S" + (idx + 1),
+                        "node_id", e.nodeId(),
+                        "type", e.nodeType(),
+                        "title", parts.length > 1 ? parts[1] : e.nodeId(),
+                        "text", e.chunkText(),
+                        "graph_path", e.graphPath() == null ? "" : e.graphPath(),
+                        "source_url", e.sourceUrl() == null ? "" : e.sourceUrl());
+            }).toList());
         } catch (Exception e) {
             return "[]";
         }

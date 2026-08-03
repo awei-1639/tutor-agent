@@ -27,7 +27,8 @@ class ChatControllerTest {
             ChatService.TurnEvents events = invocation.getArgument(2);
             events.onMeta(7L, "trace-1");
             events.onStage("routing");
-            events.onCitations(List.of(new Evidence("skill:java", "skill", "skill|Java|基础", 0.9, null)));
+            events.onCitations(List.of(new Evidence("skill:java", "skill", "skill|Java|基础", 0.9, null,
+                    "https://docs.oracle.com/en/java/")));
             events.onToken("hello");
             events.onDone(9L, "hello");
             return null;
@@ -47,8 +48,8 @@ class ChatControllerTest {
         assertThat(body)
                 .contains("\"conversation_id\":7", "\"trace_id\":\"trace-1\"")
                 .contains("\"phase\":\"routing\"")
-                .contains("\"sid\":\"S1\"", "\"node_id\":\"skill:java\"")
-                .contains("\"text\":\"hello\"")
+                .contains("\"sid\":\"S1\"", "\"node_id\":\"skill:java\"", "\"source_url\":\"https://docs.oracle.com/en/java/\"")
+                .contains("\"text\":\"hello\"", "\"seq\":0")
                 .contains("\"message_id\":9");
     }
 }

@@ -82,6 +82,19 @@ mvn test -DrunIntegrationTests=true -Dtest='*IT'
 
 `.github/workflows/ci.yml` 会在 push 和 pull request 中自动执行后端单元测试、上述 PostgreSQL 集成测试以及前端生产构建。
 
+## 材料来源与增量更新
+
+`graph_data/source_overrides.json` 收录经过核验的官方/一手材料链接；导入脚本会优先使用资源自身的 `url`，其次使用该覆盖表。没有经过核验的资源保持无链接，前端会明确显示“未收录原始链接”。
+
+对于已经导入的知识库，不必重新生成 embedding 或清空 `kg_chunks`。先生成增量 SQL，再在项目 PostgreSQL 容器中执行：
+
+```powershell
+node scripts/generate_source_updates.mjs > source_updates.sql
+wsl docker exec -i tutor-postgres psql -U tutor -d tutor < source_updates.sql
+```
+
+该脚本只更新 `source_url`、`source_title` 与 `retrieved_at`，并使用单个事务提交。
+
 ## 生产配置
 
 使用 `prod` profile 启动：
