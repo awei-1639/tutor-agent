@@ -1,8 +1,11 @@
 package com.tutor.plan;
 
+import com.tutor.auth.AuthContext;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -23,7 +26,7 @@ public class PlanController {
 
     @PostMapping
     public Object generate(@Valid @RequestBody PlanRequest req, @RequestHeader(value = "X-Trace-Id", required = false) String traceId) {
-        PlanService.Plan p = plans.generateWeeklyPlan(1L, req.goal(), req.currentSkills() == null ? "" : req.currentSkills(),
+        PlanService.Plan p = plans.generateWeeklyPlan(currentUserId(), req.goal(), req.currentSkills() == null ? "" : req.currentSkills(),
                 req.checkinHistory() == null ? "" : req.checkinHistory(), traceId == null ? "user" : traceId);
         return p == null ? java.util.Map.of("error", "plan 生成失败") : p;
     }
@@ -32,16 +35,22 @@ public class PlanController {
 
     @PostMapping("/checkin")
     public PlanService.Checkin checkin(@Valid @RequestBody CheckinRequest req) {
-        return plans.checkin(req.taskId(), 1L, req.status(), req.feedback());
+        return plans.checkin(req.taskId(), currentUserId(), req.status(), req.feedback());
     }
 
     @GetMapping("/today")
     public List<PlanService.PlanTask> today() {
-        return plans.todayTasks(1L);
+        return plans.todayTasks(currentUserId());
     }
 
     @GetMapping("/should-replan")
     public Object shouldReplan() {
-        return java.util.Map.of("should_replan", plans.shouldReplan(1L));
+        return java.util.Map.of("should_replan", plans.shouldReplan(currentUserId()));
+    }
+
+    private long currentUserId() {
+        Long userId = AuthContext.currentUserId();
+        if (userId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未认证");
+        return userId;
     }
 }
