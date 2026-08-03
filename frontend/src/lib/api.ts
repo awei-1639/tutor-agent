@@ -54,6 +54,7 @@ export const api = {
     }),
   // Profile
   getProfile: () => request<{ data: any; updated_at: string }>('/profile'),
+  getProfileEvents: (limit = 12) => request<ProfileEvent[]>(`/profile/events?limit=${limit}`),
   confirmProfile: (field: string, accept: boolean) =>
     request('/profile/confirm', { method: 'POST', body: JSON.stringify({ field, accept }) }),
   // Resume
@@ -85,6 +86,14 @@ export const api = {
     request('/interview/answer', { method: 'POST', body: JSON.stringify({ sessionId, answer }) }),
   getReport: (sessionId: string) => request(`/interview/report/${sessionId}`),
 };
+
+export interface ProfileEvent {
+  id: number;
+  changes: string[];
+  trigger: 'conversation' | 'resume' | 'confirm' | string;
+  createdAt: string;
+  traceId?: string;
+}
 
 /**
  * SSE 流式 chat: 回调按事件类型分发

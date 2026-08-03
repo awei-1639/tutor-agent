@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 import java.util.regex.Pattern;
 
 /**
@@ -78,8 +79,8 @@ public class ProfileService {
             if (events.isEmpty()) return;
 
             saveProfile(userId, next);
-            jdbc.update("INSERT INTO profile_events (user_id, delta, trigger) VALUES (?, ?::jsonb, ?)",
-                    userId, mapper.writeValueAsString(events), "conversation");
+            jdbc.update("INSERT INTO profile_events (user_id, delta, trigger, trace_id) VALUES (?, ?::jsonb, ?, ?)",
+                    userId, mapper.writeValueAsString(events), "conversation", traceId);
             log.info("画像更新 user={} events={} trace={}", userId, events, traceId);
         } catch (Exception e) {
             log.error("画像更新失败(不影响回答) user={} trace={}: {}", userId, traceId, e.getMessage());
@@ -114,6 +115,21 @@ public class ProfileService {
         } catch (Exception ignored) {}
         return next;
     }
+
+    /** 用户可见的画像变更账本。只返回本人事件，不暴露原始对话内容。 */
+    public List<ProfileEvent> recentEvents(long userId, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 50));
+        return jdbc.query("""
+                SELECT id, delta::text, trigger, created_at, trace_id
+                FROM profile_events WHERE user_id=?
+                ORDER BY id DESC LIMIT ?
+                """, (rs, i) -> new ProfileEvent(
+                rs.getLong(1), parseEventChanges(rs.getString(2)), rs.getString(3),
+                rs.getTimestamp(4).toInstant(), rs.getString(5)), userId, safeLimit);
+    }
+
+    public record ProfileEvent(long id, List<String> changes, String trigger,
+                               Instant createdAt, String traceId) {}
 
     /** 每日4点: inferred 字段置信度衰减 (30天半衰期) */
     @Scheduled(cron = "0 0 4 * * *")
@@ -160,6 +176,15 @@ public class ProfileService {
         } catch (Exception e) {
             log.warn("画像抽取JSON解析失败: {}", e.getMessage());
             return new ExtractedDelta(List.of(), Map.of(), List.of());
+        }
+    }
+
+    private List<String> parseEventChanges(String json) {
+        try {
+            return mapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.warn("画像事件反序列化失败: {}", e.getMessage());
+            return List.of("画像已更新");
         }
     }
 }

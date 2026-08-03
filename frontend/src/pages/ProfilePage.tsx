@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { api, type ProfileEvent } from '../lib/api';
 
 interface Skill { name: string; confidence: number; source: string; last_seen?: string; }
 
@@ -33,9 +33,13 @@ function renderValue(v: any): string {
 export default function ProfilePage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['profile'], queryFn: () => api.getProfile() });
+  const { data: events = [] } = useQuery({ queryKey: ['profile-events'], queryFn: () => api.getProfileEvents() });
   const confirm = useMutation({
     mutationFn: (vars: { field: string; accept: boolean }) => api.confirmProfile(vars.field, vars.accept),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      qc.invalidateQueries({ queryKey: ['profile-events'] });
+    },
   });
 
   if (isLoading) return <div className="p-8 text-ink-500">加载中…</div>;
@@ -137,7 +141,47 @@ export default function ProfilePage() {
             </ul>
           </section>
         )}
+
+        <section className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-ink-700 uppercase tracking-wide">画像变更账本</h2>
+              <p className="text-xs text-ink-500 mt-1">展示系统为何更新你的画像；不会展示原始对话内容。</p>
+            </div>
+            <span className="text-xs text-ink-400">最近 {events.length} 条</span>
+          </div>
+          {events.length === 0 ? (
+            <div className="text-sm text-ink-500 py-2">还没有变更记录。上传简历或在对话中补充目标与技能后，这里会留下依据。</div>
+          ) : (
+            <ol className="relative border-l border-ink-200 ml-1 space-y-4">
+              {events.map((event: ProfileEvent) => (
+                <li key={event.id} className="ml-5 relative">
+                  <span className="absolute -left-[25px] top-1 w-2.5 h-2.5 rounded-full bg-accent-500 ring-4 ring-white" />
+                  <div className="flex items-center gap-2 text-xs text-ink-500">
+                    <span>{eventLabel(event.trigger)}</span>
+                    <span>·</span>
+                    <time>{formatEventTime(event.createdAt)}</time>
+                  </div>
+                  <ul className="mt-1 space-y-0.5 text-sm text-ink-800">
+                    {event.changes.map((change, i) => <li key={i}>{change}</li>)}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
       </div>
     </div>
   );
+}
+
+function eventLabel(trigger: string): string {
+  return ({ conversation: '来自对话', resume: '来自简历', confirm: '你的确认' } as Record<string, string>)[trigger] ?? '系统更新';
+}
+
+function formatEventTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '刚刚' : new Intl.DateTimeFormat('zh-CN', {
+    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(date);
 }
