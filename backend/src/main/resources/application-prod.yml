@@ -10,6 +10,8 @@ security:
   resume-enc-key: ${RESUME_ENC_KEY}
 
 tutor:
+  chat:
+    rate-limit-per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:10}
   auth:
     dev-login-enabled: false
   internal:

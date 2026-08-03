@@ -16,6 +16,8 @@ spring:
     enabled: true
 
 tutor:
+  chat:
+    rate-limit-per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:20}
   auth:
     # 本地演示便利入口；生产 profile 会强制关闭。
     dev-login-enabled: ${DEV_LOGIN_ENABLED:true}

@@ -1,14 +1,18 @@
 package com.tutor.chat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tutor.auth.AuthContext;
+import com.tutor.auth.AuthInterceptor;
 import com.tutor.contract.Evidence;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -24,10 +28,12 @@ import java.util.concurrent.atomic.AtomicLong;
 @RestController
 public class ChatController {
     private final ChatService chatService;
+    private final ChatRateLimiter rateLimiter;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public ChatController(ChatService chatService) {
+    public ChatController(ChatService chatService, ChatRateLimiter rateLimiter) {
         this.chatService = chatService;
+        this.rateLimiter = rateLimiter;
     }
 
     public record ChatRequest(Long conversationId,
@@ -35,6 +41,10 @@ public class ChatController {
 
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chat(@Valid @RequestBody ChatRequest req) {
+        long userId = AuthContext.currentUserId() == null ? AuthInterceptor.DEV_USER_ID : AuthContext.currentUserId();
+        if (!rateLimiter.tryAcquire(userId)) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "请求过于频繁，请稍后再试");
+        }
         SseEmitter emitter = new SseEmitter(120_000L);
         AtomicLong tokenSequence = new AtomicLong();
         Executors.newVirtualThreadPerTaskExecutor().submit(() ->

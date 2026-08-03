@@ -14,6 +14,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
@@ -33,7 +35,7 @@ class ChatControllerTest {
             events.onDone(9L, "hello");
             return null;
         }).when(service).turn(any(), anyString(), any(ChatService.TurnEvents.class));
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ChatController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ChatController(service, new ChatRateLimiter(20))).build();
 
         MvcResult initial = mvc.perform(post("/chat")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -51,5 +53,19 @@ class ChatControllerTest {
                 .contains("\"sid\":\"S1\"", "\"node_id\":\"skill:java\"", "\"source_url\":\"https://docs.oracle.com/en/java/\"")
                 .contains("\"text\":\"hello\"", "\"seq\":0")
                 .contains("\"message_id\":9");
+    }
+
+    @Test
+    void rejectsRequestWhenUserExceedsRateLimit() throws Exception {
+        ChatService service = mock(ChatService.class);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ChatController(service, new ChatRateLimiter(1))).build();
+        String body = "{\"message\":\"hello\"}";
+
+        mvc.perform(post("/chat").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(request().asyncStarted());
+        mvc.perform(post("/chat").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isTooManyRequests());
+        verify(service).turn(any(), anyString(), any(ChatService.TurnEvents.class));
+        verifyNoMoreInteractions(service);
     }
 }

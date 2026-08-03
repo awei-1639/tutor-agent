@@ -61,6 +61,8 @@ npm run dev
 
 容器或反向代理可使用以下无需 JWT 的探针：`GET /healthz` 仅检查进程存活；`GET /readyz` 额外检查 PostgreSQL 与 Neo4j，任一依赖不可用时返回 `503`。
 
+聊天接口默认按用户限制为每分钟 20 次；生产 profile 默认 10 次。可通过 `CHAT_RATE_LIMIT_PER_MINUTE` 调整；多实例部署时应改用共享的 Redis 限流器。
+
 ## 验证
 
 ```powershell
