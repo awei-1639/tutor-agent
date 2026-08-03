@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type ProfileEvent } from '../lib/api';
+import { api, type CareerGapCard, type ProfileEvent } from '../lib/api';
 
 interface Skill { name: string; confidence: number; source: string; last_seen?: string; }
 
@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['profile'], queryFn: () => api.getProfile() });
   const { data: events = [] } = useQuery({ queryKey: ['profile-events'], queryFn: () => api.getProfileEvents() });
+  const { data: gaps = [] } = useQuery({ queryKey: ['career-gaps'], queryFn: () => api.getCareerGaps() });
   const confirm = useMutation({
     mutationFn: (vars: { field: string; accept: boolean }) => api.confirmProfile(vars.field, vars.accept),
     onSuccess: () => {
@@ -87,6 +88,28 @@ export default function ProfilePage() {
               );
             })}
           </div>
+        </section>
+
+        <section className="card p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-ink-700 uppercase tracking-wide">目标岗位能力差距</h2>
+              <p className="text-xs text-ink-500 mt-1">由你的已确认技能与岗位硬要求直接对照，不使用模型猜测。</p>
+            </div>
+          </div>
+          {gaps.length === 0 ? (
+            <div className="text-sm text-ink-500">暂时没有可对照的岗位。先补充目标岗位或上传简历，让系统建立技能证据。</div>
+          ) : <div className="space-y-3">
+            {gaps.map((gap: CareerGapCard) => <div key={gap.jobId} className="rounded-lg border border-ink-100 p-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div><div className="text-sm font-medium text-ink-900">{gap.title}</div><div className="text-xs text-ink-500 mt-0.5">{[gap.company, gap.city].filter(Boolean).join(' · ')}</div></div>
+                <div className="text-sm font-semibold text-accent-700">{Math.round(gap.coverage * 100)}% 覆盖</div>
+              </div>
+              <GapLine label="已具备" values={gap.matched} tone="text-emerald-700" />
+              <GapLine label="可速成" values={gap.speedup} tone="text-accent-700" />
+              <GapLine label="待补齐" values={gap.missing} tone="text-amber-700" />
+            </div>)}
+          </div>}
         </section>
 
         {pendingItems.length > 0 && (
@@ -184,4 +207,13 @@ function formatEventTime(value: string): string {
   return Number.isNaN(date.getTime()) ? '刚刚' : new Intl.DateTimeFormat('zh-CN', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(date);
+}
+
+function GapLine({ label, values, tone }: { label: string; values: string[]; tone: string }) {
+  if (!values?.length) return null;
+  return <div className={`mt-2 text-xs ${tone}`}><span className="text-ink-500 mr-2">{label}</span>{values.map(skillLabel).join('、')}</div>;
+}
+
+function skillLabel(value: string): string {
+  return value.replace(/^skill:/, '').replaceAll('-', ' ');
 }

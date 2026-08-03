@@ -55,6 +55,7 @@ export const api = {
   // Profile
   getProfile: () => request<{ data: any; updated_at: string }>('/profile'),
   getProfileEvents: (limit = 12) => request<ProfileEvent[]>(`/profile/events?limit=${limit}`),
+  getCareerGaps: () => request<CareerGapCard[]>('/career/gaps'),
   confirmProfile: (field: string, accept: boolean) =>
     request('/profile/confirm', { method: 'POST', body: JSON.stringify({ field, accept }) }),
   // Resume
@@ -93,6 +94,17 @@ export interface ProfileEvent {
   trigger: 'conversation' | 'resume' | 'confirm' | string;
   createdAt: string;
   traceId?: string;
+}
+
+export interface CareerGapCard {
+  jobId: number;
+  title: string;
+  company?: string;
+  city?: string;
+  coverage: number;
+  matched: string[];
+  speedup: string[];
+  missing: string[];
 }
 
 /**
