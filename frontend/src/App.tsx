@@ -7,9 +7,13 @@ import NotificationsPage from './pages/NotificationsPage';
 import PlansPage from './pages/PlansPage';
 import ProfilePage from './pages/ProfilePage';
 import ResumePage from './pages/ResumePage';
+import RagEvalPage from './pages/RagEvalPage';
+import AdminPage from './pages/AdminPage';
+import KnowledgeBasePage from './pages/KnowledgeBasePage';
+import { hasSessionHint } from './lib/api';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  if (!localStorage.getItem('tutor_token')) return <Navigate to="/login" replace />;
+  if (!hasSessionHint()) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -25,6 +29,9 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/plans" element={<PlansPage />} />
         <Route path="/interview" element={<InterviewPage />} />
+        <Route path="/rag-eval" element={<RagEvalPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/documents" element={<KnowledgeBasePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/chat" replace />} />
     </Routes>

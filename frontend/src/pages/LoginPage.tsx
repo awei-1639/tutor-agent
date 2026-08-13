@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, setToken } from '../lib/api';
+import { api, setSessionHint, toUserMessage } from '../lib/api';
 
 /**
  * 登录/注册页 (Phase 4 V4 4.x): 单一表单, mode 切换。
@@ -24,10 +24,10 @@ export default function LoginPage() {
       const r = mode === 'register'
         ? await api.register(email.trim(), password, name.trim() || email.split('@')[0])
         : await api.login(email.trim(), password);
-      setToken(r.token, r.user_id, r.name || name.trim() || email.split('@')[0]);
+      setSessionHint(r.user_id, r.name || name.trim() || email.split('@')[0], r.role);
       nav('/chat');
-    } catch (ex: any) {
-      setErr(ex.message ?? (mode === 'register' ? '注册失败' : '登录失败'));
+    } catch (ex: unknown) {
+      setErr(toUserMessage(ex, mode === 'register' ? '注册失败，请稍后重试。' : '登录失败，请稍后重试。'));
     } finally {
       setLoading(false);
     }
@@ -38,10 +38,10 @@ export default function LoginPage() {
     setLoading(true); setErr('');
     try {
       const r = await api.devLogin(name.trim());
-      setToken(r.token, r.user_id, r.name);
+      setSessionHint(r.user_id, r.name, r.role);
       nav('/chat');
-    } catch (ex: any) {
-      setErr(ex.message ?? 'dev 登录失败');
+    } catch (ex: unknown) {
+      setErr(toUserMessage(ex, '开发登录失败，请稍后重试。'));
     } finally {
       setLoading(false);
     }

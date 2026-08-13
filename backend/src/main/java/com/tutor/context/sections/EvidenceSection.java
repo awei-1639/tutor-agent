@@ -8,6 +8,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.ArrayList;
 
 /** 区4: 编号知识证据块 [S#]。超限按融合分从低到高裁剪 (证据已按分排序, 截尾即可)。 */
 @Component
@@ -19,16 +20,26 @@ public class EvidenceSection implements ContextSection {
 
     @Override
     public String render(TurnContextView ctx, TokenBudget budget) {
+        return renderWithMetadata(ctx, budget).text();
+    }
+
+    @Override
+    public ContextSection.Rendered renderWithMetadata(TurnContextView ctx, TokenBudget budget) {
         List<Evidence> evidences = ctx.evidences();
-        if (evidences == null || evidences.isEmpty()) return "\n## 知识证据\n(本轮未检索到相关证据)\n";
+        if (evidences == null || evidences.isEmpty()) {
+            return new ContextSection.Rendered("\n## 知识证据\n(本轮未检索到相关证据)\n", List.of());
+        }
         StringBuilder sb = new StringBuilder("\n## 知识证据\n");
+        List<ContextSection.CitationMarker> markers = new ArrayList<>();
         for (int i = 0; i < evidences.size(); i++) {
             Evidence e = evidences.get(i);
+            if (e == null || e.chunkText() == null || e.chunkText().isBlank()) continue;
             String line = "[S" + (i + 1) + "] " + e.chunkText()
                     + (e.graphPath() != null ? " (图谱关联: " + e.graphPath() + ")" : "") + "\n";
             if (budget.count(sb.toString() + line) > budget()) break; // 低分证据被截尾
             sb.append(line);
+            markers.add(new ContextSection.CitationMarker("S" + (i + 1), sb.length()));
         }
-        return sb.toString();
+        return new ContextSection.Rendered(sb.toString(), markers);
     }
 }

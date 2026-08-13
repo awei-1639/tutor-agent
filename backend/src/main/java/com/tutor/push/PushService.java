@@ -26,7 +26,6 @@ import java.util.Set;
 @Service
 public class PushService {
     private static final Logger log = LoggerFactory.getLogger(PushService.class);
-    private static final long DEV_USER_ID = 1L;
 
     private final JdbcTemplate jdbc;
     private final ProfileService profileService;
@@ -76,8 +75,7 @@ public class PushService {
     @SuppressWarnings("unchecked")
     public Map<String, Object> runOnce() {
         // /internal 调用会注入演示用户；定时任务走 scheduledRun()，覆盖全部用户。
-        Long ul = AuthContext.currentUserId();
-        long uid = ul == null ? DEV_USER_ID : ul;
+        long uid = AuthContext.requireUserId();
         return runForUser(uid, releaseAvailableJobs());
     }
 

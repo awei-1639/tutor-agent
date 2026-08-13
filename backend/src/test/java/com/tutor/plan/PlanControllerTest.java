@@ -7,12 +7,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class PlanControllerTest {
@@ -33,5 +36,22 @@ class PlanControllerTest {
                 .andExpect(status().isOk());
 
         verify(service).todayTasks(42L);
+    }
+
+    @Test
+    void enqueuesPlanGenerationWithoutWaitingForLlm() throws Exception {
+        PlanService service = mock(PlanService.class);
+        when(service.enqueueWeeklyPlan(42L, "转 NLP 岗", "Java", "", "trace-1"))
+                .thenReturn(new PlanService.PlanGenerationJob(11L, "queued", null, null,
+                        Instant.now(), null));
+        AuthContext.set(42L);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new PlanController(service)).build();
+
+        mvc.perform(post("/plans").contentType(APPLICATION_JSON)
+                        .header("X-Trace-Id", "trace-1")
+                        .content("{\"goal\":\"转 NLP 岗\",\"currentSkills\":\"Java\"}"))
+                .andExpect(status().isAccepted());
+
+        verify(service).enqueueWeeklyPlan(42L, "转 NLP 岗", "Java", "", "trace-1");
     }
 }

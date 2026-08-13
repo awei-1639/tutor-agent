@@ -24,7 +24,7 @@ public class ResumeController {
     @PostMapping("/resumes")
     public Map<String, Object> upload(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) throw new IllegalArgumentException("文件为空");
-        long uid = AuthContext.currentUserId() == null ? 1L : AuthContext.currentUserId();
+        long uid = AuthContext.requireUserId();
         ResumeService.UploadResult r = resumeService.upload(uid, file);
         return Map.of(
                 "resume_id", r.resumeId(),

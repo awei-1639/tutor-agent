@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { api } from '../lib/api';
+import { useEffect, useState } from 'react';
+import { api, type PlanGenerationJob, type PlanTask } from '../lib/api';
 
 const KIND_LABEL: Record<string, string> = { learn: '学习', practice: '练习', review: '复习' };
 const KIND_COLOR: Record<string, string> = {
@@ -15,14 +15,31 @@ export default function PlansPage() {
   const { data: replanFlag } = useQuery({ queryKey: ['replan'], queryFn: () => api.shouldReplan() });
   const [goal, setGoal] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [generationJobId, setGenerationJobId] = useState<number | null>(null);
+
+  const { data: generationJob } = useQuery({
+    queryKey: ['plan-generation', generationJobId],
+    queryFn: () => api.getPlanGenerationJob(generationJobId as number),
+    enabled: generationJobId !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'queued' || status === 'running' ? 1000 : false;
+    },
+  });
 
   const generate = useMutation({
     mutationFn: () => api.generatePlan({ goal }),
-    onSuccess: () => {
-      setGoal(''); setShowNew(false);
-      qc.invalidateQueries({ queryKey: ['today-tasks'] });
+    onSuccess: (job: PlanGenerationJob) => {
+      setGoal(''); setShowNew(false); setGenerationJobId(job.id);
     },
   });
+
+  useEffect(() => {
+    if (generationJob?.status === 'completed') {
+      qc.invalidateQueries({ queryKey: ['today-tasks'] });
+      qc.invalidateQueries({ queryKey: ['replan'] });
+    }
+  }, [generationJob?.status, qc]);
 
   const checkin = useMutation({
     mutationFn: (vars: { taskId: number; status: string }) => api.checkin(vars.taskId, vars.status),
@@ -63,6 +80,20 @@ export default function PlansPage() {
           </div>
         )}
 
+        {generationJob && (
+          <div className={`card p-4 border-l-4 ${generationJob.status === 'failed' ? 'border-l-red-500 bg-red-50' : 'border-l-accent-500 bg-accent-50'}`}>
+            <div className="text-sm font-medium text-ink-800">
+              {generationJob.status === 'queued' && '计划已排队，等待生成…'}
+              {generationJob.status === 'running' && '计划生成中，页面可以继续使用…'}
+              {generationJob.status === 'completed' && '新学习计划已生成'}
+              {generationJob.status === 'failed' && '计划生成失败'}
+            </div>
+            {generationJob.status === 'failed' && (
+              <div className="text-xs text-red-700 mt-1">服务暂时无法生成计划，请稍后重试。</div>
+            )}
+          </div>
+        )}
+
         {replanFlag?.should_replan && (
           <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-50">
             <div className="text-sm font-medium text-amber-800">⚠️ 完成率 &lt; 60%, 建议重规划</div>
@@ -78,7 +109,7 @@ export default function PlansPage() {
             <div className="text-sm text-ink-500">暂无今日任务</div>
           ) : (
             <div className="space-y-2">
-              {tasks.map((t: any) => (
+              {tasks.map((t: PlanTask) => (
                 <div key={t.id} className="flex items-center gap-3 p-3 border border-ink-100 rounded-md">
                   <span className={`px-2 py-0.5 text-xs rounded ${KIND_COLOR[t.kind] ?? 'bg-ink-100 text-ink-700'}`}>
                     {KIND_LABEL[t.kind] ?? t.kind}

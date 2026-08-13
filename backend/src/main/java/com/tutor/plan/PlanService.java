@@ -8,10 +8,16 @@ import dev.langchain4j.data.message.UserMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PreDestroy;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 /**
  * 学习计划闭环 (Phase 3 V4 3.2): LLM 生成周计划 → 落 plans/plan_tasks 表 → checkins 打卡 → 重规划触发
@@ -22,6 +28,7 @@ public class PlanService {
     private static final Logger log = LoggerFactory.getLogger(PlanService.class);
     private static final double REPLAN_THRESHOLD = 0.6;
     private static final int PLAN_HORIZON_DAYS = 7;
+    private static final java.util.Set<String> PLAN_KINDS = java.util.Set.of("learn", "practice", "review");
 
     private static final String SYS = """
             你是周学习计划生成器。基于用户目标 + 当前技能水平 + 打卡历史, 生成未来 7 天每日任务。
@@ -34,6 +41,8 @@ public class PlanService {
     private final JdbcTemplate jdbc;
     private final LlmGateway gateway;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final ExecutorService generationExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final Semaphore generationSlots = new Semaphore(2);
 
     public PlanService(JdbcTemplate jdbc, LlmGateway gateway) {
         this.jdbc = jdbc;
@@ -44,6 +53,112 @@ public class PlanService {
     public record PlanTask(long id, long planId, LocalDate day, String content, String kind,
                            int minutes, String evidenceHint) {}
     public record Checkin(long id, long taskId, String status, String feedback) {}
+    public record PlanGenerationJob(long id, String status, Long planId, String error,
+                                    Instant createdAt, Instant finishedAt) {}
+
+    private record QueuedJob(long id, long userId, String goal, String currentSkills,
+                             String checkinHistory, String traceId) {}
+
+    /** 快速入队，HTTP 请求不再同步等待 LLM。 */
+    public PlanGenerationJob enqueueWeeklyPlan(long userId, String goal, String currentSkills,
+                                               String checkinHistory, String traceId) {
+        long id = jdbc.queryForObject("""
+                INSERT INTO plan_generation_jobs
+                    (user_id, goal, current_skills, checkin_history, trace_id)
+                VALUES (?,?,?,?,?) RETURNING id
+                """, Long.class, userId, goal, currentSkills, checkinHistory, traceId);
+        return generationJob(userId, id);
+    }
+
+    public PlanGenerationJob generationJob(long userId, long jobId) {
+        return jdbc.query("""
+                SELECT id, status, plan_id, error, created_at, finished_at
+                FROM plan_generation_jobs WHERE id=? AND user_id=?
+                """, (rs, i) -> new PlanGenerationJob(
+                rs.getLong(1), rs.getString(2),
+                rs.getObject(3, Long.class), rs.getString(4),
+                rs.getTimestamp(5).toInstant(),
+                rs.getTimestamp(6) == null ? null : rs.getTimestamp(6).toInstant()),
+                jobId, userId).stream().findFirst().orElseThrow(() ->
+                new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "计划生成任务不存在"));
+    }
+
+    /** 从数据库队列领取任务；多个应用实例也不会重复消费同一任务。 */
+    @Scheduled(fixedDelayString = "${plan.generation.poll-ms:500}")
+    public void dispatchPlanGeneration() {
+        if (!generationSlots.tryAcquire()) return;
+        QueuedJob job = claimNextJob();
+        if (job == null) {
+            generationSlots.release();
+            return;
+        }
+        generationExecutor.submit(() -> {
+            try {
+                Plan plan = generateWeeklyPlan(job.userId(), job.goal(), job.currentSkills(),
+                        job.checkinHistory(), job.traceId() == null ? "plan-job-" + job.id() : job.traceId());
+                if (plan == null) {
+                    markFailed(job.id(), "LLM 返回无效计划或调用失败");
+                } else {
+                    jdbc.update("UPDATE plan_generation_jobs SET status='completed', plan_id=?, finished_at=now() WHERE id=?",
+                            plan.id(), job.id());
+                }
+            } catch (Exception e) {
+                log.error("异步计划生成失败 job={} user={}: {}", job.id(), job.userId(), e.getMessage());
+                markFailed(job.id(), safeError(e));
+            } finally {
+                generationSlots.release();
+            }
+        });
+    }
+
+    private QueuedJob claimNextJob() {
+        return jdbc.query("""
+                WITH next_job AS (
+                    SELECT id FROM plan_generation_jobs
+                    WHERE status='queued'
+                       OR (status='running' AND started_at < now() - interval '10 minutes')
+                    ORDER BY id
+                    FOR UPDATE SKIP LOCKED LIMIT 1
+                )
+                UPDATE plan_generation_jobs j
+                SET status='running', started_at=now(), error=NULL
+                FROM next_job
+                WHERE j.id=next_job.id
+                RETURNING j.id, j.user_id, j.goal, j.current_skills, j.checkin_history, j.trace_id
+                """, (rs, i) -> new QueuedJob(rs.getLong(1), rs.getLong(2), rs.getString(3),
+                rs.getString(4), rs.getString(5), rs.getString(6))).stream().findFirst().orElse(null);
+    }
+
+    private void markFailed(long jobId, String error) {
+        jdbc.update("UPDATE plan_generation_jobs SET status='failed', error=?, finished_at=now() WHERE id=?",
+                error, jobId);
+    }
+
+    private String safeError(Exception error) {
+        String message = error.getMessage();
+        if (message == null || message.isBlank()) return "计划生成失败";
+        return message.length() > 500 ? message.substring(0, 500) : message;
+    }
+
+    private String clip(String value, int maxChars) {
+        if (value == null) return "";
+        return value.length() <= maxChars ? value : value.substring(0, maxChars) + "…";
+    }
+
+    private String safeKind(String value) {
+        String kind = clip(value, 40).toLowerCase(Locale.ROOT);
+        return PLAN_KINDS.contains(kind) ? kind : "learn";
+    }
+
+    private int boundedMinutes(int value) {
+        return Math.max(5, Math.min(480, value));
+    }
+
+    @PreDestroy
+    void shutdownGenerationExecutor() {
+        generationExecutor.close();
+    }
 
     /** 生成新周计划: 调 LLM + 解析 + 入库 */
     public Plan generateWeeklyPlan(long userId, String goal, String currentSkills, String checkinHistory, String traceId) {
@@ -52,7 +167,10 @@ public class PlanService {
                     SystemMessage.from(SYS),
                     UserMessage.from("目标: " + goal + "\n当前技能: " + currentSkills + "\n近期打卡: " + checkinHistory)), traceId);
             var node = mapper.readTree(json);
-            String goalSummary = node.path("goal_summary").asText(goal);
+            if (!node.path("days").isArray() || node.path("days").isEmpty()) {
+                throw new IllegalStateException("LLM 未返回有效计划任务");
+            }
+            String goalSummary = clip(node.path("goal_summary").asText(goal), 300);
             LocalDate monday = LocalDate.now();
             while (monday.getDayOfWeek().getValue() != 1) monday = monday.minusDays(1);
 
@@ -68,15 +186,16 @@ public class PlanService {
             // 写 plan_tasks
             int taskCount = 0;
             for (var dayNode : node.path("days")) {
+                if (taskCount >= 14) break;
                 LocalDate day = monday.plusDays(taskCount % 7);
                 jdbc.update(
                         "INSERT INTO plan_tasks (plan_id, user_id, day, content, kind, related_node_ids, estimated_minutes) " +
                                 "VALUES (?,?,?,?,?,?::text[],?)",
                         planId, userId, java.sql.Date.valueOf(day),
-                        dayNode.path("content").asText(""),
-                        dayNode.path("kind").asText("learn"),
+                        clip(dayNode.path("content").asText(""), 500),
+                        safeKind(dayNode.path("kind").asText("learn")),
                         toTextArray(dayNode.path("related_skills")),
-                        dayNode.path("estimated_minutes").asInt(60));
+                        boundedMinutes(dayNode.path("estimated_minutes").asInt(60)));
                 taskCount++;
             }
             log.info("plan 生成 user={} plan={} tasks={}", userId, planId, taskCount);
@@ -108,13 +227,19 @@ public class PlanService {
      * 简化: 返回 boolean 让调用方决定是否调 generateWeeklyPlan
      */
     public boolean shouldReplan(long userId) {
-        Long done = jdbc.queryForObject(
-                "SELECT count(*) FROM checkins c JOIN plan_tasks t ON c.task_id=t.id " +
-                        "WHERE c.user_id=? AND c.status='done' AND t.day BETWEEN (current_date - 7) AND current_date",
-                Long.class, userId);
-        Long total = jdbc.queryForObject(
-                "SELECT count(*) FROM plan_tasks WHERE user_id=? AND day BETWEEN (current_date - 7) AND current_date",
-                Long.class, userId);
+        // 两个统计合并为一次数据库往返，并显式带上 task.user_id 让复合索引生效。
+        Map<String, Long> counts = jdbc.queryForObject("""
+                SELECT
+                  (SELECT count(*) FROM checkins c
+                   JOIN plan_tasks t ON c.task_id=t.id
+                   WHERE c.user_id=? AND t.user_id=? AND c.status='done'
+                     AND t.day BETWEEN (current_date - 7) AND current_date) AS done,
+                  (SELECT count(*) FROM plan_tasks
+                   WHERE user_id=? AND day BETWEEN (current_date - 7) AND current_date) AS total
+                """, (rs, i) -> Map.of("done", rs.getLong(1), "total", rs.getLong(2)),
+                userId, userId, userId);
+        Long done = counts.get("done");
+        Long total = counts.get("total");
         if (total == null || total == 0) return false;
         double rate = (double) done / total;
         // 简化: 只看完成率
@@ -171,9 +296,11 @@ public class PlanService {
         if (arr == null || !arr.isArray()) return "{}";
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
+        int count = 0;
         for (var item : arr) {
+            if (count++ >= 20) break;
             if (!first) sb.append(',');
-            sb.append('"').append(item.asText().replace("\"", "\\\"")).append('"');
+            sb.append('"').append(clip(item.asText(), 120).replace("\"", "\\\"")).append('"');
             first = false;
         }
         return sb.append('}').toString();

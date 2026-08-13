@@ -15,7 +15,8 @@ import java.util.Locale;
 
 /**
  * 意图路由 (V3 3.2): 最小context (枚举定义+最近2轮), 轻量调用。
- * 降级矩阵: 路由失败 → MIXED (宁可多花专家成本, 不错分)。
+ * 降级矩阵: provider/预算失败 → CHAT (避免故障时扇出三路专家放大成本);
+ * 返回内容格式错误但调用成功 → CHAT (避免无效输出触发三路专家扇出)。
  */
 @Component
 public class IntentRouter {
@@ -47,18 +48,18 @@ public class IntentRouter {
                     UserMessage.from(context + "当前请求: " + question)), traceId);
             return parseIntent(json, mapper);
         } catch (Exception e) {
-            log.warn("router失败, 降级MIXED trace={}: {}", traceId, e.getMessage());
-            return Intent.MIXED;
+            log.warn("router不可用, 降级CHAT trace={} type={}", traceId, e.getClass().getSimpleName());
+            return Intent.CHAT;
         }
     }
 
-    /** 纯函数可单测: 解析失败/未知值 → MIXED */
+    /** 纯函数可单测: 解析失败/未知值 → CHAT，避免无效输出放大成本。 */
     static Intent parseIntent(String json, ObjectMapper mapper) {
         try {
             String v = mapper.readTree(json).path("intent").asText("");
             return Intent.valueOf(v.trim().toUpperCase(Locale.ROOT));
         } catch (Exception e) {
-            return Intent.MIXED;
+            return Intent.CHAT;
         }
     }
 }

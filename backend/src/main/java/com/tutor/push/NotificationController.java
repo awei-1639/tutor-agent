@@ -22,7 +22,8 @@ public class NotificationController {
 
     private static long uid() {
         Long u = AuthContext.currentUserId();
-        return u == null ? 1L : u;
+        if (u == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "未认证");
+        return u;
     }
 
     @GetMapping("/notifications")

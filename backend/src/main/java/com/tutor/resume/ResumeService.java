@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
 import com.tutor.llm.LlmGateway;
-import com.tutor.retrieval.VectorStore;
+import com.tutor.retrieval.vector.VectorStore;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.apache.pdfbox.Loader;
@@ -155,7 +155,7 @@ public class ResumeService {
             if (name.endsWith(".txt") || name.endsWith(".md")) {
                 return new String(bytes, StandardCharsets.UTF_8);
             }
-            throw new IllegalArgumentException("仅支持 PDF / DOCX / TXT 格式, 收到: " + name);
+            throw new IllegalArgumentException("仅支持 PDF / DOCX / TXT / Markdown 格式, 收到: " + name);
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {

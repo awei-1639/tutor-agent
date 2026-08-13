@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { api, type Notification } from '../lib/api';
 
-interface Notif { id: number; type: string; payload: any; read: boolean; created_at: string; }
+type Notif = Notification;
 
 export default function NotificationsPage() {
   const qc = useQueryClient();
@@ -55,36 +55,53 @@ function typeLabel(t: string) {
   return { job_push: '岗位', guide: '学习任务', system: '系统' }[t] ?? t;
 }
 
-function PayloadView({ p }: { p: any }) {
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function PayloadView({ p }: { p: unknown }) {
   // 后端 payload 是 JSON string (PG JSONB 反序列化), 先解析
-  let obj: any = p;
+  let obj: unknown = p;
   if (typeof p === 'string') {
     try { obj = JSON.parse(p); } catch { return <pre className="text-xs text-ink-500 whitespace-pre-wrap">{p}</pre>; }
   }
-  if (!obj) return null;
-  if (obj.job_title || obj.title) {
+  const record = asRecord(obj);
+  if (!record) return obj == null ? null : <pre className="text-xs text-ink-500 whitespace-pre-wrap">{JSON.stringify(obj, null, 2)}</pre>;
+  const title = typeof record.job_title === 'string' ? record.job_title : typeof record.title === 'string' ? record.title : undefined;
+  if (title) {
+    const company = typeof record.company === 'string' ? record.company : '';
+    const city = typeof record.city === 'string' ? record.city : undefined;
+    const salary = typeof record.salary === 'string' ? record.salary : undefined;
+    const score = typeof record.score === 'number' ? record.score : undefined;
+    const matched = stringList(record.matched);
+    const missing = stringList(record.missing);
+    const speedup = stringList(record.speedup);
     return (
       <div>
-        <div className="font-medium text-ink-900">{obj.job_title ?? obj.title} <span className="text-ink-500 font-normal">· {obj.company}</span></div>
+        <div className="font-medium text-ink-900">{title} <span className="text-ink-500 font-normal">· {company}</span></div>
         <div className="text-xs text-ink-500 mt-1 space-x-3">
-          {obj.city && <span>📍 {obj.city}</span>}
-          {obj.salary && <span>💰 {obj.salary}</span>}
+          {city && <span>📍 {city}</span>}
+          {salary && <span>💰 {salary}</span>}
         </div>
-        {Array.isArray(obj.matched) && obj.matched.length > 0 && (
-          <div className="text-xs text-ink-500 mt-1">✅ 匹配: {obj.matched.join(', ')}</div>
+        {matched.length > 0 && (
+          <div className="text-xs text-ink-500 mt-1">✅ 匹配: {matched.join(', ')}</div>
         )}
-        {Array.isArray(obj.missing) && obj.missing.length > 0 && (
-          <div className="text-xs text-ink-500 mt-0.5">⚠️ 缺失: {obj.missing.join(', ')}</div>
+        {missing.length > 0 && (
+          <div className="text-xs text-ink-500 mt-0.5">⚠️ 缺失: {missing.join(', ')}</div>
         )}
-        {Array.isArray(obj.speedup) && obj.speedup.length > 0 && (
-          <div className="text-xs text-accent-700 mt-0.5">⚡ 已具备: {obj.speedup.join(', ')}</div>
+        {speedup.length > 0 && (
+          <div className="text-xs text-accent-700 mt-0.5">⚡ 已具备: {speedup.join(', ')}</div>
         )}
-        {typeof obj.score === 'number' && (
-          <div className="text-xs text-accent-700 mt-1">匹配分: {obj.score.toFixed(2)}</div>
+        {score !== undefined && (
+          <div className="text-xs text-accent-700 mt-1">匹配分: {score.toFixed(2)}</div>
         )}
       </div>
     );
   }
-  if (obj.task) return <div className="text-sm text-ink-700">{obj.task}</div>;
-  return <pre className="text-xs text-ink-500 whitespace-pre-wrap">{JSON.stringify(obj, null, 2)}</pre>;
+  if (typeof record.task === 'string') return <div className="text-sm text-ink-700">{record.task}</div>;
+  return <pre className="text-xs text-ink-500 whitespace-pre-wrap">{JSON.stringify(record, null, 2)}</pre>;
 }

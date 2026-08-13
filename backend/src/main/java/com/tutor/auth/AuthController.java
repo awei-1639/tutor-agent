@@ -5,11 +5,14 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
+import java.time.Duration;
 
 /**
  * 认证端点 (Phase 4 V4 4.x): 注册 + 登录。
@@ -22,11 +25,17 @@ import java.util.Map;
 public class AuthController {
     private final AuthService auth;
     private final boolean devLoginEnabled;
+    private final boolean cookieSecure;
+    private final CsrfTokenService csrf;
 
     public AuthController(AuthService auth,
-                          @Value("${tutor.auth.dev-login-enabled:true}") boolean devLoginEnabled) {
+                          @Value("${tutor.auth.dev-login-enabled:false}") boolean devLoginEnabled,
+                          @Value("${tutor.auth.cookie-secure:false}") boolean cookieSecure,
+                          CsrfTokenService csrf) {
         this.auth = auth;
         this.devLoginEnabled = devLoginEnabled;
+        this.cookieSecure = cookieSecure;
+        this.csrf = csrf;
     }
 
     public record RegisterRequest(
@@ -42,20 +51,20 @@ public class AuthController {
     public record DevLoginRequest(@NotBlank String name) {}
 
     @PostMapping("/register")
-    public Map<String, Object> register(@Valid @RequestBody RegisterRequest req) {
+    public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest req) {
         try {
             AuthService.AuthResult r = auth.register(req.email(), req.password(), req.name());
-            return Map.of("user_id", r.userId(), "token", r.token(), "name", r.name());
+            return authenticated(r);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 
     @PostMapping("/login")
-    public Map<String, Object> login(@Valid @RequestBody LoginRequest req) {
+    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest req) {
         try {
             AuthService.AuthResult r = auth.login(req.email(), req.password());
-            return Map.of("user_id", r.userId(), "token", r.token(), "name", r.name());
+            return authenticated(r);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
         }
@@ -63,17 +72,83 @@ public class AuthController {
 
     /** Dev 兼容: 单字段 name 登录, 自动创建 user_id=1 占位 */
     @PostMapping("/dev-login")
-    public Map<String, Object> devLogin(@Valid @RequestBody DevLoginRequest req) {
+    public ResponseEntity<Map<String, Object>> devLogin(@Valid @RequestBody DevLoginRequest req) {
         if (!devLoginEnabled) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "endpoint not available");
         }
         try {
             AuthService.AuthResult r = auth.register("dev@" + req.name() + ".local",
                     "devpass", req.name());
-            return Map.of("user_id", r.userId(), "token", r.token(), "name", r.name());
+            return authenticated(r);
         } catch (IllegalArgumentException e) {
             // 邮箱已注册 → 用真实登录
             return login(new LoginRequest("dev@" + req.name() + ".local", "devpass"));
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@CookieValue(value = "tutor_refresh", required = false) String refreshToken) {
+        return logoutSession(refreshToken);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, Object>> refresh(@CookieValue(value = "tutor_refresh", required = false) String refreshToken) {
+        try {
+            return authenticated(auth.refresh(refreshToken));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
+        }
+    }
+
+    private ResponseEntity<Void> logoutSession(String refreshToken) {
+        auth.revokeRefreshToken(refreshToken);
+        return ResponseEntity.noContent()
+                .header("Set-Cookie", clearAccessCookie().toString())
+                .header("Set-Cookie", clearRefreshCookie().toString())
+                .header("Set-Cookie", clearCsrfCookie().toString())
+                .build();
+    }
+
+    private ResponseEntity<Map<String, Object>> authenticated(AuthService.AuthResult result) {
+        // Browser authentication is cookie-only. Do not expose an access token to JavaScript.
+        return ResponseEntity.ok()
+                .header("Set-Cookie", accessCookie(result.token()).toString())
+                .header("Set-Cookie", refreshCookie(result.refreshToken()).toString())
+                .header("Set-Cookie", csrfCookie(csrf.issue()).toString())
+                .body(Map.of("user_id", result.userId(),
+                        "name", result.name() == null ? "" : result.name(),
+                        "role", result.role() == null ? "USER" : result.role()));
+    }
+
+    private ResponseCookie accessCookie(String token) {
+        return ResponseCookie.from(AuthInterceptor.ACCESS_COOKIE, token)
+                .httpOnly(true).secure(cookieSecure).sameSite("Lax").path("/")
+                .maxAge(Duration.ofDays(30)).build();
+    }
+
+    private ResponseCookie clearAccessCookie() {
+        return ResponseCookie.from(AuthInterceptor.ACCESS_COOKIE, "")
+                .httpOnly(true).secure(cookieSecure).sameSite("Lax").path("/")
+                .maxAge(Duration.ZERO).build();
+    }
+
+    private ResponseCookie refreshCookie(String token) {
+        return ResponseCookie.from("tutor_refresh", token)
+                .httpOnly(true).secure(cookieSecure).sameSite("Lax").path("/")
+                .maxAge(Duration.ofDays(30)).build();
+    }
+
+    private ResponseCookie csrfCookie(String token) {
+        return ResponseCookie.from(CsrfTokenService.COOKIE, token)
+                .httpOnly(false).secure(cookieSecure).sameSite("Lax").path("/")
+                .maxAge(Duration.ofDays(30)).build();
+    }
+
+    private ResponseCookie clearRefreshCookie() {
+        return refreshCookie("").mutate().maxAge(Duration.ZERO).build();
+    }
+
+    private ResponseCookie clearCsrfCookie() {
+        return csrfCookie("").mutate().maxAge(Duration.ZERO).build();
     }
 }

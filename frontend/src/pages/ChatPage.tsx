@@ -1,19 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, streamChat } from '../lib/api';
+import { api, streamChat, type ConversationSummary } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 
-interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; }
+interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; }
 interface DisplayCitation extends Citation { key: string; }
-interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; clarify?: string; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; }
-interface Conv { id: number; last_active_at: string | null; title: string | null; msg_count: number; }
+interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; }
+type Conv = ConversationSummary;
 
 function safeSourceUrl(value?: string): string | null {
   try {
     const url = new URL(value ?? '');
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+    return url.protocol === 'https:' ? url.toString() : null;
   } catch {
     return null;
   }
+}
+
+function sourceStatusLabel(status?: string): string {
+  return ({
+    managed: '平台固化 · 哈希一致',
+    verified: '来源快照已验证',
+    unverified: '外部来源 · 未验证',
+    integrity_mismatch: '证据完整性异常',
+    invalid: '来源链接无效',
+    missing: '未收录来源',
+  } as Record<string, string>)[status ?? 'missing'] ?? '来源状态未知';
 }
 
 // hover 浮卡: 展示已持久化的材料身份和原文片段。
@@ -27,11 +38,14 @@ function CiteHover({ cite, x, y }: { cite: Citation; x: number; y: number }) {
         <span>{cite.title}</span>
       </div>
       <div className="text-ink-300 text-[10px] mb-1.5">{cite.node_id}</div>
+      <div className={`text-[10px] mb-1.5 ${cite.source_status === 'integrity_mismatch' ? 'text-rose-300' : 'text-ink-400'}`}>
+        {sourceStatusLabel(cite.source_status)}
+      </div>
       <div className="text-ink-200 whitespace-pre-wrap leading-relaxed mb-2">
         {cite.text?.slice(0, 200)}…
       </div>
       {sourceUrl ? <a href={sourceUrl} target="_blank" rel="noreferrer" className="text-accent-300 hover:text-accent-200">打开原始材料 ↗</a>
-        : <div className="text-[10px] text-ink-400">未收录原始链接</div>}
+        : <div className="text-[10px] text-ink-400">{cite.source_status === 'managed' ? '平台内部固化材料' : '未收录原始链接'}</div>}
       {cite.graph_path && <div className="border-t border-white/10 pt-2 text-[10px] text-ink-300">关联路径 · {cite.graph_path}</div>}
     </div>
   );
@@ -72,9 +86,12 @@ function ReferencePanel({ citations, pinnedKey, onPin, onClose }: {
           <div className="text-xs text-ink-500 mb-1">详情</div>
           <div className="text-sm font-semibold text-ink-900 mb-1">{pinned.title}</div>
           <div className="text-xs text-ink-500 mb-3">{pinned.node_id} · {pinned.type}</div>
+          <div className={`text-[11px] mb-3 ${pinned.source_status === 'integrity_mismatch' ? 'text-rose-600' : 'text-ink-500'}`}>
+            {sourceStatusLabel(pinned.source_status)}
+          </div>
           <div className="text-xs text-ink-700 whitespace-pre-wrap leading-relaxed">{pinned.text}</div>
           {sourceUrl ? <a href={sourceUrl} target="_blank" rel="noreferrer" className="inline-flex mt-3 text-xs text-accent-600 hover:text-accent-700">打开原始材料 ↗</a>
-            : <div className="mt-3 text-[11px] text-ink-500">该材料尚未收录原始链接</div>}
+            : <div className="mt-3 text-[11px] text-ink-500">{pinned.source_status === 'managed' ? '平台内部固化材料，无外部跳转' : '该材料尚未收录原始链接'}</div>}
           {pinned.graph_path && <div className="mt-3 pt-3 border-t border-ink-100 text-[11px] text-ink-500 leading-relaxed">关联路径 · {pinned.graph_path}</div>}
         </div>
       )}
@@ -97,11 +114,21 @@ function parseStoredCitations(raw?: string): Citation[] {
         text: typeof c.text === 'string' ? c.text : '',
         graph_path: typeof c.graph_path === 'string' ? c.graph_path : '',
         source_url: typeof c.source_url === 'string' ? c.source_url : '',
+        source_status: typeof c.source_status === 'string' ? c.source_status : 'missing',
+        evidence_hash: typeof c.evidence_hash === 'string' ? c.evidence_hash : '',
       }];
     });
   } catch {
     return [];
   }
+}
+
+function parseCitationIssues(raw?: string): string[] {
+  if (!raw) return [];
+  try {
+    const value: unknown = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  } catch { return []; }
 }
 
 // 对话分组 (Qwen 风格: 今天 / 昨天 / 过去 7 天 / 过去 30 天)
@@ -148,7 +175,8 @@ export default function ChatPage() {
     const msgs = await api.getMessages(id);
     setMessages(msgs.map(m => ({
       id: m.id, role: m.role as 'user' | 'assistant', content: m.content,
-      citations: parseStoredCitations(m.citations), trace_id: m.traceId,
+      citations: parseStoredCitations(m.citations), citationStatus: m.citationStatus,
+      citationIssues: parseCitationIssues(m.citationIssues), trace_id: m.traceId,
       feedback: m.feedback === 'helpful' || m.feedback === 'not_helpful' ? m.feedback : undefined,
     })));
     setConvId(id);
@@ -184,7 +212,7 @@ export default function ChatPage() {
           assistantPlaceholder.trace_id = e.trace_id;
           setConvId(e.conversation_id);
         },
-        onStage: e => setStage(e.phase),
+        onStage: e => setStage(e.expert && e.status ? `${e.phase}:${e.expert}:${e.status}` : e.phase),
         onToken: t => {
           if (activeStreamId.current !== myStreamId) return;
           assistantPlaceholder.tokens = (assistantPlaceholder.tokens ?? '') + t;
@@ -222,6 +250,8 @@ export default function ChatPage() {
         },
         onDone: e => {
           if (activeStreamId.current !== myStreamId) return;
+          assistantPlaceholder.citationStatus = e.citation_status;
+          assistantPlaceholder.citationIssues = e.citation_issues ?? [];
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
@@ -229,6 +259,8 @@ export default function ChatPage() {
               last.locked = true;
               last.id = e.message_id;
               last.trace_id = e.trace_id ?? assistantPlaceholder.trace_id;
+              last.citationStatus = assistantPlaceholder.citationStatus;
+              last.citationIssues = assistantPlaceholder.citationIssues;
             }
             return copy;
           });
@@ -385,6 +417,12 @@ export default function ChatPage() {
                       ❓ 追问: {m.clarify}
                     </div>
                   )}
+                  {m.role === 'assistant' && m.citationStatus && m.citationStatus !== 'not_applicable' && (
+                    <div className={`mt-2 text-[11px] ${m.citationStatus === 'verified' ? 'text-emerald-600' : m.citationStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'}`}>
+                      引用状态：{{ pending: '校验中', verified: '已验证', unsupported: '存在未充分支持的陈述', invalid_reference: '包含无效引用编号', unavailable: '校验服务暂不可用' }[m.citationStatus] ?? m.citationStatus}
+                      {m.citationIssues?.length ? `（${m.citationIssues.join('、')}）` : ''}
+                    </div>
+                  )}
                   {m.role === 'assistant' && m.id && (
                     <div className="mt-3 pt-2.5 border-t border-ink-100 flex items-center gap-2 text-xs text-ink-500">
                       <span>这条回答有帮助吗？</span>
@@ -436,6 +474,12 @@ export default function ChatPage() {
 }
 
 function stageLabel(s: string): string {
+  const expertDone = /^expert_done:(.+?):(success|timeout|failed|cancelled|rejected)$/.exec(s);
+  if (expertDone) {
+    const label = ({ planner: '规划专家', resume: '简历专家', interview: '面试专家' } as Record<string, string>)[expertDone[1]] ?? expertDone[1];
+    const status = ({ success: '完成', timeout: '超时', failed: '失败', cancelled: '已取消', rejected: '未执行' } as Record<string, string>)[expertDone[2]];
+    return `${label}${status}`;
+  }
   const m: Record<string, string> = {
     'routing': '意图识别…',
     'retrieving': '检索证据…',

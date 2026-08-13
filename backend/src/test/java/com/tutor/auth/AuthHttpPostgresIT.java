@@ -9,7 +9,7 @@ import org.neo4j.driver.Driver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -27,7 +27,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** 注册 → JWT → 受保护 REST 端点的真实 HTTP 链路，不调用外部 LLM/Neo4j。 */
 @Testcontainers
-@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@SpringBootTest(properties = {
+        "spring.task.scheduling.enabled=false",
+        "tutor.jwt.secret=test_only_jwt_secret_at_least_32_characters_long"
+})
 @AutoConfigureMockMvc
 @EnabledIfSystemProperty(named = "runIntegrationTests", matches = "true")
 class AuthHttpPostgresIT {
@@ -45,8 +48,8 @@ class AuthHttpPostgresIT {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
 
-    @MockBean LlmGateway llmGateway;
-    @MockBean Driver neo4jDriver;
+    @MockitoBean LlmGateway llmGateway;
+    @MockitoBean Driver neo4jDriver;
 
     @Test
     void registerThenAccessProtectedEndpointsWithIssuedJwt() throws Exception {

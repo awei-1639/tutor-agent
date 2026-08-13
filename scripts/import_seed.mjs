@@ -109,7 +109,8 @@ console.log();
 let kgSql = 'TRUNCATE kg_chunks;\n';
 chunks.forEach((c, i) => {
   const sourceUrl = c[3] ? `'${sqlEsc(c[3])}'` : 'NULL';
-  kgSql += `INSERT INTO kg_chunks (node_id, node_type, chunk_text, embedding, source_url, source_title, retrieved_at) VALUES ('${c[0]}', '${c[1]}', '${sqlEsc(c[2])}', '[${vecs[i].join(',')}]', ${sourceUrl}, '${sqlEsc(c[4])}', now());\n`;
+  const sourceStatus = c[3] ? 'unverified' : 'missing';
+  kgSql += `INSERT INTO kg_chunks (node_id, node_type, chunk_text, embedding, source_url, source_title, source_status, content_hash, retrieved_at) VALUES ('${c[0]}', '${c[1]}', '${sqlEsc(c[2])}', '[${vecs[i].join(',')}]', ${sourceUrl}, '${sqlEsc(c[4])}', '${sourceStatus}', encode(digest(convert_to('${sqlEsc(c[2])}', 'UTF8'), 'sha256'), 'hex'), now());\n`;
 });
 writeFileSync(join(OUT, 'kg_chunks.sql'), kgSql);
 

@@ -403,7 +403,7 @@ function buildChildren(cfg) {
     [2200, 3800, 3000]
   ));
   c.push(bullet('两条铁律：', '记忆丢一条可容忍、回答卡死不可容忍（记忆写入永不阻塞回答）；检索永远有下一级，只有对话LLM本身挂了才对用户报错'));
-  c.push(bullet('专家并行超时预算：', '扇出整体8s超时，超时专家按缺席处理进部分聚合——最慢专家不拖死整轮'));
+  c.push(bullet('专家并行超时预算：', '所有专家共享配置的批次级 deadline；超时专家按缺席处理并进入部分聚合——最慢专家不拖死整轮'));
   c.push(h2('6.3 全链路可观测性：先有数据，后有看板'));
   c.push(bullet('trace_id贯穿：', `HTTP入口生成trace_id → ${cfg === LANG.java ? 'TurnContext' : 'AgentState'} → 所有LLM调用、DB查询的结构化日志字段——一轮对话的全部行为可用一个id串起`));
   c.push(bullet('节点级span：', `${cfg === LANG.java ? 'turn_traces表' : 'LangGraph checkpoint之外另建turn_traces表'}记录每节点：耗时、token(in/out/缓存命中)、LLM调用次数、降级标志——排查"这轮为什么又贵又慢"直接定位到节点（8.2的90天保留策略即指此表）`));

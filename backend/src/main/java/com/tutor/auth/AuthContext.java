@@ -1,6 +1,8 @@
 package com.tutor.auth;
 
 import org.springframework.stereotype.Component;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 全局 userId 注入: ChatService/PlanService 等从 AuthContext.currentUserId() 取
@@ -13,5 +15,11 @@ public class AuthContext {
 
     public static void set(Long userId) { CURRENT.set(userId); }
     public static Long currentUserId() { return CURRENT.get(); }
+    /** Business code must fail closed: silently using a development account risks cross-user data access. */
+    public static long requireUserId() {
+        Long userId = CURRENT.get();
+        if (userId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未认证");
+        return userId;
+    }
     public static void clear() { CURRENT.remove(); }
 }

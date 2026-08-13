@@ -24,7 +24,7 @@ public class ProfileController {
 
     @GetMapping("/profile")
     public Map<String, Object> get() {
-        long uid = AuthContext.currentUserId() == null ? 1L : AuthContext.currentUserId();
+        long uid = AuthContext.requireUserId();
         return profileService.snapshot(uid);
     }
 
@@ -32,13 +32,13 @@ public class ProfileController {
 
     @PostMapping("/profile/confirm")
     public Map<String, Object> confirm(@Valid @RequestBody ConfirmRequest req) {
-        long uid = AuthContext.currentUserId() == null ? 1L : AuthContext.currentUserId();
+        long uid = AuthContext.requireUserId();
         return profileService.confirmField(uid, req.field(), req.accept());
     }
 
     @GetMapping("/profile/events")
     public List<ProfileService.ProfileEvent> events(@RequestParam(defaultValue = "12") int limit) {
-        long uid = AuthContext.currentUserId() == null ? 1L : AuthContext.currentUserId();
+        long uid = AuthContext.requireUserId();
         return profileService.recentEvents(uid, limit);
     }
 }

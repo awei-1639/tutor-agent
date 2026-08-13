@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.time.Duration;
 
 /**
  * JWT 工具 (Phase 4 V4 4.x): HS256 + secret 来自 env JWT_SECRET。
@@ -16,9 +17,12 @@ import java.util.Date;
 @Component
 public class JwtService {
     private final SecretKey key;
-    private static final long DEFAULT_TTL_MS = 30L * 24 * 3600 * 1000; // 30 天
+    private static final long ACCESS_TTL_MS = Duration.ofMinutes(15).toMillis();
 
-    public JwtService(@Value("${tutor.jwt.secret:tutor_dev_secret_min_32bytes_for_hs256_xx}") String secret) {
+    public JwtService(@Value("${tutor.jwt.secret:}") String secret) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be configured with at least 32 bytes");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -29,7 +33,7 @@ public class JwtService {
                 .subject(String.valueOf(userId))
                 .claim("name", name == null ? "" : name)
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + DEFAULT_TTL_MS))
+                .expiration(new Date(now.getTime() + ACCESS_TTL_MS))
                 .signWith(key)
                 .compact();
     }

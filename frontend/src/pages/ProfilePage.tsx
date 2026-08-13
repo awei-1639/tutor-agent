@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type CareerGapCard, type ProfileEvent } from '../lib/api';
+import { api, type CareerGapCard, type ProfileData, type ProfileEvent, type ProfileObject, type ProfileSkill } from '../lib/api';
 
-interface Skill { name: string; confidence: number; source: string; last_seen?: string; }
+type Skill = ProfileSkill;
 
 // 后端 key → 前端中文标签
 const KEY_LABEL: Record<string, string> = {
@@ -14,13 +14,17 @@ const KEY_LABEL: Record<string, string> = {
 };
 
 // 标量/数组/对象 多态显示
-function renderValue(v: any): string {
+function isProfileObject(value: unknown): value is ProfileObject {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function renderValue(v: unknown): string {
   if (v == null) return '—';
   if (typeof v === 'object') {
     if (Array.isArray(v)) {
       // pending_confirm 类型 [{field: 'city', value: '杭州'}, ...]
-      if (v.length > 0 && typeof v[0] === 'object' && 'field' in v[0]) {
-        return v.map((it: any) => `${it.field}=${it.value ?? ''}`).join(', ');
+      if (v.length > 0 && isProfileObject(v[0]) && typeof v[0].field === 'string') {
+        return v.map(it => isProfileObject(it) && typeof it.field === 'string' ? `${it.field}=${it.value ?? ''}` : '').filter(Boolean).join(', ');
       }
       return v.join(', ');
     }
@@ -34,7 +38,12 @@ export default function ProfilePage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['profile'], queryFn: () => api.getProfile() });
   const { data: events = [] } = useQuery({ queryKey: ['profile-events'], queryFn: () => api.getProfileEvents() });
-  const { data: gaps = [] } = useQuery({ queryKey: ['career-gaps'], queryFn: () => api.getCareerGaps() });
+  const { data: gaps = [], isLoading: gapsLoading, isError: gapsError } = useQuery({
+    queryKey: ['career-gaps'],
+    queryFn: () => api.getCareerGaps(),
+    // 画像首屏先出基础数据，图谱能力差距在画像成功后独立加载。
+    enabled: !!data,
+  });
   const addGapTasks = useMutation({
     mutationFn: (gap: CareerGapCard) => api.addGapTasks(gap.jobId, [...gap.speedup, ...gap.missing]),
   });
@@ -47,14 +56,13 @@ export default function ProfilePage() {
   });
 
   if (isLoading) return <div className="p-8 text-ink-500">加载中…</div>;
-  const p: any = data ?? {};
+  const p: ProfileData = data ?? {};
   const skills: Skill[] = p.skills ?? [];
   const scalars = Object.entries(p).filter(([k]) => !['skills', 'open_items', 'topics'].includes(k));
 
   // pending_confirm 在画像中是个嵌套列表; 可"逐条确认" 或整体确认
-  const pendingItems: { field: string; value: string }[] = Array.isArray(p.pending_confirm)
-    ? p.pending_confirm.filter((x: any) => x && typeof x === 'object' && 'field' in x)
-    : [];
+  const pendingItems = (p.pending_confirm ?? []).flatMap(item =>
+    typeof item.field === 'string' ? [{ field: item.field, value: typeof item.value === 'string' ? item.value : '' }] : []);
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -70,7 +78,7 @@ export default function ProfilePage() {
             {scalars.length === 0 && <div className="text-sm text-ink-500 py-2">暂无数据</div>}
             {scalars.map(([k, v]) => {
               const display = renderValue(v);
-              const confirmed = (v && typeof v === 'object' && 'confirmed' in v && !Array.isArray(v)) ? (v as any).confirmed : false;
+              const confirmed = isProfileObject(v) && v.confirmed === true;
               const isPendingArr = k === 'pending_confirm' && Array.isArray(v) && pendingItems.length > 0;
               return (
                 <div key={k} className="py-2.5 flex items-start justify-between gap-3">
@@ -100,7 +108,14 @@ export default function ProfilePage() {
               <p className="text-xs text-ink-500 mt-1">由你的已确认技能与岗位硬要求直接对照，不使用模型猜测。</p>
             </div>
           </div>
-          {gaps.length === 0 ? (
+          {gapsLoading ? (
+            <div className="space-y-2" aria-label="能力差距加载中">
+              <div className="h-16 rounded-lg bg-ink-50 animate-pulse" />
+              <div className="h-12 rounded-lg bg-ink-50 animate-pulse" />
+            </div>
+          ) : gapsError ? (
+            <div className="text-sm text-ink-500">能力差距暂时不可用，基础画像仍可正常使用。</div>
+          ) : gaps.length === 0 ? (
             <div className="text-sm text-ink-500">暂时没有可对照的岗位。先补充目标岗位或上传简历，让系统建立技能证据。</div>
           ) : <div className="space-y-3">
             {gaps.map((gap: CareerGapCard) => <div key={gap.jobId} className="rounded-lg border border-ink-100 p-3.5">

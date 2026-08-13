@@ -13,7 +13,7 @@ console.log('BEGIN;');
 for (const [id, url] of Object.entries(overrides)) {
   const resource = byId.get(id);
   if (!resource) throw new Error(`unknown resource: ${id}`);
-  if (!/^https?:\/\//.test(url)) throw new Error(`non-http(s) source URL: ${id}`);
-  console.log(`UPDATE kg_chunks SET source_url=${sql(url)}, source_title=${sql(resource.title)}, retrieved_at=now() WHERE node_id=${sql(id)};`);
+  if (!/^https:\/\//.test(url)) throw new Error(`non-HTTPS source URL: ${id}`);
+  console.log(`UPDATE kg_chunks SET source_url=${sql(url)}, source_title=${sql(resource.title)}, source_status='unverified', content_hash=encode(digest(convert_to(chunk_text, 'UTF8'), 'sha256'), 'hex'), retrieved_at=now() WHERE node_id=${sql(id)};`);
 }
 console.log('COMMIT;');

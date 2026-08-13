@@ -22,9 +22,13 @@ frontend/      React 单页应用
 graph_data/    技能、资源和岗位种子数据
 scripts/       数据生成、抽取与导入脚本
 evals/         RAG、路由和引用评估集及脚本
-docs/          V3/V4 蓝图与核心实现设计
+docs/          架构、运行、评测、安全与开源学习资料
 experiments/   可丢弃的技术 spike
 ```
+
+## 开源学习资料
+
+从 [CareerPilot 开源学习营](docs/README.md) 开始。它按“目标 → 代码入口 → 可执行动作 → 观测结果 → 作业验收”组织学习；技术细节再进入架构、评测、运维、安全和 API 参考库。
 
 ## 本地启动
 
@@ -49,6 +53,8 @@ mvn spring-boot:run
 
 上述命令在 `backend/` 目录执行。API 默认监听 `http://localhost:8180`，Flyway 会自动建表。
 
+认证使用 HttpOnly Cookie；生产环境启用 `prod` profile 时会强制 Secure Cookie、关闭开发登录和内部评估端点。写请求还需要由前端自动携带 CSRF 双提交令牌。
+
 4. 新开终端启动前端：
 
 ```powershell
@@ -61,13 +67,21 @@ npm run dev
 
 容器或反向代理可使用以下无需 JWT 的探针：`GET /healthz` 仅检查进程存活；`GET /readyz` 额外检查 PostgreSQL 与 Neo4j，任一依赖不可用时返回 `503`。
 
+生产容器可使用 `docker-compose.prod.yml` 启动。该配置不提供敏感变量默认值，并由前端 Nginx 代理 `/api`、注入 CSP 和转发 SSE。启动前需完整填写 `.env` 中的生产密钥。数据库备份可运行：
+
+```powershell
+.\scripts\backup_postgres.ps1
+```
+
+备份文件写入 `backups/`，应按实际环境再同步到独立、加密的存储。
+
 聊天接口默认按用户限制为每分钟 20 次；生产 profile 默认 10 次。可通过 `CHAT_RATE_LIMIT_PER_MINUTE` 调整；多实例部署时应改用共享的 Redis 限流器。
 
 ## 验证
 
 ```powershell
 cd backend
-mvn test
+mvn verify
 
 cd ..\frontend
 npm run build
@@ -85,6 +99,7 @@ mvn test -DrunIntegrationTests=true -Dtest='*IT'
 在 WSL 中运行该命令时，确保 WSL 已安装 Java 21、Maven，且当前用户可执行 `docker version`。Maven 测试已自动设置 Docker 29+ 所需的 API 版本。
 
 `.github/workflows/ci.yml` 会在 push 和 pull request 中自动执行后端单元测试、上述 PostgreSQL 集成测试以及前端生产构建。
+前端还会执行 Playwright 安全回归；CI 会自动安装 Chromium。
 
 ## 材料来源与增量更新
 
@@ -119,13 +134,40 @@ mvn spring-boot:run
 
 生产 profile 同时会关闭 `/auth/dev-login` 与 `/internal/*` 评估端点。不要在生产环境使用仓库中的开发默认密码。建议在反向代理层启用 HTTPS、限流、请求体限制和安全日志脱敏。
 
+Neo4j 查询具有独立的运行时降级策略：单次查询默认超时 2 秒，连续 3 次失败后熔断 30 秒；图谱扩展、技能对齐和速成技能查询在熔断期间返回安全空结果，主流程继续使用 PostgreSQL/向量检索结果。`/readyz` 仍会在 Neo4j 不可用时返回 `503`，不会把未就绪实例当作健康实例。可通过 `NEO4J_QUERY_TIMEOUT_SECONDS`、`NEO4J_FAILURE_THRESHOLD`、`NEO4J_OPEN_SECONDS` 调整。
+
 ## 检索评估基线
 
-`evals/rag_testset.json` v1 共 50 条图结构 gold。当前生产策略为图谱融合检索加查询自适应重排：Hit@5 90.0%，Recall@5 65.8%，MRR 0.687。详细调优过程见 `evals/` 与设计文档。
+`evals/rag_testset.json` v1 共 280 条中文 Golden Set：单跳技能 60 条、资源推荐 80 条、岗位要求 60 条、多跳前置 80 条。每条用例以人工确认的 Gold 节点作为确定性评分依据；评测使用当前真实检索管线，不复制线上逻辑。
+
+开发环境可通过前端 `RAG 评测` 页面启动真实评测。页面调用后端现有 `vector_only`、`fused`、`fused_rerank` 和 `agentic` 四条检索管线，结果写入 `eval_runs`，展示运行历史、总体指标、分类切片、严格历史基线对比和失败用例。评测同时输出：
+
+- Hit@K 的 Wilson 95% 置信区间，避免把小样本波动当成能力提升；
+- P0 执行可靠性与 P1 检索质量门禁。只有完整 Golden Set 通过门禁才具备发布资格，采样运行仅用于诊断；
+- 确定性 Badcase 根因聚类（如多跳覆盖不足、岗位技能覆盖不足、资源类型错配）以及对应 Owner 和修复建议。
+
+启动前设置 `INTERNAL_ENDPOINTS_ENABLED=true`，并确保 PostgreSQL、Neo4j 和 LLM/Embedding 服务可用；评测集路径可通过 `RAG_EVAL_DATASET_PATH` 覆盖，门禁阈值可通过 `RAG_EVAL_MIN_OVERALL_HIT`、`RAG_EVAL_MIN_OVERALL_RECALL`、`RAG_EVAL_MIN_MULTI_HOP_HIT` 和 `RAG_EVAL_MAX_ERRORS` 调整。
+
+当前 Golden Set 是项目领域回归集，Gold 节点由知识图谱关系与人工确认共同确定。要形成真实用户 RAG 报告，应将脱敏真实查询、人工确认的相关节点和参考证据加入独立数据集，再在相同知识库快照和模型配置下进行基线对比。
+
+## 管理端
+
+管理端入口为 `/admin`，只对数据库中 `role = 'ADMIN'` 且未被禁用/软删除的账号开放。当前包含用户状态管理、RAG 评测运行概览、知识库文档中心和操作审计；用户删除采用可恢复的软删除，不直接删除用户及其外键关联数据。
+
+首次使用时，先完成普通账号注册，再由数据库管理员一次性授予管理员角色（不要把该 SQL 暴露给前端）：
+
+```bash
+docker exec tutor-postgres psql -U tutor -d tutor \
+  -c "UPDATE users SET role = 'ADMIN' WHERE lower(email) = lower('admin@example.com');"
+```
+
+后端启动时 Flyway 会自动应用 `V16__admin_console.sql`，创建角色、软删除字段和 `admin_audit_log` 审计表。管理员状态变更接口仍会在服务端重新查询角色，不依赖前端菜单或旧 JWT。
+
+知识库原文件存储在私有阿里云 OSS Bucket，环境变量见 `.env.example` 中的 `OSS_*` 配置。管理员可在 `/admin/documents` 上传 PDF、DOCX、TXT、Markdown；系统将异步解析、切分、向量化，并在状态为 `indexed` 后合并进现有 RAG 检索。PostgreSQL 保存文档元数据、处理状态、分块和 embedding，不保存原始文件；软删除时会同步清理 OSS 对象和检索分块。
 
 ## 后续优先级
 
-1. 增加基于 Testcontainers 的 PostgreSQL/Neo4j 集成测试。
-2. 增加登录、对话 SSE、简历上传的前后端端到端测试。
+1. 增加登录、对话 SSE、简历上传的前后端端到端测试。
+2. 增加 Neo4j/检索链路的运行指标与告警面板。
 3. 为 LLM 调用补充可观测性、并发上限与后台执行器生命周期管理。
 4. 将 DOCX 中稳定的接口和运维约定逐步迁移为可审查的 Markdown 文档。

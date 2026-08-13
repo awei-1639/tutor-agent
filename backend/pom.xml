@@ -21,6 +21,9 @@
     <java.version>21</java.version>
     <langchain4j.version>1.0.1</langchain4j.version>
     <jtokkit.version>1.1.0</jtokkit.version>
+    <jacoco.version>0.8.12</jacoco.version>
+    <!-- Surefire performs late replacement for the Mockito Java agent. -->
+    <argLine/>
   </properties>
 
   <dependencies>
@@ -35,6 +38,15 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+      <scope>runtime</scope>
     </dependency>
 
     <!-- LLM: DeepSeek/SiliconFlow 均为 OpenAI 兼容接口 -->
@@ -66,6 +78,19 @@
       <groupId>org.neo4j.driver</groupId>
       <artifactId>neo4j-java-driver</artifactId>
       <version>5.28.0</version>
+    </dependency>
+    <!-- 阿里云 OSS：知识库原文件私有存储，应用服务端持有访问凭证。 -->
+    <dependency>
+      <groupId>com.aliyun.oss</groupId>
+      <artifactId>aliyun-sdk-oss</artifactId>
+      <version>3.18.4</version>
+      <exclusions>
+        <!-- HttpClient's Commons Logging API is supplied by Spring's JCL bridge. -->
+        <exclusion>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <!-- token 估算 (context 预算控制, 实现设计 3.x) -->
@@ -105,6 +130,13 @@
       <groupId>org.apache.pdfbox</groupId>
       <artifactId>pdfbox</artifactId>
       <version>3.0.4</version>
+      <exclusions>
+        <!-- Spring already provides the Commons Logging API bridge; keeping both emits a runtime warning. -->
+        <exclusion>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
@@ -116,6 +148,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Declared directly so Surefire can install Mockito as a Java agent on future JDKs. -->
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -137,11 +175,45 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.8.1</version>
+        <executions>
+          <execution>
+            <id>resolve-mockito-agent</id>
+            <goals>
+              <goal>properties</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-unit-test-coverage</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>generate-unit-test-coverage-report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <!-- Docker 29+ 拒绝 Testcontainers 1.20 默认的 API 1.32。 -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
+          <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
           <systemPropertyVariables>
             <api.version>1.40</api.version>
           </systemPropertyVariables>

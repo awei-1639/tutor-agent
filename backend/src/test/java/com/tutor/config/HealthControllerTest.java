@@ -5,6 +5,8 @@ import org.neo4j.driver.Driver;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -35,6 +37,6 @@ class HealthControllerTest {
         var result = controller.ready();
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(result.getBody()).containsEntry("status", "not_ready");
-        assertThat(result.getBody().get("unavailable")).asList().containsExactly("postgres", "neo4j");
+        assertThat(result.getBody()).containsEntry("unavailable", List.of("postgres", "neo4j"));
     }
 }

@@ -3,7 +3,9 @@ package com.tutor.plan;
 import com.tutor.auth.AuthContext;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,13 +24,24 @@ public class PlanController {
         this.plans = plans;
     }
 
-    public record PlanRequest(@NotBlank String goal, String currentSkills, String checkinHistory) {}
+    public record PlanRequest(@NotBlank @Size(max = 500) String goal,
+                              @Size(max = 12000) String currentSkills,
+                              @Size(max = 12000) String checkinHistory) {}
 
     @PostMapping
-    public Object generate(@Valid @RequestBody PlanRequest req, @RequestHeader(value = "X-Trace-Id", required = false) String traceId) {
-        PlanService.Plan p = plans.generateWeeklyPlan(currentUserId(), req.goal(), req.currentSkills() == null ? "" : req.currentSkills(),
-                req.checkinHistory() == null ? "" : req.checkinHistory(), traceId == null ? "user" : traceId);
-        return p == null ? java.util.Map.of("error", "plan 生成失败") : p;
+    public ResponseEntity<PlanService.PlanGenerationJob> generate(
+            @Valid @RequestBody PlanRequest req,
+            @RequestHeader(value = "X-Trace-Id", required = false) String traceId) {
+        PlanService.PlanGenerationJob job = plans.enqueueWeeklyPlan(currentUserId(), req.goal(),
+                req.currentSkills() == null ? "" : req.currentSkills(),
+                req.checkinHistory() == null ? "" : req.checkinHistory(),
+                traceId == null ? "user" : traceId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(job);
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    public PlanService.PlanGenerationJob generationJob(@PathVariable long jobId) {
+        return plans.generationJob(currentUserId(), jobId);
     }
 
     public record CheckinRequest(long taskId, @NotBlank String status, String feedback) {}

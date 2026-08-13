@@ -7,7 +7,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import com.tutor.memory.ConversationStore;
+import com.tutor.memory.local.ConversationStore;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -68,6 +68,22 @@ class AuthServicePostgresIT {
         assertThatThrownBy(() -> auth.login("exists@example.com", "wrong-password"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("邮箱或密码错误");
+    }
+
+    @Test
+    void rotatesAndRevokesRefreshTokens() {
+        AuthService.AuthResult first = auth.register("refresh@example.com", "correct-horse", "Refresh");
+        AuthService.AuthResult rotated = auth.refresh(first.refreshToken());
+
+        assertThat(rotated.userId()).isEqualTo(first.userId());
+        assertThat(rotated.refreshToken()).isNotEqualTo(first.refreshToken());
+        assertThatThrownBy(() -> auth.refresh(first.refreshToken()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("无效或已过期");
+
+        auth.revokeRefreshToken(rotated.refreshToken());
+        assertThatThrownBy(() -> auth.refresh(rotated.refreshToken()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

@@ -16,12 +16,12 @@ class IntentRouterTest {
     }
 
     @Test
-    void unknownValueFallsBackToMixed() {
-        assertThat(IntentRouter.parseIntent("{\"intent\":\"banana\"}", mapper)).isEqualTo(Intent.MIXED);
+    void unknownValueFallsBackToChat() {
+        assertThat(IntentRouter.parseIntent("{\"intent\":\"banana\"}", mapper)).isEqualTo(Intent.CHAT);
     }
 
     @Test
-    void malformedJsonFallsBackToMixed() {
-        assertThat(IntentRouter.parseIntent("not json", mapper)).isEqualTo(Intent.MIXED);
+    void malformedJsonFallsBackToChat() {
+        assertThat(IntentRouter.parseIntent("not json", mapper)).isEqualTo(Intent.CHAT);
     }
 }

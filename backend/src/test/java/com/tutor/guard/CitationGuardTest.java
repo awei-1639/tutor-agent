@@ -62,5 +62,51 @@ class CitationGuardTest {
         assertThat(r.supported()).isEqualTo(0);
         assertThat(r.unsupported()).isEqualTo(1);
         assertThat(r.supportRate()).isEqualTo(0.0);
+        assertThat(r.status()).isEqualTo("unavailable");
+    }
+
+    @Test
+    @DisplayName("未知 verdict 不得被默认为 supported")
+    void unknownVerdictIsUnsupported() {
+        when(gateway.chatJson(any(), any(), anyString())).thenReturn(
+                "{\"claims\":[{\"text\":\"a\",\"sid\":\"S1\",\"verdict\":\"maybe\"}]}" );
+        var r = guard.guard("回答 [S1]", evs, "t4");
+        assertThat(r.supported()).isZero();
+        assertThat(r.unsupported()).isEqualTo(1);
+        assertThat(r.supportRate()).isZero();
+    }
+
+    @Test
+    @DisplayName("引用编号超出证据集合时必须进入 invalid_reference")
+    void invalidCitationReferenceIsRejected() {
+        when(gateway.chatJson(any(), any(), anyString())).thenReturn(
+                "{\"claims\":[{\"text\":\"a\",\"sid\":\"S1\",\"verdict\":\"supported\"}]}" );
+        var r = guard.guard("回答 [S1] 和 [S999999999999999999999]", evs, "t5");
+        assertThat(r.status()).isEqualTo("invalid_reference");
+        assertThat(r.issues()).contains("S999999999999999999999");
+    }
+
+    @Test
+    @DisplayName("裁判返回空 claims 时不得误判为 verified")
+    void emptyClaimsFallsBackToUnavailable() {
+        when(gateway.chatJson(any(), any(), anyString())).thenReturn("{\"claims\":[]}");
+
+        var r = guard.guard("回答 [S1]", evs, "t6");
+
+        assertThat(r.status()).isEqualTo("unavailable");
+        assertThat(r.supportRate()).isZero();
+    }
+
+    @Test
+    @DisplayName("supported 结论缺少 sid 时仍视为 unsupported")
+    void supportedClaimWithoutSidIsRejected() {
+        when(gateway.chatJson(any(), any(), anyString())).thenReturn(
+                "{\"claims\":[{\"text\":\"a\",\"verdict\":\"supported\"}]}");
+
+        var r = guard.guard("回答 [S1]", evs, "t7");
+
+        assertThat(r.status()).isEqualTo("unsupported");
+        assertThat(r.supported()).isZero();
+        assertThat(r.unsupported()).isEqualTo(1);
     }
 }

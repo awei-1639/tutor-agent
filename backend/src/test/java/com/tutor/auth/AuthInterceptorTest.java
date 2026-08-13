@@ -2,6 +2,7 @@ package com.tutor.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ import static org.mockito.Mockito.*;
 
 class AuthInterceptorTest {
     private final JwtService jwt = mock(JwtService.class);
-    private final AuthInterceptor interceptor = new AuthInterceptor(jwt, true);
+    private final AuthInterceptor interceptor = new AuthInterceptor(jwt, true, true);
 
     @AfterEach
     void clearContext() {
@@ -36,6 +37,16 @@ class AuthInterceptorTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
 
         assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
+        verifyNoInteractions(jwt);
+    }
+
+    @Test
+    void prometheusEndpointRequiresAuthentication() throws Exception {
+        HttpServletRequest request = request("/actuator/prometheus", null);
+        HttpServletResponse response = responseWithWriter();
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isFalse();
+        verify(response).setStatus(401);
         verifyNoInteractions(jwt);
     }
 
@@ -70,12 +81,34 @@ class AuthInterceptorTest {
     }
 
     @Test
+    void protectedEndpointAcceptsHttpOnlyAccessCookie() throws Exception {
+        HttpServletRequest request = request("/profile", null);
+        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie(AuthInterceptor.ACCESS_COOKIE, "cookie-token")});
+        when(jwt.parse("cookie-token")).thenReturn(42L);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
+        assertThat(AuthContext.currentUserId()).isEqualTo(42L);
+    }
+
+    @Test
     void productionCanDisableInternalEndpoints() throws Exception {
-        AuthInterceptor productionInterceptor = new AuthInterceptor(jwt, false);
+        AuthInterceptor productionInterceptor = new AuthInterceptor(jwt, false, true);
         HttpServletRequest request = request("/internal/push-run", null);
         HttpServletResponse response = mock(HttpServletResponse.class);
 
         assertThat(productionInterceptor.preHandle(request, response, new Object())).isFalse();
+        verify(response).setStatus(404);
+        verifyNoInteractions(jwt);
+    }
+
+    @Test
+    void enabledInternalEndpointsRejectNonLoopbackRequests() throws Exception {
+        HttpServletRequest request = request("/internal/push-run", null);
+        when(request.getRemoteAddr()).thenReturn("203.0.113.10");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isFalse();
         verify(response).setStatus(404);
         verifyNoInteractions(jwt);
     }

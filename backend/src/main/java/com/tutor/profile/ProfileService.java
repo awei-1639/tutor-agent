@@ -54,7 +54,9 @@ public class ProfileService {
     public Map<String, Object> snapshot(long userId) {
         List<String> rows = jdbc.query("SELECT data::text FROM profiles WHERE user_id=?",
                 (rs, i) -> rs.getString(1), userId);
-        if (rows.isEmpty()) return Map.of();
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
         try {
             return mapper.readValue(rows.get(0), new TypeReference<>() {});
         } catch (Exception e) {
@@ -158,8 +160,12 @@ public class ProfileService {
             JsonNode root = mapper.readTree(json);
             List<ExtractedDelta.SkillDelta> skills = new ArrayList<>();
             for (JsonNode s : root.path("skills")) {
+                if (skills.size() >= 50) break;
                 if (s.hasNonNull("name")) {
-                    skills.add(new ExtractedDelta.SkillDelta(s.get("name").asText(), s.path("explicit").asBoolean(false)));
+                    String name = s.get("name").asText("");
+                    if (!name.isBlank()) {
+                        skills.add(new ExtractedDelta.SkillDelta(clip(name, 120), s.path("explicit").asBoolean(false)));
+                    }
                 }
             }
             Map<String, ExtractedDelta.ScalarDelta> scalars = new HashMap<>();
@@ -171,7 +177,10 @@ public class ProfileService {
                 }
             }
             List<String> formats = new ArrayList<>();
-            for (JsonNode f : root.path("preferred_format")) formats.add(f.asText());
+            for (JsonNode f : root.path("preferred_format")) {
+                if (formats.size() >= 10) break;
+                formats.add(clip(f.asText(""), 80));
+            }
             return new ExtractedDelta(skills, scalars, formats);
         } catch (Exception e) {
             log.warn("画像抽取JSON解析失败: {}", e.getMessage());
@@ -186,5 +195,10 @@ public class ProfileService {
             log.warn("画像事件反序列化失败: {}", e.getMessage());
             return List.of("画像已更新");
         }
+    }
+
+    private String clip(String value, int maxChars) {
+        if (value == null) return "";
+        return value.length() <= maxChars ? value : value.substring(0, maxChars) + "…";
     }
 }

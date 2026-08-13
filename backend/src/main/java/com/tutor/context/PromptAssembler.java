@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 唯一的 system prompt 组装入口 (实现设计 3.3)。
@@ -16,23 +17,30 @@ public class PromptAssembler {
     private static final Logger log = LoggerFactory.getLogger(PromptAssembler.class);
     private final List<ContextSection> sections;
     private final TokenBudget budget;
+    private final ContextPlanner planner;
 
-    public PromptAssembler(List<ContextSection> sections, TokenBudget budget) {
+    public PromptAssembler(List<ContextSection> sections, TokenBudget budget, ContextPlanner planner) {
         this.sections = sections;
         this.budget = budget;
+        this.planner = planner;
     }
 
     public String assemble(TurnContextView ctx, String traceId) {
-        StringBuilder sb = new StringBuilder();
-        for (ContextSection s : sections) {
-            String rendered = s.render(ctx, budget);
-            int tokens = budget.count(rendered);
-            if (tokens > s.budget()) {
-                rendered = budget.truncate(rendered, s.budget());
-                log.warn("section {} 超预算被截断 {}→{} trace={}", s.name(), tokens, s.budget(), traceId);
-            }
-            sb.append(rendered);
+        return assembleWithMetadata(ctx, traceId).prompt();
+    }
+
+    public record Assembled(String prompt, Set<String> citationIds) {
+        public Assembled {
+            citationIds = citationIds == null ? Set.of() : Set.copyOf(citationIds);
         }
-        return sb.toString();
+    }
+
+    /** Returns the prompt plus citation IDs that survived every context budget. */
+    public Assembled assembleWithMetadata(TurnContextView ctx, String traceId) {
+        ContextPlanner.Plan plan = planner.plan(sections, ctx, budget);
+        plan.allocations().stream().filter(a -> a.originalTokens() > a.allocatedTokens())
+                .forEach(a -> log.info("context section={} {}→{} dropped={} trace={}", a.name(), a.originalTokens(),
+                        a.allocatedTokens(), a.dropped(), traceId));
+        return new Assembled(plan.prompt(), plan.citationIds());
     }
 }

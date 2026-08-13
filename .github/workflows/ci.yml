@@ -17,12 +17,44 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Unit tests
+      - name: Unit tests and coverage report
         working-directory: backend
-        run: mvn -B test
+        run: mvn -B verify
+      - name: Public interview scoring regression gate
+        working-directory: backend
+        run: mvn -B -Dtest=InterviewScoringQualityTest,InterviewModelEvalQualityTest,InterviewLlmServiceTest test
+      - name: Prepare protected interview score gold set
+        id: interview_score_gold
+        env:
+          SCORE_GOLD_JSON_B64: ${{ secrets.INTERVIEW_SCORE_GOLD_JSON_B64 }}
+        run: |
+          if [ -z "$SCORE_GOLD_JSON_B64" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Protected interview score gate is not configured; no real gold set was supplied."
+            exit 0
+          fi
+          mkdir -p evals/private
+          printf '%s' "$SCORE_GOLD_JSON_B64" | base64 --decode > evals/private/interview-score-gold.json
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - name: Protected interview score release gate
+        if: steps.interview_score_gold.outputs.enabled == 'true'
+        working-directory: backend
+        run: mvn -B -Dtest=InterviewScoreEvalGateTest -DinterviewScoreGoldPath="$GITHUB_WORKSPACE/evals/private/interview-score-gold.json" test
+      - name: Remove protected interview score gold set
+        if: always()
+        run: rm -f evals/private/interview-score-gold.json
       - name: PostgreSQL, Neo4j, and Flyway integration tests
         working-directory: backend
         run: mvn -B test -DrunIntegrationTests=true -Dtest='*IT'
+      - name: Upload backend reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/target/surefire-reports
+            backend/target/site/jacoco
+          if-no-files-found: warn
 
   frontend:
     runs-on: ubuntu-latest
@@ -36,6 +68,38 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
+      - name: Audit production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
       - name: Type check and production build
         working-directory: frontend
-        run: npm run build
+        run: npm run lint:types && npm run build
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Frontend security E2E
+        working-directory: frontend
+        run: npm run e2e
+      - name: Upload frontend test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-reports
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: warn
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build --tag personal-ai-tutor-backend:ci ./backend
+      - name: Build frontend image
+        run: docker build --tag personal-ai-tutor-frontend:ci ./frontend
+      - name: Validate production Compose contract
+        run: docker compose -f docker-compose.prod.yml config --quiet
