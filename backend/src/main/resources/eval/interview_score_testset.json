@@ -1,0 +1,69 @@
+{
+  "version": "interview-score-contract-v1",
+  "cases": [
+    {
+      "id": "redis-cache-rebuild-strong",
+      "answer": "使用互斥锁避免热点 key 同时重建，设置合理过期时间，并监控命中率和重建失败率。",
+      "requiredPoints": ["互斥锁", "过期时间", "命中率"],
+      "bonusPoints": ["重建失败率"],
+      "criticalErrors": ["永不过期"],
+      "expectedScore": 9
+    },
+    {
+      "id": "redis-cache-rebuild-qualified",
+      "answer": "使用互斥锁避免热点 key 同时重建，并设置合理过期时间。",
+      "requiredPoints": ["互斥锁", "过期时间", "命中率"],
+      "bonusPoints": ["重建失败率"],
+      "criticalErrors": ["永不过期"],
+      "expectedScore": 6
+    },
+    {
+      "id": "redis-cache-rebuild-insufficient",
+      "answer": "直接把数据放进缓存即可。",
+      "requiredPoints": ["互斥锁", "过期时间", "命中率"],
+      "bonusPoints": ["重建失败率"],
+      "criticalErrors": ["永不过期"],
+      "expectedScore": 2
+    },
+    {
+      "id": "redis-cache-rebuild-critical",
+      "answer": "缓存应该永不过期，这样就不会发生缓存重建。",
+      "requiredPoints": ["互斥锁", "过期时间", "命中率"],
+      "bonusPoints": ["重建失败率"],
+      "criticalErrors": ["永不过期"],
+      "expectedScore": 2
+    },
+    {
+      "id": "agent-tool-strong",
+      "answer": "先校验工具参数的 schema 和用户权限，再设置超时、重试与幂等键，并记录调用链路用于审计。",
+      "requiredPoints": ["schema", "权限", "超时"],
+      "bonusPoints": ["幂等键"],
+      "criticalErrors": ["跳过权限校验"],
+      "expectedScore": 9
+    },
+    {
+      "id": "agent-tool-qualified",
+      "answer": "工具调用前校验 schema 和权限，失败时设置超时处理。",
+      "requiredPoints": ["schema", "权限", "超时"],
+      "bonusPoints": ["幂等键"],
+      "criticalErrors": ["跳过权限校验"],
+      "expectedScore": 8
+    },
+    {
+      "id": "agent-tool-insufficient",
+      "answer": "让模型直接调用工具，返回结果后展示给用户。",
+      "requiredPoints": ["schema", "权限", "超时"],
+      "bonusPoints": ["幂等键"],
+      "criticalErrors": ["跳过权限校验"],
+      "expectedScore": 2
+    },
+    {
+      "id": "agent-tool-critical",
+      "answer": "为了速度可以跳过权限校验，模型自己会判断是否可以调用。",
+      "requiredPoints": ["schema", "权限", "超时"],
+      "bonusPoints": ["幂等键"],
+      "criticalErrors": ["跳过权限校验"],
+      "expectedScore": 2
+    }
+  ]
+}

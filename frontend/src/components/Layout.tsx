@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 const NAV = [
   { to: '/chat', label: '智能对话', icon: 'chat' },
   { to: '/profile', label: '个人画像', icon: 'profile' },
+  { to: '/memories', label: '跨会话记忆', icon: 'memory' },
   { to: '/resume', label: '简历档案', icon: 'resume' },
   { to: '/notifications', label: '机会推送', icon: 'bell' },
   { to: '/plans', label: '成长计划', icon: 'calendar' },
@@ -129,6 +130,7 @@ function NavIcon({ name }: { name: string }) {
   const path: Record<string, React.ReactNode> = {
     chat: <><path d="M20 15a4 4 0 0 1-4 4H8l-4 3v-7a4 4 0 0 1-2-3.5V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /><path d="M7 9h6M7 13h4" /></>,
     profile: <><circle cx="12" cy="8" r="3" /><path d="M5 21a7 7 0 0 1 14 0" /></>,
+    memory: <><path d="M6 5.5A2.5 2.5 0 0 1 8.5 3h7A2.5 2.5 0 0 1 18 5.5v13A2.5 2.5 0 0 1 15.5 21h-7A2.5 2.5 0 0 1 6 18.5z" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
     resume: <><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5M10 12h5M10 16h5" /></>,
     bell: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 11h18" /></>,

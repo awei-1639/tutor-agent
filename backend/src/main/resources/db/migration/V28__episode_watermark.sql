@@ -1,0 +1,1 @@
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS episode_upto_msg_id BIGINT NOT NULL DEFAULT 0;

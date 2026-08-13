@@ -1,9 +1,30 @@
 server:
   port: 8180   # 8080 被本机其他服务占用
 
+logging:
+  pattern:
+    level: "%5p [trace=%X{traceId:-}]"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 spring:
   application:
     name: personal-ai-tutor
+  mvc:
+    # 将 DispatcherServlet 初始化移到启动阶段，避免首个画像请求承担冷启动延迟。
+    servlet:
+      load-on-startup: 1
   servlet:
     multipart:
       max-file-size: 5MB
@@ -18,18 +39,53 @@ spring:
 tutor:
   chat:
     rate-limit-per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:20}
+  interview:
+    open-rate-limit-per-hour: ${INTERVIEW_OPEN_RATE_LIMIT_PER_HOUR:5}
+    answer-rate-limit-per-minute: ${INTERVIEW_ANSWER_RATE_LIMIT_PER_MINUTE:30}
+    completion:
+      poll-ms: ${INTERVIEW_COMPLETION_POLL_MS:500}
   auth:
     # 本地演示便利入口；生产 profile 会强制关闭。
-    dev-login-enabled: ${DEV_LOGIN_ENABLED:true}
+    dev-login-enabled: ${DEV_LOGIN_ENABLED:false}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
   jwt:
-    secret: ${JWT_SECRET:tutor_dev_secret_min_32bytes_for_hs256_xx}
+    secret: ${JWT_SECRET:}
   internal:
     # evals 使用的检索/路由/手动推送端点；生产 profile 会强制关闭。
-    enabled: ${INTERNAL_ENDPOINTS_ENABLED:true}
+    enabled: ${INTERNAL_ENDPOINTS_ENABLED:false}
+    # 即便显式启用，也只接受本机评测工具的请求；远程调用应通过受保护的管理 API。
+    loopback-only: ${INTERNAL_ENDPOINTS_LOOPBACK_ONLY:true}
+  eval:
+    # 从项目根目录启动后默认读取真实评测集；容器/部署环境可通过环境变量覆盖。
+    dataset-path: ${RAG_EVAL_DATASET_PATH:evals/rag_testset.json}
+    # 发布门禁：P0 先保证执行可靠，P1 约束核心检索质量；采样评测仅用于诊断，不具备发布资格。
+    gate:
+      min-overall-hit: ${RAG_EVAL_MIN_OVERALL_HIT:0.70}
+      min-overall-recall: ${RAG_EVAL_MIN_OVERALL_RECALL:0.40}
+      min-multi-hop-hit: ${RAG_EVAL_MIN_MULTI_HOP_HIT:0.50}
+      max-errors: ${RAG_EVAL_MAX_ERRORS:0}
+
+oss:
+  enabled: ${OSS_ENABLED:false}
+  endpoint: ${OSS_ENDPOINT:}
+  region: ${OSS_REGION:}
+  bucket: ${OSS_BUCKET:}
+  access-key-id: ${OSS_ACCESS_KEY_ID:}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+  prefix: ${OSS_PREFIX:knowledge-documents/}
 
 security:
   # 简历原文与PII映射的对称加密密钥 (pgcrypto pgp_sym_encrypt); 缺失时拒绝上传
   resume-enc-key: ${RESUME_ENC_KEY:}
+
+memory:
+  mem0:
+    enabled: ${MEM0_ENABLED:false}
+    base-url: ${MEM0_BASE_URL:https://api.mem0.ai}
+    api-key: ${MEM0_API_KEY:}
+    timeout-seconds: ${MEM0_TIMEOUT_SECONDS:2}
+    failure-threshold: ${MEM0_FAILURE_THRESHOLD:3}
+    open-seconds: ${MEM0_OPEN_SECONDS:30}
 
 push:
   cron: "0 0 8,20 * * *"       # 每日两次 (V3 6.2)
@@ -38,10 +94,18 @@ push:
   release-batch: 5              # Mock注水池每次释放条数
   max-per-run: 5
 
+plan:
+  generation:
+    poll-ms: ${PLAN_GENERATION_POLL_MS:500}
+
 neo4j:
   uri: bolt://localhost:7687
   username: neo4j
   password: ${NEO4J_PASSWORD:tutor_dev_only}
+  resilience:
+    query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:2}
+    failure-threshold: ${NEO4J_FAILURE_THRESHOLD:3}
+    open-seconds: ${NEO4J_OPEN_SECONDS:30}
 
 llm:
   # purpose→model 映射 (实现设计 6.4 模型分级路由), 配置化可整体切换
@@ -57,6 +121,8 @@ llm:
     expert: deepseek-chat
     summary: deepseek-chat
     extract: deepseek-chat
+    judge: deepseek-chat
+    plan: deepseek-chat
     embed: BAAI/bge-m3
   budget:
     daily-token-limit: 2000000   # 每日限额 (网关执行, 实现设计 6.1)
@@ -65,3 +131,30 @@ llm:
     router-seconds: 10
     chat-seconds: 60
     summary-seconds: 120
+    expert-seconds: 25
+  tokens:
+    router:
+      input-tokens: 1200
+      output-tokens: 96
+    chat:
+      input-tokens: 8000
+      output-tokens: 1600
+    expert:
+      input-tokens: 5000
+      output-tokens: 1800
+    summary:
+      input-tokens: 5000
+      output-tokens: 600
+    extract:
+      input-tokens: 8000
+      output-tokens: 1600
+    judge:
+      input-tokens: 3500
+      output-tokens: 600
+    plan:
+      input-tokens: 6000
+      output-tokens: 1800
+    embed-input-tokens: 8000
+    rerank-input-tokens: 6000
+  concurrency:
+    max-in-flight: ${LLM_MAX_IN_FLIGHT:16}

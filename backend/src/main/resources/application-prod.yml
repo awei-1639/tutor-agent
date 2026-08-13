@@ -3,19 +3,40 @@ spring:
   datasource:
     password: ${POSTGRES_PASSWORD}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
 neo4j:
   password: ${NEO4J_PASSWORD}
+  resilience:
+    query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:2}
+    failure-threshold: ${NEO4J_FAILURE_THRESHOLD:3}
+    open-seconds: ${NEO4J_OPEN_SECONDS:30}
 
 security:
   resume-enc-key: ${RESUME_ENC_KEY}
+
+memory:
+  mem0:
+    enabled: ${MEM0_ENABLED:false}
+    base-url: ${MEM0_BASE_URL:https://api.mem0.ai}
+    api-key: ${MEM0_API_KEY:}
+    timeout-seconds: ${MEM0_TIMEOUT_SECONDS:2}
+    failure-threshold: ${MEM0_FAILURE_THRESHOLD:3}
+    open-seconds: ${MEM0_OPEN_SECONDS:30}
 
 tutor:
   chat:
     rate-limit-per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:10}
   auth:
     dev-login-enabled: false
+    cookie-secure: true
   internal:
     enabled: false
+    loopback-only: true
   jwt:
     secret: ${JWT_SECRET}
 
@@ -24,3 +45,5 @@ llm:
     api-key: ${DEEPSEEK_API_KEY}
   siliconflow:
     api-key: ${SILICONFLOW_API_KEY}
+  concurrency:
+    max-in-flight: ${LLM_MAX_IN_FLIGHT:16}

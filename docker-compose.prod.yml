@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: tutor
+      POSTGRES_USER: tutor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tutor -d tutor"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  neo4j:
+    image: neo4j:5-community
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
+    volumes:
+      - neo4j_data_prod:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tutor
+      NEO4J_URI: bolt://neo4j:7687
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      RESUME_ENC_KEY: ${RESUME_ENC_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY}
+      AUTH_COOKIE_SECURE: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pg_data_prod:
+  neo4j_data_prod:

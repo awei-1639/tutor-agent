@@ -1,0 +1,40 @@
+# Evals
+
+本目录保存 RAG、意图路由和引用质量评测资料。
+
+## 内容
+
+- `rag_testset.json`：带 Gold 节点的 RAG 回归集；
+- `router_testset.json`：意图路由标注集；
+- `run_eval.mjs`：比较四条真实检索管线；
+- `run_citation_eval.mjs`：辅助引用忠实度评估；
+- `run_interview_score_eval.mjs`：重放脱敏的模型—人工评分记录并执行双人标注门禁；
+- `results/`：运行产生的 JSON 结果，默认不应提交。
+
+评测必须调用后端真实检索端点，不复制线上排序逻辑。指标和发布门禁见 [RAG 评测手册](../docs/evaluation.md)。
+
+## 命令
+
+```powershell
+node evals/run_eval.mjs --smoke
+node evals/run_eval.mjs
+node evals/run_eval.mjs --ci
+```
+
+面试评分 replay 不会再次调用模型。输入可以是 `ReplayRequest` 对象，也可以直接是 cases 数组；每条记录必须带 `reviewerCount`，并达到至少两名独立评审：
+
+```powershell
+node evals/run_interview_score_eval.mjs `
+  --input .\evals\private\interview-score-gold-v1.json `
+  --dataset-version interview-human-gold-v1 `
+  --min-reviewers 2 `
+  --ci
+```
+
+脚本默认请求本地 `http://localhost:8180/internal/interview-evals/replay`，可通过 `INTERVIEW_EVAL_BASE_URL` 覆盖；`--ci` 在 `releaseEligible=false` 时返回非零退出码。输入文件只能使用已取得授权且脱敏的模型输出，脚本不会把原始回答写入结果，后端仅持久化分数与聚合指标。
+
+GitHub Actions 可将同一份 JSON 以 base64 放入受保护 secret `INTERVIEW_SCORE_GOLD_JSON_B64`。CI 会在 runner 临时解码后执行 `InterviewScoreEvalGateTest`，任务结束删除文件；未配置 secret 时会明确跳过该门禁。
+
+## 数据修改规则
+
+新增或修改 Gold 节点时，需要记录用例原因、数据来源和预期影响；不能为了提高指标而只修改标签而不说明知识库变化。

@@ -10,6 +10,7 @@ import ResumePage from './pages/ResumePage';
 import RagEvalPage from './pages/RagEvalPage';
 import AdminPage from './pages/AdminPage';
 import KnowledgeBasePage from './pages/KnowledgeBasePage';
+import MemoryPage from './pages/MemoryPage';
 import { hasSessionHint } from './lib/api';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -25,6 +26,7 @@ export default function App() {
         <Route index element={<Navigate to="/chat" replace />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/memories" element={<MemoryPage />} />
         <Route path="/resume" element={<ResumePage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/plans" element={<PlansPage />} />

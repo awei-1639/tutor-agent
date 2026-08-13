@@ -161,6 +161,11 @@ export const api = {
   }),
   confirmProfile: (field: string, accept: boolean) =>
     request('/profile/confirm', { method: 'POST', body: JSON.stringify({ field, accept }) }),
+  // Cross-session memories
+  listMemories: () => request<ManagedMemory[]>('/memories'),
+  deleteMemory: (id: number) => request<void>(`/memories/${id}`, { method: 'DELETE' }),
+  clearMemories: () => request<MemoryClearResult>('/memories', { method: 'DELETE' }),
+  getRemoteMemoryDeletion: () => request<RemoteMemoryDeletionStatus>('/memories/remote-deletion'),
   // Resume
   uploadResume: async (file: File) => {
     const form = new FormData();
@@ -271,6 +276,26 @@ export interface ProfileObject {
   confirmed?: boolean;
   field?: string;
   [key: string]: ProfileValue | undefined;
+}
+
+export interface ManagedMemory {
+  id: number;
+  summary: string;
+  topics: string[];
+  openItems: string[];
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+export interface MemoryClearResult {
+  localStatus: string;
+  remoteStatus: string;
+}
+
+export interface RemoteMemoryDeletionStatus {
+  status: 'not_requested' | 'pending' | 'processing' | 'retryable' | 'completed' | 'failed';
+  attemptCount: number;
+  message: string;
 }
 
 export interface ProfileSkill {

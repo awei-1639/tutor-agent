@@ -1,0 +1,11 @@
+target
+.mvn
+*.log
+.git
+.github
+.env
+.env.*
+docs
+evals
+src/test
+*.md

@@ -1,0 +1,93 @@
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--------------------< [0;36mcom.tutor:personal-ai-tutor[0;1m >---------------------[m
+[[1;34mINFO[m] [1mBuilding personal-ai-tutor 0.1.0-SNAPSHOT[m
+[[1;34mINFO[m]   from pom.xml
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mdependency:3.8.1:properties[m [1m(resolve-mockito-agent)[m @ [36mpersonal-ai-tutor[0;1m ---[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mjacoco:0.8.12:prepare-agent[m [1m(prepare-unit-test-coverage)[m @ [36mpersonal-ai-tutor[0;1m ---[m
+[[1;34mINFO[m] argLine set to -javaagent:/home/awei/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/mnt/d/git/git_repo03/agent/backend/target/jacoco.exec
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:resources[m [1m(default-resources)[m @ [36mpersonal-ai-tutor[0;1m ---[m
+[[1;34mINFO[m] Copying 2 resources from src/main/resources to target/classes
+[[1;34mINFO[m] Copying 23 resources from src/main/resources to target/classes
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.13.0:compile[m [1m(default-compile)[m @ [36mpersonal-ai-tutor[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mresources:3.3.1:testResources[m [1m(default-testResources)[m @ [36mpersonal-ai-tutor[0;1m ---[m
+[[1;34mINFO[m] skip non existing resourceDirectory /mnt/d/git/git_repo03/agent/backend/src/test/resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mcompiler:3.13.0:testCompile[m [1m(default-testCompile)[m @ [36mpersonal-ai-tutor[0;1m ---[m
+[[1;34mINFO[m] Nothing to compile - all classes are up to date.
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32msurefire:3.5.3:test[m [1m(default-test)[m @ [36mpersonal-ai-tutor[0;1m ---[m
+[[1;34mINFO[m] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[[1;34mINFO[m] 
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m]  T E S T S
+[[1;34mINFO[m] -------------------------------------------------------
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Results:
+[[1;34mINFO[m] 
+[[1;34mINFO[m] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;31mBUILD FAILURE[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  31.406 s
+[[1;34mINFO[m] Finished at: 2026-08-09T22:29:42+08:00
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;31mERROR[m] Failed to execute goal [32morg.apache.maven.plugins:maven-surefire-plugin:3.5.3:test[m [1m(default-test)[m on project [36mpersonal-ai-tutor[m: [1;31m[m
+[[1;31mERROR[m] [1;31m[m
+[[1;31mERROR[m] [1;31mSee /mnt/d/git/git_repo03/agent/backend/target/surefire-reports for the individual test results.[m
+[[1;31mERROR[m] [1;31mSee dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.[m
+[[1;31mERROR[m] [1;31mThe forked VM terminated without properly saying goodbye. VM crash or System.exit called?[m
+[[1;31mERROR[m] [1;31mCommand was /bin/sh -c cd '/mnt/d/git/git_repo03/agent/backend' && '/usr/lib/jvm/java-21-openjdk-amd64/bin/java' '-javaagent:/home/awei/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/mnt/d/git/git_repo03/agent/backend/target/jacoco.exec' '-javaagent:/home/awei/.m2/repository/org/mockito/mockito-core/5.14.2/mockito-core-5.14.2.jar' '-jar' '/mnt/d/git/git_repo03/agent/backend/target/surefire/surefirebooter-20260809222935240_3.jar' '/mnt/d/git/git_repo03/agent/backend/target/surefire' '2026-08-09T22-29-33_397-jvmRun1' 'surefire-20260809222935240_1tmp' 'surefire_0-20260809222935240_2tmp'[m
+[[1;31mERROR[m] [1;31mError occurred in starting fork, check output in log[m
+[[1;31mERROR[m] [1;31mProcess Exit Code: 1[m
+[[1;31mERROR[m] [1;31morg.apache.maven.surefire.booter.SurefireBooterForkException: The forked VM terminated without properly saying goodbye. VM crash or System.exit called?[m
+[[1;31mERROR[m] [1;31mCommand was /bin/sh -c cd '/mnt/d/git/git_repo03/agent/backend' && '/usr/lib/jvm/java-21-openjdk-amd64/bin/java' '-javaagent:/home/awei/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/mnt/d/git/git_repo03/agent/backend/target/jacoco.exec' '-javaagent:/home/awei/.m2/repository/org/mockito/mockito-core/5.14.2/mockito-core-5.14.2.jar' '-jar' '/mnt/d/git/git_repo03/agent/backend/target/surefire/surefirebooter-20260809222935240_3.jar' '/mnt/d/git/git_repo03/agent/backend/target/surefire' '2026-08-09T22-29-33_397-jvmRun1' 'surefire-20260809222935240_1tmp' 'surefire_0-20260809222935240_2tmp'[m
+[[1;31mERROR[m] [1;31mError occurred in starting fork, check output in log[m
+[[1;31mERROR[m] [1;31mProcess Exit Code: 1[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.fork(ForkStarter.java:643)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:285)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:250)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeProvider(AbstractSurefireMojo.java:1337)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeAfterPreconditionsChecked(AbstractSurefireMojo.java:1135)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.execute(AbstractSurefireMojo.java:969)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo(DefaultBuildPluginManager.java:126)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2(MojoExecutor.java:328)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute(MojoExecutor.java:316)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:212)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:174)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.MojoExecutor.access$000(MojoExecutor.java:75)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.MojoExecutor$1.run(MojoExecutor.java:162)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute(DefaultMojosExecutionStrategy.java:39)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:159)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:105)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:73)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build(SingleThreadedBuilder.java:53)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.lifecycle.internal.LifecycleStarter.execute(LifecycleStarter.java:118)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:261)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:173)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.DefaultMaven.execute(DefaultMaven.java:101)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.cli.MavenCli.execute(MavenCli.java:919)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.cli.MavenCli.doMain(MavenCli.java:285)[m
+[[1;31mERROR[m] [1;31m	at org.apache.maven.cli.MavenCli.main(MavenCli.java:207)[m
+[[1;31mERROR[m] [1;31m	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)[m
+[[1;31mERROR[m] [1;31m	at java.base/java.lang.reflect.Method.invoke(Method.java:580)[m
+[[1;31mERROR[m] [1;31m	at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced(Launcher.java:283)[m
+[[1;31mERROR[m] [1;31m	at org.codehaus.plexus.classworlds.launcher.Launcher.launch(Launcher.java:226)[m
+[[1;31mERROR[m] [1;31m	at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode(Launcher.java:407)[m
+[[1;31mERROR[m] [1;31m	at org.codehaus.plexus.classworlds.launcher.Launcher.main(Launcher.java:348)[m
+[[1;31mERROR[m] [1;31m[m
+[[1;31mERROR[m] -> [1m[Help 1][m
+[[1;31mERROR[m] 
+[[1;31mERROR[m] To see the full stack trace of the errors, re-run Maven with the [1m-e[m switch.
+[[1;31mERROR[m] Re-run Maven using the [1m-X[m switch to enable full debug logging.
+[[1;31mERROR[m] 
+[[1;31mERROR[m] For more information about the errors and possible solutions, please read the following articles:
+[[1;31mERROR[m] [1m[Help 1][m http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

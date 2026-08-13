@@ -1,0 +1,10 @@
+ALTER TABLE eval_runs
+  ADD COLUMN IF NOT EXISTS status VARCHAR(16) NOT NULL DEFAULT 'completed',
+  ADD COLUMN IF NOT EXISTS dataset_version VARCHAR(64),
+  ADD COLUMN IF NOT EXISTS top_k INT,
+  ADD COLUMN IF NOT EXISTS total_cases INT,
+  ADD COLUMN IF NOT EXISTS error_message TEXT,
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_eval_runs_created_at ON eval_runs(created_at DESC);
