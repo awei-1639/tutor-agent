@@ -1,29 +1,60 @@
-# 个人 AI 学习与求职助手
+# Tutor Agent
 
-基于多智能体协作、知识图谱和 RAG 融合检索的 AI 学习与求职教练。
+面向学习与求职场景的 AI 教练：将流式对话、受控 RAG 检索、学习计划、简历分析和模拟面试整合为一个可本地运行的 Web 应用。
 
-## 已实现功能
+> 这是一个学习与工程实践项目。模型输出仅供参考，不应替代正式的职业、招聘或教育建议。
 
-- JWT 注册、登录与用户数据隔离
-- SSE 流式对话、意图路由、多专家协作和结果仲裁
-- PostgreSQL/pgvector + Neo4j 图谱融合检索
-- 对话摘要、情节记忆、用户画像提取与技能对齐
-- PDF、DOCX、TXT 简历解析，PII 脱敏与加密存储
-- 学习计划、每日打卡、模拟面试和岗位匹配通知
-- 检索、路由、引用质量评估脚本
+## 功能概览
 
-技术栈：Java 21、Spring Boot 3、LangChain4j、PostgreSQL 16/pgvector、Neo4j 5、React 18、TypeScript、Vite。
+| 能力 | 说明 |
+| --- | --- |
+| 智能对话 | SSE 流式回复、意图路由、多专家协作、引用校验与可取消请求 |
+| 知识检索 | PostgreSQL/pgvector 稠密检索、稀疏检索与 Neo4j 图谱扩展融合 |
+| 用户记忆 | 会话滚动摘要、情景记忆、长期记忆同步、画像提取与技能对齐 |
+| 求职辅助 | 简历解析和 PII 脱敏、学习计划、岗位匹配、模拟面试与复盘 |
+| 运营质量 | 管理端知识库、文档异步索引、审计日志、RAG/路由/引用评测 |
 
-## 目录结构
+## 技术栈
+
+- 后端：Java 21、Spring Boot 3、LangChain4j、Flyway
+- 数据与检索：PostgreSQL 16、pgvector、pg_trgm、Neo4j 5
+- 前端：React 18、TypeScript、Vite、Playwright
+- 基础设施：Docker Compose；可选阿里云 OSS 与 Mem0
+
+## 快速开始
+
+前置条件：Java 21、Maven 3.9+、Node.js 20+ 和 Docker Desktop。
+
+```powershell
+Copy-Item .env.example .env
+docker compose --env-file .env up -d
+```
+
+在 `.env` 中填写 LLM 服务密钥；不要提交该文件。然后分别启动后端和前端：
+
+```powershell
+# 终端 1：后端
+cd backend
+mvn spring-boot:run
+
+# 终端 2：前端
+cd frontend
+npm install
+npm run dev
+```
+
+前端默认地址是 `http://localhost:5173`，后端 API 默认监听 `http://localhost:8180`。Vite 会将 `/api` 请求代理到后端。
+
+## 项目结构
 
 ```text
-backend/       Spring Boot API 与 Flyway migrations
-frontend/      React 单页应用
+backend/       Spring Boot API、业务模块、Flyway 数据库迁移和 JUnit 测试
+frontend/      React 单页应用与 Playwright 端到端测试
 graph_data/    技能、资源和岗位种子数据
-scripts/       数据生成、抽取与导入脚本
-evals/         RAG、路由和引用评估集及脚本
-docs/          架构、运行、评测、安全与开源学习资料
-experiments/   可丢弃的技术 spike
+evals/         RAG、路由和引用评估数据与脚本
+scripts/       数据、备份和运维脚本
+docs/          架构、API、运维、评测和安全文档
+experiments/   可丢弃的技术验证实验
 ```
 
 ## 开源学习资料
