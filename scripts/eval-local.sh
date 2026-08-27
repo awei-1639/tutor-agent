@@ -42,6 +42,8 @@ trap cleanup EXIT
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 command -v docker >/dev/null 2>&1 || die "docker 不可用；请在能访问 docker 的 shell (如 WSL) 中运行"
+command -v node >/dev/null 2>&1 || die "node 不可用；评测脚本是 Node.js，请在本 shell 中安装 Node 20+ (WSL 内需单独安装，不会自动复用 Windows 的 node)"
+command -v java >/dev/null 2>&1 || die "java 不可用；需要 Java 21 运行后端 jar"
 [ -f "$ROOT/.env" ] || die ".env 不存在；先 cp .env.example .env 并填入 Embedding/LLM key"
 
 # ---- 1. 起 postgres + neo4j ----
@@ -58,7 +60,36 @@ done
 docker exec tutor-postgres pg_isready -U tutor -d tutor >/dev/null 2>&1 \
   || die "postgres 未就绪"
 
-# ---- 2. 幂等导种子 (最烧 Embedding token 的一步) ----
+# ---- 2. 起后端 (Flyway 建表；种子依赖 kg_chunks 表存在，故必须先起后端) ----
+[ -f "$JAR" ] || die "后端 jar 不存在，先在 backend/ 跑 mvn -DskipTests package"
+echo "==> 启动后端 (Flyway 迁移建表)"
+set -a
+# shellcheck disable=SC1091
+. "$ROOT/.env"
+set +a
+export INTERNAL_ENDPOINTS_ENABLED=true
+# 本地评测：node 可能是 Windows 侧的，跨 WSL2 边界访问后端时来源地址非 127.0.0.1，
+# 会被 /internal 的 loopback 检查挡成 404。评测是纯本地开发工具，显式放开。
+export INTERNAL_ENDPOINTS_LOOPBACK_ONLY=false
+export JWT_SECRET="${JWT_SECRET:-agent-local-eval-secret-32-bytes-minimum-2026}"
+java -jar "$JAR" >"$BACKEND_LOG" 2>&1 &
+BACKEND_PID="$!"
+
+ready=0
+for _ in $(seq 1 45); do
+  # 后端进程若已退出 (如 Flyway 校验失败)，立即报错而不是空等 90 秒。
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "后端启动进程已退出，日志尾部:"; tail -n 40 "$BACKEND_LOG"; exit 1
+  fi
+  code=$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' \
+    http://127.0.0.1:8180/readyz 2>/dev/null || true)
+  [ "$code" = "200" ] && { ready=1; break; }
+  sleep 2
+done
+[ "$ready" -eq 1 ] || { echo "后端未就绪，日志尾部:"; tail -n 60 "$BACKEND_LOG"; exit 1; }
+echo "==> 后端就绪 (/readyz 200)"
+
+# ---- 3. 幂等导种子 (最烧 Embedding token 的一步；此时 Flyway 已建好 kg_chunks) ----
 seed_needed() {
   local n
   n=$(docker exec tutor-postgres psql -U tutor -d tutor -tAc \
@@ -77,29 +108,10 @@ else
   echo "==> 跳过种子导入 (kg_chunks 已有数据；--force-seed 可强制重导)"
 fi
 
-# ---- 3. 起后端 ----
-[ -f "$JAR" ] || die "后端 jar 不存在，先在 backend/ 跑 mvn -DskipTests package"
-echo "==> 启动后端"
-set -a
-# shellcheck disable=SC1091
-. "$ROOT/.env"
-set +a
-export INTERNAL_ENDPOINTS_ENABLED=true
-export JWT_SECRET="${JWT_SECRET:-agent-local-eval-secret-32-bytes-minimum-2026}"
-java -jar "$JAR" >"$BACKEND_LOG" 2>&1 &
-BACKEND_PID="$!"
-
-ready=0
-for _ in $(seq 1 45); do
-  code=$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' \
-    http://127.0.0.1:8180/readyz 2>/dev/null || true)
-  [ "$code" = "200" ] && { ready=1; break; }
-  sleep 2
-done
-[ "$ready" -eq 1 ] || { echo "后端未就绪，日志尾部:"; tail -n 60 "$BACKEND_LOG"; exit 1; }
-echo "==> 后端就绪 (/readyz 200)"
-
 # ---- 4. 跑评测 ----
+# 跑之前记录已有的最新结果文件，用于跑完后判断"本次是否真的产出了新结果"。
+baseline_before=$(ls -1t "$ROOT"/evals/results/eval_*.json 2>/dev/null | head -1)
+
 run_retrieval() {
   echo "==> 检索评测 (run_eval.mjs)"
   node "$ROOT/evals/run_eval.mjs" $SMOKE_FLAG
@@ -114,15 +126,17 @@ case "$MODE" in
   all)       run_retrieval; run_citation ;;
 esac
 
-# ---- 5. 与上一次基线对比 (仅检索有结构化 results/) ----
+# ---- 5. 与上一次基线对比 (仅当本次真的产出了新的检索结果文件) ----
 if [ "$MODE" != "citation" ]; then
-  latest_two=$(ls -1t "$ROOT"/evals/results/eval_*.json 2>/dev/null | head -2)
-  count=$(printf '%s\n' "$latest_two" | grep -c .)
-  if [ "$count" -eq 2 ]; then
-    cur=$(printf '%s\n' "$latest_two" | sed -n '1p')
-    prev=$(printf '%s\n' "$latest_two" | sed -n '2p')
+  cur=$(ls -1t "$ROOT"/evals/results/eval_*.json 2>/dev/null | head -1)
+  if [ -z "$cur" ] || [ "$cur" = "$baseline_before" ]; then
+    echo "==> 本次未产出新的检索结果文件，跳过基线对比 (评测可能失败)"
+  elif [ -z "$baseline_before" ]; then
+    echo "==> 首次结果，无历史基线可对比 (下次运行即可 diff)"
+  else
+    prev="$baseline_before"
     echo ""
-    echo "==> 与上次基线对比 (fused_rerank)"
+    echo "==> 与上次基线对比 (fused_rerank): $(basename "$prev") → $(basename "$cur")"
     node -e '
       const fs=require("fs");
       const [cur,prev]=process.argv.slice(1).map(p=>JSON.parse(fs.readFileSync(p,"utf8")));
@@ -133,8 +147,6 @@ if [ "$MODE" != "citation" ]; then
       console.log("Recall@5", fmt(c.recall_at_5||0, p.recall_at_5||0));
       console.log("MRR     ", `${(p.mrr||0).toFixed(3)} → ${(c.mrr||0).toFixed(3)} (${((c.mrr-p.mrr)>=0?"+":"")+(c.mrr-p.mrr).toFixed(3)})`);
     ' "$cur" "$prev"
-  else
-    echo "==> 只有一次结果，无基线可对比 (下次运行即可 diff)"
   fi
 fi
 echo "==> 完成"

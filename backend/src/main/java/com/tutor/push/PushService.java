@@ -8,6 +8,7 @@ import com.tutor.profile.SkillAlignService;
 import com.tutor.scheduling.ScheduledTaskLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -40,6 +41,7 @@ public class PushService {
     @Value("${push.release-batch:5}") int releaseBatch;
     @Value("${push.max-per-run:5}") int maxPerRun;
 
+    @Autowired
     public PushService(JdbcTemplate jdbc, ProfileService profileService, SkillAlignService alignService,
                        ScheduledTaskLock taskLock) {
         this.jdbc = jdbc;
