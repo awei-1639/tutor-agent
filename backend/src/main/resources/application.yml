@@ -18,6 +18,12 @@ management:
     tags:
       application: ${spring.application.name}
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 spring:
   application:
     name: personal-ai-tutor
@@ -27,8 +33,9 @@ spring:
       load-on-startup: 1
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      # 文档上传采用“传输上限”和“解析预算”分离；默认 50 MB，避免大文档被过早拒绝。
+      max-file-size: ${KNOWLEDGE_UPLOAD_MAX_FILE_SIZE:50MB}
+      max-request-size: ${KNOWLEDGE_UPLOAD_MAX_REQUEST_SIZE:55MB}
   datasource:
     url: jdbc:postgresql://localhost:5432/tutor
     username: tutor
@@ -37,8 +44,42 @@ spring:
     enabled: true
 
 tutor:
+  routing:
+    out-of-scope-threshold: ${ROUTING_OUT_OF_SCOPE_THRESHOLD:0.92}
+    # 低置信度路由先走单跳，避免不确定建议放大为昂贵的多跳检索。
+    multi-hop-confidence-threshold: ${ROUTING_MULTI_HOP_CONFIDENCE_THRESHOLD:0.70}
+    # 中等置信度且存在竞争意图时先向用户澄清，避免无依据地扇出专家。
+    clarification-confidence-threshold: ${ROUTING_CLARIFICATION_CONFIDENCE_THRESHOLD:0.80}
+    # 主意图与第二意图分数过近时视为不确定，禁止多跳。
+    intent-margin-threshold: ${ROUTING_INTENT_MARGIN_THRESHOLD:0.15}
+    calibration:
+      enabled: ${ROUTING_CALIBRATION_ENABLED:false}
+      model-path: ${ROUTING_CALIBRATION_MODEL_PATH:}
   chat:
     rate-limit-per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:20}
+    tool-loop-enabled: ${CHAT_TOOL_LOOP_ENABLED:false}
+    turn:
+      poll-ms: ${CHAT_TURN_POLL_MS:1000}
+      lease-renew-ms: ${CHAT_TURN_LEASE_RENEW_MS:30000}
+  retrieval:
+    profile:
+      version: ${RETRIEVAL_PROFILE_VERSION:2026-08-baseline}
+      vector-top-n: ${RETRIEVAL_VECTOR_TOP_N:20}
+      rerank-pool: ${RETRIEVAL_RERANK_POOL:12}
+      expand-source-n: ${RETRIEVAL_EXPAND_SOURCE_N:10}
+      dense-expand-source-n: ${RETRIEVAL_DENSE_EXPAND_SOURCE_N:8}
+      sparse-expand-source-n: ${RETRIEVAL_SPARSE_EXPAND_SOURCE_N:4}
+      expand-per-source: ${RETRIEVAL_EXPAND_PER_SOURCE:6}
+      expand-limit: ${RETRIEVAL_EXPAND_LIMIT:40}
+      rrf-k: ${RETRIEVAL_RRF_K:10}
+      graph-alpha: ${RETRIEVAL_GRAPH_ALPHA:0.85}
+      sparse-beta: ${RETRIEVAL_SPARSE_BETA:0.30}
+      non-resource-dampen: ${RETRIEVAL_NON_RESOURCE_DAMPEN:0.40}
+      sparse-threshold: ${RETRIEVAL_SPARSE_THRESHOLD:0.15}
+    channel-floor:
+      # 在检索评测集证明保留各通道的最低候选数量能提升召回、且不降低精度前，
+      # 保持关闭。
+      enabled: ${RETRIEVAL_CHANNEL_FLOOR_ENABLED:false}
   interview:
     open-rate-limit-per-hour: ${INTERVIEW_OPEN_RATE_LIMIT_PER_HOUR:5}
     answer-rate-limit-per-minute: ${INTERVIEW_ANSWER_RATE_LIMIT_PER_MINUTE:30}
@@ -77,8 +118,18 @@ oss:
 security:
   # 简历原文与PII映射的对称加密密钥 (pgcrypto pgp_sym_encrypt); 缺失时拒绝上传
   resume-enc-key: ${RESUME_ENC_KEY:}
+  # 当前密钥版本；轮换期间同时配置旧密钥与旧版本，后台会逐步重加密 Episode。
+  resume-enc-key-id: ${RESUME_ENC_KEY_ID:v1}
+  resume-enc-previous-key: ${RESUME_ENC_PREVIOUS_KEY:}
+  resume-enc-previous-key-id: ${RESUME_ENC_PREVIOUS_KEY_ID:}
 
 memory:
+  sync:
+    lease-seconds: ${MEMORY_SYNC_LEASE_SECONDS:300}
+    retry-limit-per-minute: ${MEMORY_SYNC_RETRY_LIMIT_PER_MINUTE:3}
+    metrics-refresh-ms: ${MEMORY_SYNC_METRICS_REFRESH_MS:10000}
+  episode:
+    min-new-messages: ${MEMORY_EPISODE_MIN_NEW_MESSAGES:12}
   mem0:
     enabled: ${MEM0_ENABLED:false}
     base-url: ${MEM0_BASE_URL:https://api.mem0.ai}
@@ -86,6 +137,35 @@ memory:
     timeout-seconds: ${MEM0_TIMEOUT_SECONDS:2}
     failure-threshold: ${MEM0_FAILURE_THRESHOLD:3}
     open-seconds: ${MEM0_OPEN_SECONDS:30}
+
+knowledge:
+  ocr:
+    aliyun:
+      enabled: ${ALIYUN_OCR_ENABLED:false}
+      region: ${ALIYUN_OCR_REGION:cn-hangzhou}
+      access-key-id: ${ALIYUN_OCR_ACCESS_KEY_ID:}
+      access-key-secret: ${ALIYUN_OCR_ACCESS_KEY_SECRET:}
+      text-density-threshold: ${ALIYUN_OCR_TEXT_DENSITY_THRESHOLD:80}
+      max-pages: ${ALIYUN_OCR_MAX_PAGES:100}
+      timeout-seconds: ${ALIYUN_OCR_TIMEOUT_SECONDS:15}
+  scan:
+    enabled: ${KNOWLEDGE_SCAN_ENABLED:false}
+    host: ${CLAMAV_HOST:}
+    port: ${CLAMAV_PORT:3310}
+    timeout-seconds: ${CLAMAV_TIMEOUT_SECONDS:5}
+  upload:
+    max-per-hour: ${KNOWLEDGE_UPLOAD_MAX_PER_HOUR:20}
+    max-file-size: ${KNOWLEDGE_UPLOAD_MAX_FILE_SIZE:50MB}
+    max-request-size: ${KNOWLEDGE_UPLOAD_MAX_REQUEST_SIZE:55MB}
+    multipart-threshold: ${KNOWLEDGE_MULTIPART_THRESHOLD:8MB}
+    multipart-part-size: ${KNOWLEDGE_MULTIPART_PART_SIZE:8MB}
+    session-ttl: ${KNOWLEDGE_UPLOAD_SESSION_TTL:24h}
+  ingestion:
+    poll-ms: ${KNOWLEDGE_INGESTION_POLL_MS:1000}
+    lease-seconds: ${KNOWLEDGE_INGESTION_LEASE_SECONDS:1800}
+    max-in-flight: ${KNOWLEDGE_INGESTION_MAX_IN_FLIGHT:4}
+    embedding-concurrency: ${KNOWLEDGE_EMBEDDING_CONCURRENCY:8}
+    max-pending-jobs: ${KNOWLEDGE_INGESTION_MAX_PENDING_JOBS:1000}
 
 push:
   cron: "0 0 8,20 * * *"       # 每日两次 (V3 6.2)
@@ -124,6 +204,22 @@ llm:
     judge: deepseek-chat
     plan: deepseek-chat
     embed: BAAI/bge-m3
+  # 主供应商全部尝试失败后的备用出口，默认关闭 (保持单供应商行为)。
+  # 仅承接非流式结构化调用 (router/expert/judge/extract/plan)；流式聊天已发出的
+  # token 无法撤回，不在此切换范围内。备用端点须为 OpenAI 兼容接口。
+  fallback:
+    enabled: ${LLM_FALLBACK_ENABLED:false}
+    endpoint:
+      api-key: ${LLM_FALLBACK_API_KEY:}
+      base-url: ${LLM_FALLBACK_BASE_URL:https://api.siliconflow.cn/v1}
+    routing:
+      chat: ${LLM_FALLBACK_MODEL_CHAT:deepseek-ai/DeepSeek-V3}
+      router: ${LLM_FALLBACK_MODEL_ROUTER:deepseek-ai/DeepSeek-V3}
+      expert: ${LLM_FALLBACK_MODEL_EXPERT:deepseek-ai/DeepSeek-V3}
+      summary: ${LLM_FALLBACK_MODEL_SUMMARY:deepseek-ai/DeepSeek-V3}
+      extract: ${LLM_FALLBACK_MODEL_EXTRACT:deepseek-ai/DeepSeek-V3}
+      judge: ${LLM_FALLBACK_MODEL_JUDGE:deepseek-ai/DeepSeek-V3}
+      plan: ${LLM_FALLBACK_MODEL_PLAN:deepseek-ai/DeepSeek-V3}
   budget:
     daily-token-limit: 2000000   # 每日限额 (网关执行, 实现设计 6.1)
     turn-token-limit: 50000      # 单轮熔断

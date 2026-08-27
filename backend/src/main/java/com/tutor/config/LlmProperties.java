@@ -15,19 +15,40 @@ public record LlmProperties(
         Map<String, String> routing,
         Budget budget,
         Timeout timeout,
-        TokenLimits tokens
+        TokenLimits tokens,
+        Fallback fallback
 ) {
-    /**
-     * There is also a five-argument compatibility constructor below.  Mark the
-     * canonical constructor explicitly so Spring Boot does not fall back to
-     * JavaBean binding (which would require a no-arg constructor for this
-     * immutable record).
-     */
+    /** 标记唯一的规范构造器，供 Spring Boot 绑定不可变配置记录。 */
     @ConstructorBinding
     public LlmProperties {
     }
 
+    /** 向后兼容的构造器：未显式配置备用供应商时保持单供应商行为。 */
+    public LlmProperties(Endpoint deepseek, Endpoint siliconflow, Map<String, String> routing,
+                         Budget budget, Timeout timeout, TokenLimits tokens) {
+        this(deepseek, siliconflow, routing, budget, timeout, tokens, null);
+    }
+
     public record Endpoint(String apiKey, String baseUrl) {}
+
+    /**
+     * 主供应商完全失败后的备用出口。默认关闭，保持单供应商行为不变。
+     * 备用供应商同样是 OpenAI 兼容接口 (例如 SiliconFlow 托管的 deepseek 系模型)，
+     * 因此仅需换端点与 purpose→model 映射即可承接非流式与首 token 前的流式调用。
+     */
+    public record Fallback(boolean enabled, Endpoint endpoint, Map<String, String> routing) {
+        public boolean isConfigured() {
+            return enabled && endpoint != null
+                    && endpoint.apiKey() != null && !endpoint.apiKey().isBlank()
+                    && endpoint.baseUrl() != null && !endpoint.baseUrl().isBlank();
+        }
+
+        public String modelFor(String purpose, String primaryModel) {
+            if (routing == null) return primaryModel;
+            String mapped = routing.get(purpose);
+            return mapped == null || mapped.isBlank() ? primaryModel : mapped;
+        }
+    }
     public record Budget(long dailyTokenLimit, long turnTokenLimit) {}
     public record PurposeLimit(int inputTokens, int outputTokens) {
         public PurposeLimit {
@@ -70,21 +91,10 @@ public record LlmProperties(
         }
     }
 
-    /** Backward-compatible constructor for focused tests and local callers. */
-    public LlmProperties(Endpoint deepseek, Endpoint siliconflow, Map<String, String> routing,
-                         Budget budget, Timeout timeout) {
-        this(deepseek, siliconflow, routing, budget, timeout, TokenLimits.defaults());
-    }
-
     public record Timeout(int routerSeconds, int chatSeconds, int summarySeconds, int expertSeconds) {
-        /** Select the full constructor when binding the nested immutable record. */
+        /** 使用完整构造器绑定不可变嵌套配置。 */
         @ConstructorBinding
         public Timeout {
-        }
-
-        /** Backward-compatible constructor for focused tests and local callers. */
-        public Timeout(int routerSeconds, int chatSeconds, int summarySeconds) {
-            this(routerSeconds, chatSeconds, summarySeconds, 25);
         }
     }
 
@@ -126,5 +136,10 @@ public record LlmProperties(
 
     private static boolean blank(String value) {
         return value == null || value.isBlank();
+    }
+
+    /** 未配置时返回一个关闭的备用配置，避免调用方判空。 */
+    public Fallback fallbackOrDisabled() {
+        return fallback != null ? fallback : new Fallback(false, null, null);
     }
 }

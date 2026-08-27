@@ -4,10 +4,17 @@ import com.tutor.config.LlmProperties;
 import com.tutor.config.ExecutorLifecycle;
 import com.tutor.context.TokenBudget;
 import com.tutor.contract.CancellationToken;
+import com.tutor.contract.Evidence;
 import com.tutor.contract.Purpose;
+import com.tutor.llm.structured.RetrievalJudgeOutput;
+import com.tutor.llm.structured.StructuredOutputRecorder;
+import com.tutor.llm.structured.StructuredOutputResult;
+import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.llm.structured.StructuredTask;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -19,6 +26,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.output.TokenUsage;
 import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -48,16 +56,21 @@ import java.util.concurrent.Executors;
  * 职责: purpose→model 路由、分级超时、轻量重试(Spike1结论)、日限额、llm_usage 记账。
  */
 @Component
-public class LlmGateway {
+public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, StreamingGenerationGateway,
+        RerankGateway, RetrievalJudge {
     private static final Logger log = LoggerFactory.getLogger(LlmGateway.class);
     private static final int EMBED_MAX_ATTEMPTS = 2;
     private final LlmProperties props;
-    private final JdbcTemplate jdbc;
+    private final LlmUsageRecorder usageRecorder;
     private final LlmBudgetGuard budgetGuard;
     private final LlmConcurrencyGate concurrency;
-    private final EmbeddingModel embeddingModel;
+    private final EmbeddingProviderClient embeddingClient;
+    private final RerankProviderClient rerankClient;
+    private final ChatStreamProviderClient chatStreamClient;
+    private final RetrievalJudgePromptFactory judgePromptFactory = new RetrievalJudgePromptFactory();
     private final TokenBudget tokenBudget = new TokenBudget();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final StructuredOutputService structuredOutputService;
     private final ExecutorService streamingExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -65,19 +78,20 @@ public class LlmGateway {
 
     public LlmGateway(LlmProperties props, JdbcTemplate jdbc, LlmBudgetGuard budgetGuard,
                       LlmConcurrencyGate concurrency) {
+        this(props, jdbc, budgetGuard, concurrency, null);
+    }
+
+    @Autowired
+    public LlmGateway(LlmProperties props, JdbcTemplate jdbc, LlmBudgetGuard budgetGuard,
+                      LlmConcurrencyGate concurrency, StructuredOutputRecorder structuredOutputRecorder) {
         this.props = props;
-        this.jdbc = jdbc;
+        this.usageRecorder = new LlmUsageRecorder(jdbc);
         this.budgetGuard = budgetGuard;
         this.concurrency = concurrency;
-        this.embeddingModel = OpenAiEmbeddingModel.builder()
-                .apiKey(props.siliconflow().apiKey())
-                .baseUrl(props.siliconflow().baseUrl())
-                .modelName(props.routing().get("embed"))
-                .timeout(Duration.ofSeconds(30))
-                // The gateway owns retries so budget accounting cannot be
-                // multiplied by an implicit SDK retry loop.
-                .maxRetries(0)
-                .build();
+        this.embeddingClient = new EmbeddingProviderClient(props);
+        this.rerankClient = new RerankProviderClient(props);
+        this.chatStreamClient = new ChatStreamProviderClient(props);
+        this.structuredOutputService = new StructuredOutputService(this, structuredOutputRecorder);
     }
 
     @PreDestroy
@@ -87,7 +101,18 @@ public class LlmGateway {
 
     /** 查询/文档向量化。失败重试1次 (429/5xx/超时同一策略, Spike1结论: 轻量即可)。 */
     public float[] embed(String text, String traceId) {
-        String safeText = boundedText(text, tokenLimits().embedInputTokens());
+        return embedInternal(text, traceId, false);
+    }
+
+    /** 查询 embedding 在输入超长时保留查询上下文及其最终约束。 */
+    public float[] embedQuery(String text, String traceId) {
+        return embedInternal(text, traceId, true);
+    }
+
+    private float[] embedInternal(String text, String traceId, boolean preserveHeadTail) {
+        String safeText = preserveHeadTail
+                ? tokenBudget.headTail(text, tokenLimits().embedInputTokens(), 0.6D)
+                : boundedText(text, tokenLimits().embedInputTokens());
         long perAttemptEstimate = estimate(safeText);
         long reserved = scaleEstimate(perAttemptEstimate, EMBED_MAX_ATTEMPTS);
         budgetGuard.reserve(traceId, reserved);
@@ -101,11 +126,11 @@ public class LlmGateway {
             acquired = true;
             for (int attempt = 1; attempt <= 2; attempt++) {
                 try {
-                    Embedding e = embeddingModel.embed(safeText).content();
+                    float[] vector = embeddingClient.embed(safeText);
                     actual = cappedAdd(failedEstimate, tokenBudget.count(safeText), reserved);
                     recordUsage(traceId, Purpose.EMBED, props.routing().get("embed"),
                             actual, 0, System.currentTimeMillis() - t0, "ok");
-                    return e.vector();
+                    return vector;
                 } catch (RuntimeException ex) {
                     last = ex;
                     failedEstimate = cappedAdd(failedEstimate, perAttemptEstimate, reserved);
@@ -122,6 +147,48 @@ public class LlmGateway {
         }
     }
 
+    /**
+     * 批量生成文档 embedding。批次大小被刻意限制，避免单次供应商请求造成
+     * 无界内存占用或限流突发。
+     */
+    public List<float[]> embedBatch(List<String> texts, String traceId) {
+        if (texts == null || texts.isEmpty()) return List.of();
+        if (texts.size() > 32) throw new IllegalArgumentException("embedding batch too large");
+        List<String> safeTexts = texts.stream()
+                .map(text -> boundedText(text, tokenLimits().embedInputTokens()))
+                .toList();
+        long perAttemptEstimate = safeTexts.stream().mapToLong(LlmGateway::estimate).sum();
+        long reserved = scaleEstimate(perAttemptEstimate, EMBED_MAX_ATTEMPTS);
+        budgetGuard.reserve(traceId, reserved);
+        boolean acquired = false;
+        long startedAt = System.currentTimeMillis();
+        long actual = 0;
+        RuntimeException last = null;
+        try {
+            concurrency.acquire();
+            acquired = true;
+            for (int attempt = 1; attempt <= EMBED_MAX_ATTEMPTS; attempt++) {
+                try {
+                    List<float[]> embeddings = embeddingClient.embedBatch(safeTexts);
+                    actual = Math.min(reserved, perAttemptEstimate);
+                    recordUsage(traceId, Purpose.EMBED, props.routing().get("embed"),
+                            actual, 0, System.currentTimeMillis() - startedAt, "ok_batch");
+                    return embeddings;
+                } catch (RuntimeException ex) {
+                    last = ex;
+                    actual = Math.min(reserved, actual + perAttemptEstimate);
+                    log.warn("embed batch attempt {} failed size={} type={} detail={}", attempt,
+                            safeTexts.size(), ex.getClass().getSimpleName(), safeErrorMessage(ex));
+                }
+            }
+            recordUsage(traceId, Purpose.EMBED, props.routing().get("embed"),
+                    actual, 0, System.currentTimeMillis() - startedAt, "error_estimated_batch");
+            throw last == null ? new IllegalStateException("embedding batch failed") : last;
+        } finally {
+            settleAndRelease(traceId, reserved, actual, acquired);
+        }
+    }
+
     /** 流式对话。首 token 前失败可由调用方决定是否重建; 网关负责限额检查与记账。 */
     public void chatStream(Purpose purpose, List<ChatMessage> messages, String traceId,
                            StreamingChatResponseHandler handler) {
@@ -129,8 +196,8 @@ public class LlmGateway {
     }
 
     /**
-     * Cancellable streaming chat. The cancellation token is wired to the provider's
-     * ResponseHandle, so disconnecting an SSE client closes the underlying HTTP stream.
+     * 可取消的流式聊天。取消令牌与供应商的 ResponseHandle 绑定，因此 SSE 客户端
+     * 断开时会关闭底层 HTTP 流。
      */
     public void chatStream(Purpose purpose, List<ChatMessage> messages, String traceId,
                            StreamingChatResponseHandler handler, CancellationToken cancellation) {
@@ -159,14 +226,7 @@ public class LlmGateway {
                     closeCancellationRegistration(cancellationRegistration);
                 }
             };
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(streamEndpoint()))
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "text/event-stream")
-                    .header("Authorization", "Bearer " + props.deepseek().apiKey())
-                    .timeout(Duration.ofSeconds(props.timeout().chatSeconds()))
-                    .POST(HttpRequest.BodyPublishers.ofString(streamBody(model, safeMessages, outputLimit(purpose)), StandardCharsets.UTF_8))
-                    .build();
+            HttpRequest request = chatStreamClient.buildRequest(model, safeMessages, outputLimit(purpose));
             Future<?> task = streamingExecutor.submit(() -> runStreamingRequest(
                     request, purpose, model, traceId, handler, cancellation, inputStream, finish,
                     outputLimit(purpose)));
@@ -179,7 +239,7 @@ public class LlmGateway {
                     try {
                         input.close();
                     } catch (IOException ignored) {
-                        // Closing an already closed stream is harmless.
+                        // 重复关闭已关闭的流不会造成问题。
                     }
                 }
                 finish.run();
@@ -215,7 +275,7 @@ public class LlmGateway {
             HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 try (InputStream ignored = response.body()) {
-                    // Drain/close the error body before reporting the provider failure.
+                    // 上报供应商失败前先读取完毕并关闭错误响应体。
                 }
                 throw new IllegalStateException("chat stream HTTP " + response.statusCode());
             }
@@ -307,9 +367,8 @@ public class LlmGateway {
             int remaining = maxOutputTokens - tokenBudget.count(fullText.toString());
             if (remaining <= 0) return true;
             String boundedToken = tokenBudget.truncate(token, remaining);
-            // truncate() adds an ellipsis for human-facing text; a stream delta
-            // must not invent one, so remove that marker when the hard cap cuts
-            // a provider chunk.
+            // truncate() 会为面向用户的文本添加省略号；流式增量不应凭空添加它，
+            // 因此硬上限截断供应商分块时需要移除该标记。
             if (!boundedToken.equals(token) && boundedToken.endsWith("…")) {
                 boundedToken = boundedToken.substring(0, boundedToken.length() - 1);
             }
@@ -385,7 +444,7 @@ public class LlmGateway {
         try {
             registration.close();
         } catch (Exception ignored) {
-            // Cancellation cleanup is best-effort.
+            // 取消清理属于尽力而为。
         }
     }
 
@@ -399,9 +458,8 @@ public class LlmGateway {
     }
 
     /**
-     * Structured call with an optional per-attempt timeout and retry count.
-     * Expert fan-out uses a single short attempt so its outer deadline cannot
-     * leave a hidden second provider request running after the caller has timed out.
+     * 结构化调用，支持按单次尝试设置超时和重试次数。专家扇出仅做一次短尝试，
+     * 避免外层超时后仍遗留隐藏的第二个供应商请求。
      */
     public String chatJson(Purpose purpose, List<ChatMessage> messages, String traceId,
                            Duration requestTimeout, int maxAttempts) {
@@ -420,27 +478,16 @@ public class LlmGateway {
             acquired = true;
             String model = props.routing().getOrDefault(purpose.name().toLowerCase(), "deepseek-chat");
             Duration timeout = requestTimeout != null ? requestTimeout : Duration.ofSeconds(timeoutSeconds(purpose));
-            OpenAiChatModel chat = OpenAiChatModel.builder()
-                    .apiKey(props.deepseek().apiKey())
-                    .baseUrl(props.deepseek().baseUrl())
-                    .modelName(model)
-                    .temperature(0.0)
-                    .responseFormat("json_object")
-                    .maxTokens(outputLimit(purpose))
-                    // Retry policy is deliberately explicit in the gateway. The
-                    // LangChain4j default would otherwise add hidden attempts.
-                    .maxRetries(0)
-                    .timeout(timeout)
-                    .build();
             long t0 = System.currentTimeMillis();
             long failedEstimate = 0;
+            OpenAiChatModel chat = buildJsonModel(props.deepseek(), model, purpose, timeout);
             for (int attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     ChatResponse resp = chat.chat(safeMessages);
                     TokenUsage u = resp.tokenUsage();
                     long measured = usageInput(u) + usageOutput(u);
-                    // Some OpenAI-compatible providers omit usage entirely. Do
-                    // not release the whole reservation as if that call were free.
+                    // 部分 OpenAI 兼容供应商完全不返回用量；不能将整笔预留释放，
+                    // 仿佛该调用没有成本。
                     if (measured == 0) measured = perAttemptEstimate;
                     actual = cappedAdd(failedEstimate, measured, reserved);
                     recordUsage(traceId, purpose, model,
@@ -454,6 +501,28 @@ public class LlmGateway {
                             ex.getClass().getSimpleName(), safeErrorMessage(ex));
                 }
             }
+            // 主供应商全部尝试失败后，切到备用供应商做一次调用 (若已配置)。
+            LlmProperties.Fallback fallback = props.fallbackOrDisabled();
+            if (fallback.isConfigured()) {
+                String fallbackModel = fallback.modelFor(purpose.name().toLowerCase(), model);
+                try {
+                    ChatResponse resp = buildJsonModel(fallback.endpoint(), fallbackModel, purpose, timeout)
+                            .chat(safeMessages);
+                    TokenUsage u = resp.tokenUsage();
+                    long measured = usageInput(u) + usageOutput(u);
+                    if (measured == 0) measured = perAttemptEstimate;
+                    actual = cappedAdd(failedEstimate, measured, reserved);
+                    recordUsage(traceId, purpose, fallbackModel,
+                            usageInput(u), usageOutput(u),
+                            System.currentTimeMillis() - t0, "ok_fallback");
+                    return resp.aiMessage().text();
+                } catch (RuntimeException ex) {
+                    last = ex;
+                    failedEstimate = cappedAdd(failedEstimate, perAttemptEstimate, reserved);
+                    log.warn("chatJson {} fallback failed type={} detail={}", purpose,
+                            ex.getClass().getSimpleName(), safeErrorMessage(ex));
+                }
+            }
             actual = failedEstimate;
             recordUsage(traceId, purpose, model, failedEstimate, 0,
                     System.currentTimeMillis() - t0, "error_estimated");
@@ -463,20 +532,86 @@ public class LlmGateway {
         }
     }
 
+    private OpenAiChatModel buildJsonModel(LlmProperties.Endpoint endpoint, String model,
+                                           Purpose purpose, Duration timeout) {
+        return OpenAiChatModel.builder()
+                .apiKey(endpoint.apiKey())
+                .baseUrl(endpoint.baseUrl())
+                .modelName(model)
+                .temperature(0.0)
+                .responseFormat("json_object")
+                .maxTokens(outputLimit(purpose))
+                // 网关刻意显式定义重试策略；否则 LangChain4j 默认行为会增加隐藏尝试。
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+    }
+
     /**
      * 多跳证据充分性判断 (Phase 2 V4 2.1): 给 query+已累积证据, 输出是否充分 + 缺口驱动改写。
      * 用于 AgenticRetriever 多跳循环的跳出条件; 失败抛由调用方降级为单跳。
      */
     public String judgeSufficient(String query, List<String> evidenceNodeIds, String traceId) {
-        String prompt = "查询: " + query + "\n已累积证据节点ID: " + evidenceNodeIds
-                + "\n请判断这些证据是否足以完整回答查询。输出JSON {sufficient: bool, followup_query: string|null, missing: string|null}";
-        return chatJson(Purpose.ROUTER, List.of(
-                dev.langchain4j.data.message.SystemMessage.from(
-                        "你是多跳检索的证据充分性判断器。判断规则: "
-                                + "1) 若证据覆盖了回答问题所需的所有关键概念/前置技能/资源→sufficient=true; "
-                                + "2) 否则→sufficient=false, followup_query=针对缺口的更窄查询, missing=缺失的关键概念关键词; "
-                                + "3) followup_query 不应与原 query 重复, 应聚焦缺失的具体子概念。"),
-                dev.langchain4j.data.message.UserMessage.from(prompt)), traceId);
+        return structuredJudge(judgePromptFactory.forNodeIds(query, evidenceNodeIds), traceId);
+    }
+
+    /**
+     * Judge 接收有界的证据摘要，而不仅是不透明的节点 ID。刻意不发送完整分块，
+     * 以限制提示词成本和意外数据暴露，同时提供覆盖判断所需的文本和图路径。
+     */
+    public String judgeSufficientWithEvidence(String query, List<Evidence> evidence, String traceId) {
+        return structuredJudge(judgePromptFactory.forEvidence(query, evidence), traceId);
+    }
+
+    /**
+     * Judge 同时接收原始问题和当前子问题，避免多跳改写后只关注局部目标而丢失总体约束。
+     */
+    public String judgeSufficientWithEvidence(String originalQuery, String currentSubQuery,
+                                              List<Evidence> evidence, String traceId) {
+        return structuredJudge(
+                judgePromptFactory.forEvidence(originalQuery, currentSubQuery, evidence), traceId);
+    }
+
+    private String structuredJudge(List<ChatMessage> messages, String traceId) {
+        StructuredOutputResult<RetrievalJudgeOutput> result = structuredOutputService.generate(
+                StructuredTask.RETRIEVAL_JUDGE,
+                Purpose.JUDGE,
+                messages,
+                RetrievalJudgeOutput.class,
+                output -> {
+                    if (output.sufficient()
+                            && output.followupQuery() != null
+                            && !output.followupQuery().isBlank()) {
+                        throw new IllegalArgumentException(
+                                "sufficient judge result must not contain followup_query");
+                    }
+                    if (!output.sufficient()
+                            && (isBlank(output.followupQuery()) && isBlank(output.missing()))) {
+                        throw new IllegalArgumentException(
+                                "insufficient judge result must contain a gap");
+                    }
+                },
+                traceId
+        );
+        if (!result.success()) {
+            throw new IllegalStateException("structured retrieval judge output invalid");
+        }
+        try {
+            return mapper.writeValueAsString(result.value());
+        } catch (Exception error) {
+            throw new IllegalStateException("structured retrieval judge serialization failed", error);
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private static String clip(String value, int maxChars) {
+        if (value == null || value.isBlank()) return "";
+        String normalized = value.replaceAll("[\\u0000-\\u001f\\u007f]", " ")
+                .replaceAll("\\s+", " ").trim();
+        return normalized.length() <= maxChars ? normalized : normalized.substring(0, maxChars);
     }
 
     /**
@@ -500,24 +635,7 @@ public class LlmGateway {
         try {
             concurrency.acquire();
             acquired = true;
-            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            var body = mapper.writeValueAsString(java.util.Map.of(
-                    "model", "BAAI/bge-reranker-v2-m3", "query", safeQuery, "documents", safeDocs));
-            var request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(props.siliconflow().baseUrl() + "/rerank"))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + props.siliconflow().apiKey())
-                    .timeout(Duration.ofSeconds(15))
-                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-            var resp = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200) throw new IllegalStateException("rerank HTTP " + resp.statusCode());
-            var root = mapper.readTree(resp.body());
-            double[] scores = new double[safeDocs.size()];
-            for (var r : root.path("results")) {
-                int index = r.path("index").asInt(-1);
-                if (index >= 0 && index < scores.length) scores[index] = r.path("relevance_score").asDouble();
-            }
+            double[] scores = rerankClient.rerank(safeQuery, safeDocs);
             actual = (safeQuery.length() + safeDocs.stream().mapToInt(String::length).sum()) / 2;
             recordUsage(traceId, Purpose.RERANK, "bge-reranker-v2-m3",
                     actual, 0,
@@ -583,8 +701,8 @@ public class LlmGateway {
 
         int lastIndex = safe.size() - 1;
         boolean hasSystem = safe.getFirst() instanceof SystemMessage;
-        // PromptAssembler already enforces a global system-context plan. Preserve it instead of
-        // silently discarding retrieved evidence merely because it appears later in the prompt.
+        // PromptAssembler 已执行全局系统上下文规划；应保留其结果，而不能仅因证据
+        // 出现在提示词后部就悄然丢弃。
         int systemBudget = hasSystem ? Math.min(tokenBudget.count(messageText(safe.getFirst())), Math.max(1, max * 2 / 5)) : 0;
         int finalBudget = hasSystem && lastIndex == 0 ? 0
                 : Math.max(1, (int) Math.round(max * finalMessageShare(purpose)));
@@ -671,8 +789,8 @@ public class LlmGateway {
 
     private int defaultMaxAttempts(Purpose purpose) {
         return switch (purpose) {
-            // These calls are either background work or cheap routing/judging. Retrying
-            // them during an outage only increases budget pressure and queue time.
+            // 这些调用要么是后台工作，要么是低成本路由/判断；故障期间重试只会增加
+            // 预算压力和排队时间。
             case ROUTER, EXPERT, SUMMARY, JUDGE -> 1;
             default -> 2;
         };
@@ -687,12 +805,7 @@ public class LlmGateway {
 
     private void recordUsage(String traceId, Purpose purpose, String model,
                              long in, long out, long ms, String status) {
-        try {
-            jdbc.update("INSERT INTO llm_usage (trace_id, purpose, model, tokens_in, tokens_out, duration_ms, status) VALUES (?,?,?,?,?,?,?)",
-                    traceId, purpose.name().toLowerCase(), model, in, out, (int) ms, status);
-        } catch (Exception e) {
-            log.error("llm_usage 记账失败(不阻塞主链路): {}", e.getMessage());
-        }
+        usageRecorder.record(traceId, purpose, model, in, out, ms, status);
     }
 
     private static String safeErrorMessage(Throwable error) {

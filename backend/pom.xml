@@ -19,9 +19,12 @@
 
   <properties>
     <java.version>21</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <langchain4j.version>1.0.1</langchain4j.version>
     <jtokkit.version>1.1.0</jtokkit.version>
     <jacoco.version>0.8.12</jacoco.version>
+    <springdoc.version>2.8.6</springdoc.version>
     <!-- Surefire performs late replacement for the Mockito Java agent. -->
     <argLine/>
   </properties>
@@ -44,6 +47,11 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>${springdoc.version}</version>
+    </dependency>
+    <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
       <scope>runtime</scope>
@@ -59,6 +67,11 @@
       <groupId>dev.langchain4j</groupId>
       <artifactId>langchain4j-open-ai</artifactId>
       <version>${langchain4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>2.0.0</version>
     </dependency>
 
     <!-- 存储 -->
@@ -91,6 +104,11 @@
           <artifactId>commons-logging</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.aliyun</groupId>
+      <artifactId>ocr_api20210707</artifactId>
+      <version>3.1.2</version>
     </dependency>
 
     <!-- token 估算 (context 预算控制, 实现设计 3.x) -->
@@ -125,7 +143,7 @@
       <artifactId>spring-security-crypto</artifactId>
     </dependency>
 
-    <!-- 简历解析: PDF / DOCX (实现设计 8.3: 仅PDF/DOCX/TXT, ≤5MB) -->
+    <!-- 文档解析: PDF / DOCX / TXT / Markdown；传输大小由 application.yml 配置。 -->
     <dependency>
       <groupId>org.apache.pdfbox</groupId>
       <artifactId>pdfbox</artifactId>
@@ -148,6 +166,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>1.3.0</version>
       <scope>test</scope>
     </dependency>
     <!-- Declared directly so Surefire can install Mockito as a Java agent on future JDKs. -->
@@ -205,6 +229,32 @@
             <goals>
               <goal>report</goal>
             </goals>
+          </execution>
+          <execution>
+            <id>enforce-unit-test-coverage</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.40</minimum>
+                    </limit>
+                    <limit>
+                      <counter>BRANCH</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.30</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
           </execution>
         </executions>
       </plugin>

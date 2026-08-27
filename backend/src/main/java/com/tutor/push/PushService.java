@@ -5,6 +5,7 @@ import com.tutor.auth.AuthContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.profile.ProfileService;
 import com.tutor.profile.SkillAlignService;
+import com.tutor.scheduling.ScheduledTaskLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,10 +27,12 @@ import java.util.Set;
 @Service
 public class PushService {
     private static final Logger log = LoggerFactory.getLogger(PushService.class);
+    private static final String CRON_LOCK = "push-scheduled-run";
 
     private final JdbcTemplate jdbc;
     private final ProfileService profileService;
     private final SkillAlignService alignService;
+    private final ScheduledTaskLock taskLock;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${push.match-threshold:0.65}") double matchThreshold;
@@ -37,14 +40,36 @@ public class PushService {
     @Value("${push.release-batch:5}") int releaseBatch;
     @Value("${push.max-per-run:5}") int maxPerRun;
 
-    public PushService(JdbcTemplate jdbc, ProfileService profileService, SkillAlignService alignService) {
+    public PushService(JdbcTemplate jdbc, ProfileService profileService, SkillAlignService alignService,
+                       ScheduledTaskLock taskLock) {
         this.jdbc = jdbc;
         this.profileService = profileService;
         this.alignService = alignService;
+        this.taskLock = taskLock;
+    }
+
+    /** 单实例/测试构造器：无锁存储时始终作为 leader 执行。 */
+    public PushService(JdbcTemplate jdbc, ProfileService profileService, SkillAlignService alignService) {
+        this(jdbc, profileService, alignService, alwaysLeader(jdbc));
+    }
+
+    private static ScheduledTaskLock alwaysLeader(JdbcTemplate jdbc) {
+        return new ScheduledTaskLock(jdbc) {
+            @Override
+            public boolean tryAcquire(String taskName, long leaseSeconds) {
+                return true;
+            }
+        };
     }
 
     @Scheduled(cron = "${push.cron:0 0 8,20 * * *}")
     public void scheduledRun() {
+        // 多实例部署时，全量推送每个触发窗口只应执行一次，否则会给用户发重复通知。
+        // 锁租约取一次运行的宽松上界；未抢到锁的实例直接跳过。
+        taskLock.runIfLeader(CRON_LOCK, 1800, this::runScheduledBatch);
+    }
+
+    private void runScheduledBatch() {
         try {
             int released = releaseAvailableJobs();
             List<Long> userIds = jdbc.queryForList("SELECT id FROM users ORDER BY id", Long.class);
@@ -75,8 +100,12 @@ public class PushService {
     @SuppressWarnings("unchecked")
     public Map<String, Object> runOnce() {
         // /internal 调用会注入演示用户；定时任务走 scheduledRun()，覆盖全部用户。
-        long uid = AuthContext.requireUserId();
-        return runForUser(uid, releaseAvailableJobs());
+        return runForTool(AuthContext.requireUserId());
+    }
+
+    /** 工具执行器调用入口，显式传递用户，避免 ThreadLocal 跨虚拟线程丢失。 */
+    public Map<String, Object> runForTool(long userId) {
+        return runForUser(userId, releaseAvailableJobs());
     }
 
     @SuppressWarnings("unchecked")
