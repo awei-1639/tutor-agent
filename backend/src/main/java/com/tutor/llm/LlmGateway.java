@@ -71,6 +71,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     private final TokenBudget tokenBudget = new TokenBudget();
     private final ObjectMapper mapper = new ObjectMapper();
     private final StructuredOutputService structuredOutputService;
+    private volatile GenAiTelemetry telemetry = new GenAiTelemetry(null);
     private final ExecutorService streamingExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -97,6 +98,12 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     @PreDestroy
     void shutdownStreamingExecutor() {
         ExecutorLifecycle.shutdown(streamingExecutor, "llm-streaming", log);
+    }
+
+    /** 可选注入 OpenTelemetry tracer；未配置时保持 no-op，不影响测试构造器。 */
+    @Autowired(required = false)
+    void setTracer(io.opentelemetry.api.trace.Tracer tracer) {
+        if (tracer != null) this.telemetry = new GenAiTelemetry(tracer);
     }
 
     /** 查询/文档向量化。失败重试1次 (429/5xx/超时同一策略, Spike1结论: 轻量即可)。 */
@@ -806,6 +813,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     private void recordUsage(String traceId, Purpose purpose, String model,
                              long in, long out, long ms, String status) {
         usageRecorder.record(traceId, purpose, model, in, out, ms, status);
+        telemetry.recordCall(traceId, purpose, model, in, out, ms, status);
     }
 
     private static String safeErrorMessage(Throwable error) {

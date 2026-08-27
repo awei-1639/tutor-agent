@@ -25,6 +25,7 @@
     <jtokkit.version>1.1.0</jtokkit.version>
     <jacoco.version>0.8.12</jacoco.version>
     <springdoc.version>2.8.6</springdoc.version>
+    <opentelemetry.version>1.45.0</opentelemetry.version>
     <!-- Surefire performs late replacement for the Mockito Java agent. -->
     <argLine/>
   </properties>
@@ -72,6 +73,24 @@
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
       <version>2.0.0</version>
+    </dependency>
+
+    <!-- OpenTelemetry: gen_ai.* 语义约定的 LLM/工具/检索追踪。默认无 exporter (no-op)，
+         配置 OTLP endpoint 后即可导出到 Langfuse/Jaeger 等，不改业务代码。 -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-api</artifactId>
+      <version>${opentelemetry.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk</artifactId>
+      <version>${opentelemetry.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-exporter-otlp</artifactId>
+      <version>${opentelemetry.version}</version>
     </dependency>
 
     <!-- 存储 -->
