@@ -99,6 +99,7 @@ public class ChatService {
     private final ToolCallLoop toolCallLoop;
     private final boolean toolLoopEnabled;
     private final ContextualQueryRewriter queryRewriter;
+    private final TurnCitations citations = new TurnCitations();
     private final ObjectMapper mapper = new ObjectMapper();
     private final ExecutorService background = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -434,17 +435,9 @@ public class ChatService {
 
                 @Override public void onComplete(String fullText, boolean clarified) {
                     trace.span(traceId, convId, "aggregate", aggStart, clarified);
-                    CitationBundle citationBundle = citationsFor(fullText, finalEvidences, briefing.citationIds());
-                    Long msgId = persistAssistant(convId, fullText,
-                            clarified ? "clarify" : intent.name().toLowerCase(), citationBundle.json(), traceId,
-                            fullText.length() / 2, citationBundle.status(), citationBundle.issuesJson(), claim, cancellation);
-                    if (msgId != null) {
-                        events.onDone(msgId, fullText, citationBundle.status(),
-                                parseCitationIssues(citationBundle.issuesJson()));
-                        background.submit(() -> postTurnTasks.run(convId, userId, question, fullText, traceId, memoryGeneration));
-                        background.submit(() -> verifyCitations(msgId, fullText,
-                                evidenceForCitations(finalEvidences, briefing.citationIds()), traceId));
-                    }
+                    completeAnswer(fullText, clarified ? "clarify" : intent.name().toLowerCase(), convId, userId,
+                            question, finalEvidences, briefing.citationIds(), traceId, memoryGeneration,
+                            events, cancellation, claim);
                 }
 
                 @Override public void onError(Throwable error) {
@@ -491,17 +484,8 @@ public class ChatService {
             try {
                 ToolCallLoop.LoopResult loopResult = toolCallLoop.run(Purpose.CHAT, messages, traceId,
                         new ToolExecutionContext(traceId, "chat", userId, null, false));
-                String text = loopResult.answer();
-                CitationBundle citationBundle = citationsFor(text, evidences, assembled.citationIds());
-                Long msgId = persistAssistant(convId, text, intent.name().toLowerCase(), citationBundle.json(), traceId,
-                        text.length() / 2, citationBundle.status(), citationBundle.issuesJson(), claim, cancellation);
-                if (msgId != null) {
-                    events.onDone(msgId, text, citationBundle.status(),
-                            parseCitationIssues(citationBundle.issuesJson()));
-                    background.submit(() -> postTurnTasks.run(convId, userId, question, text, traceId, memoryGeneration));
-                    background.submit(() -> verifyCitations(msgId, text,
-                            evidenceForCitations(evidences, assembled.citationIds()), traceId));
-                }
+                completeAnswer(loopResult.answer(), intent.name().toLowerCase(), convId, userId, question,
+                        evidences, assembled.citationIds(), traceId, memoryGeneration, events, cancellation, claim);
                 return;
             } catch (RuntimeException error) {
                 log.warn("tool loop failed, falling back to streaming direct answer trace={} type={}",
@@ -518,17 +502,8 @@ public class ChatService {
             }
 
             @Override public void onCompleteResponse(ChatResponse response) {
-                String text = full.toString();
-                CitationBundle citationBundle = citationsFor(text, finalEvidences, assembled.citationIds());
-                Long msgId = persistAssistant(convId, text, intent.name().toLowerCase(), citationBundle.json(), traceId,
-                        text.length() / 2, citationBundle.status(), citationBundle.issuesJson(), claim, cancellation);
-                if (msgId != null) {
-                    events.onDone(msgId, text, citationBundle.status(),
-                            parseCitationIssues(citationBundle.issuesJson()));
-                    background.submit(() -> postTurnTasks.run(convId, userId, question, text, traceId, memoryGeneration));
-                    background.submit(() -> verifyCitations(msgId, text,
-                            evidenceForCitations(finalEvidences, assembled.citationIds()), traceId));
-                }
+                completeAnswer(full.toString(), intent.name().toLowerCase(), convId, userId, question,
+                        finalEvidences, assembled.citationIds(), traceId, memoryGeneration, events, cancellation, claim);
             }
 
             @Override public void onError(Throwable error) {
@@ -536,6 +511,25 @@ public class ChatService {
                 if (!cancellation.isCancelled()) events.onError("生成失败, 请稍后重试");
             }
         }, cancellation);
+    }
+
+    /**
+     * 一轮回答的统一收口：引用映射 → 落库 → done 事件 → 异步后置任务。
+     * 直答、工具循环与专家仲裁三条路径共用，避免其中一条漏掉画像更新或引用校验。
+     * 落库返回 null 表示租约丢失或用户已取消，此时不得对外发出 done。
+     */
+    private void completeAnswer(String text, String intent, long convId, long userId, String question,
+                                List<Evidence> evidences, Set<String> citationIds, String traceId,
+                                long memoryGeneration, TurnEvents events, CancellationToken cancellation,
+                                ChatTurnService.Claim claim) {
+        CitationBundle bundle = citationsFor(text, evidences, citationIds);
+        Long messageId = persistAssistant(convId, text, intent, bundle.json(), traceId,
+                text.length() / 2, bundle.status(), bundle.issuesJson(), claim, cancellation);
+        if (messageId == null) return;
+        events.onDone(messageId, text, bundle.status(), parseCitationIssues(bundle.issuesJson()));
+        background.submit(() -> postTurnTasks.run(convId, userId, question, text, traceId, memoryGeneration));
+        background.submit(() -> verifyCitations(messageId, text,
+                evidenceForCitations(evidences, citationIds), traceId));
     }
 
     /** 解析回答中实际使用的 [S#], 映射回 node_id 存入 citations (实现设计 3.2 引用闭环) */
@@ -561,75 +555,16 @@ public class ChatService {
     }
 
     private List<Evidence> evidenceForCitations(List<Evidence> evidences, Set<String> availableCitationIds) {
-        if (evidences == null || evidences.isEmpty()) return List.of();
-        List<Evidence> bounded = new ArrayList<>(evidences.subList(0, Math.min(evidences.size(), 10)));
-        for (int i = 0; i < bounded.size(); i++) {
-            if (availableCitationIds == null || !availableCitationIds.contains("S" + (i + 1))) {
-                bounded.set(i, null);
-            }
-        }
-        return java.util.Collections.unmodifiableList(bounded);
+        return citations.forVerification(evidences, availableCitationIds);
     }
 
     private CitationBundle citationsFor(String text, List<Evidence> evidences, Set<String> availableCitationIds) {
-        Set<Integer> used = new LinkedHashSet<>();
-        Set<String> invalid = new LinkedHashSet<>();
-        Matcher m = CITE.matcher(text);
-        while (m.find()) {
-            int idx = parseCitationIndex(m.group(1));
-            if (idx >= 0 && idx < Math.min(evidences.size(), 10)
-                    && availableCitationIds != null && availableCitationIds.contains("S" + (idx + 1))
-                    && evidences.get(idx) != null) {
-                used.add(idx);
-            } else {
-                invalid.add("S" + m.group(1));
-            }
-        }
-        try {
-            // 保留卡片所需的完整引用信息，历史会话恢复后也能查看溯源。
-            String json = mapper.writeValueAsString(used.stream().map(idx -> {
-                Evidence e = evidences.get(idx);
-                CitationSourcePolicy.Provenance provenance = CitationSourcePolicy.inspect(e);
-                String[] parts = e.chunkText().split("\\|", 3);
-                return Map.of(
-                        "sid", "S" + (idx + 1),
-                        "node_id", e.nodeId(),
-                        "type", e.nodeType(),
-                        "title", parts.length > 1 ? parts[1] : e.nodeId(),
-                        "text", e.chunkText(),
-                        "graph_path", e.graphPath() == null ? "" : e.graphPath(),
-                        "source_url", provenance.sourceUrl(),
-                        "source_status", provenance.sourceStatus(),
-                        "evidence_hash", provenance.evidenceHash());
-            }).toList());
-            String status = !invalid.isEmpty() ? "invalid_reference" : used.isEmpty() ? "not_applicable" : "pending";
-            return new CitationBundle(json, status, mapper.writeValueAsString(invalid));
-        } catch (Exception e) {
-            return new CitationBundle("[]", "unavailable", "[]");
-        }
+        TurnCitations.Bundle bundle = citations.bundleFor(text, evidences, availableCitationIds);
+        return new CitationBundle(bundle.json(), bundle.status(), bundle.issuesJson());
     }
 
     private List<String> parseCitationIssues(String issuesJson) {
-        if (issuesJson == null || issuesJson.isBlank()) return List.of();
-        try {
-            var node = mapper.readTree(issuesJson);
-            if (!node.isArray()) return List.of();
-            List<String> issues = new ArrayList<>();
-            node.forEach(item -> {
-                if (item.isTextual() && issues.size() < 20) issues.add(item.asText());
-            });
-            return List.copyOf(issues);
-        } catch (Exception ignored) {
-            return List.of();
-        }
-    }
-
-    private int parseCitationIndex(String digits) {
-        try {
-            return Math.subtractExact(Integer.parseInt(digits), 1);
-        } catch (NumberFormatException | ArithmeticException ignored) {
-            return -1;
-        }
+        return citations.parseIssues(issuesJson);
     }
 
 }
