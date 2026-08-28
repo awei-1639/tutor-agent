@@ -2,6 +2,7 @@
 // 用法: node scripts/import_seed.mjs   (派生文件写入 OUT_DIR, 默认系统临时目录)
 // 之后执行:
 //   wsl docker exec -i tutor-neo4j cypher-shell -u neo4j -p <pwd> < seed.cypher
+//   wsl docker exec -i tutor-postgres psql -U tutor -d tutor -q < kg_entity_aliases.sql
 //   wsl docker exec -i tutor-postgres psql -U tutor -d tutor -q < kg_chunks.sql
 //   wsl docker exec -i tutor-postgres psql -U tutor -d tutor -q < jobs.sql
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -39,33 +40,33 @@ CREATE CONSTRAINT company_id IF NOT EXISTS FOR (n:Company) REQUIRE n.node_id IS 
 MATCH (n:Seed) DETACH DELETE n;
 `;
 for (const s of skills) {
-  cy += `MERGE (n:Seed:Skill {node_id:'${s.id}'}) SET n.name='${esc(s.name)}', n.aliases=[${s.aliases.map(a => `'${esc(a)}'`).join(',')}], n.description='${esc(s.description)}', n.difficulty='${s.difficulty}', n.est_hours=${s.est_hours};\n`;
+  cy += `MERGE (n:Seed:Skill {node_id:'${s.id}'}) SET n.name='${esc(s.name)}', n.aliases=[${s.aliases.map(a => `'${esc(a)}'`).join(',')}], n.description='${esc(s.description)}', n.difficulty='${s.difficulty}', n.est_hours=${s.est_hours}, n.visibility='public';\n`;
 }
 for (const r of resources) {
-  cy += `MERGE (n:Seed:Resource {node_id:'${r.id}'}) SET n.title='${esc(r.title)}', n.description='${esc(r.description)}', n.format='${r.format}', n.language='${r.language}', n.duration_hours=${r.duration_hours}, n.difficulty='${r.difficulty}';\n`;
+  cy += `MERGE (n:Seed:Resource {node_id:'${r.id}'}) SET n.title='${esc(r.title)}', n.description='${esc(r.description)}', n.format='${r.format}', n.language='${r.language}', n.duration_hours=${r.duration_hours}, n.difficulty='${r.difficulty}', n.visibility='public';\n`;
 }
 const companies = new Map();
 for (const j of jobs) {
   const cid = 'company:' + j.company.toLowerCase().replace(/[^a-z0-9一-龥]+/g, '-').slice(0, 40);
   companies.set(cid, j.company);
   j._cid = cid;
-  cy += `MERGE (n:Seed:Job {node_id:'${j.id}'}) SET n.title='${esc(j.title)}', n.company='${esc(j.company)}', n.city='${j.city}', n.salary='${esc(j.salary)}', n.education='${esc(j.education)}', n.jd_snapshot='${esc(j.jd_snapshot)}', n.fetched_at=date();\n`;
+  cy += `MERGE (n:Seed:Job {node_id:'${j.id}'}) SET n.title='${esc(j.title)}', n.company='${esc(j.company)}', n.city='${j.city}', n.salary='${esc(j.salary)}', n.education='${esc(j.education)}', n.jd_snapshot='${esc(j.jd_snapshot)}', n.fetched_at=date(), n.visibility='public';\n`;
 }
 for (const [cid, name] of companies) {
-  cy += `MERGE (n:Seed:Company {node_id:'${cid}'}) SET n.name='${esc(name)}';\n`;
+  cy += `MERGE (n:Seed:Company {node_id:'${cid}'}) SET n.name='${esc(name)}', n.visibility='public';\n`;
 }
 // 边: 方向语义见 experiments/README.md Spike3 结论
 for (const s of skills) {
-  for (const p of s.prerequisites || []) cy += `MATCH (a:Skill {node_id:'${p}'}),(b:Skill {node_id:'${s.id}'}) MERGE (a)-[:PREREQUISITE]->(b);\n`;
-  for (const t of s.advances_to || []) cy += `MATCH (a:Skill {node_id:'${s.id}'}),(b:Skill {node_id:'${t}'}) MERGE (a)-[:ADVANCES_TO]->(b);\n`;
+  for (const p of s.prerequisites || []) cy += `MATCH (a:Skill {node_id:'${p}'}),(b:Skill {node_id:'${s.id}'}) MERGE (a)-[r:PREREQUISITE]->(b) SET r.confidence=1.0, r.source='seed', r.status='active';\n`;
+  for (const t of s.advances_to || []) cy += `MATCH (a:Skill {node_id:'${s.id}'}),(b:Skill {node_id:'${t}'}) MERGE (a)-[r:ADVANCES_TO]->(b) SET r.confidence=1.0, r.source='seed', r.status='active';\n`;
 }
 for (const r of resources) for (const t of r.teaches) {
-  cy += `MATCH (a:Resource {node_id:'${r.id}'}),(b:Skill {node_id:'${t}'}) MERGE (a)-[:TEACHES]->(b);\n`;
+  cy += `MATCH (a:Resource {node_id:'${r.id}'}),(b:Skill {node_id:'${t}'}) MERGE (a)-[e:TEACHES]->(b) SET e.confidence=1.0, e.source='seed', e.status='active';\n`;
 }
 for (const j of jobs) {
   j.requires.forEach((t, i) => {
-    cy += `MATCH (a:Job {node_id:'${j.id}'}),(b:Skill {node_id:'${t}'}) MERGE (a)-[:REQUIRES]->(b);\n`;
-    if (i === 0) cy += `MATCH (a:Skill {node_id:'${t}'}),(b:Job {node_id:'${j.id}'}) MERGE (a)-[:LEADS_TO]->(b);\n`; // 首要技能→岗位
+    cy += `MATCH (a:Job {node_id:'${j.id}'}),(b:Skill {node_id:'${t}'}) MERGE (a)-[e:REQUIRES]->(b) SET e.confidence=1.0, e.source='seed', e.status='active';\n`;
+    if (i === 0) cy += `MATCH (a:Skill {node_id:'${t}'}),(b:Job {node_id:'${j.id}'}) MERGE (a)-[e:LEADS_TO]->(b) SET e.confidence=1.0, e.source='seed', e.status='active';\n`; // 首要技能→岗位
   });
   cy += `MATCH (a:Job {node_id:'${j.id}'}),(b:Company {node_id:'${j._cid}'}) MERGE (a)-[:AT_COMPANY]->(b);\n`;
 }
@@ -106,11 +107,29 @@ for (let i = 0; i < chunks.length; i += 32) {
 console.log();
 
 // ============ 4. SQL ============
+const normalizeAlias = value => String(value ?? '').toLowerCase()
+  .replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+const aliasRows = [];
+for (const s of skills) {
+  aliasRows.push([s.id, s.name, 'official']);
+  for (const alias of s.aliases || []) aliasRows.push([s.id, alias, 'alias']);
+}
+for (const r of resources) aliasRows.push([r.id, r.title, 'official']);
+for (const j of jobs) aliasRows.push([j.id, j.title, 'official']);
+let aliasSql = 'TRUNCATE kg_entity_aliases;\n';
+for (const [nodeId, alias, aliasType] of aliasRows) {
+  const normalized = normalizeAlias(alias);
+  if (!normalized) continue;
+  aliasSql += `INSERT INTO kg_entity_aliases (node_id, alias, normalized_alias, alias_type, confidence, source) VALUES ('${sqlEsc(nodeId)}', '${sqlEsc(alias)}', '${sqlEsc(normalized)}', '${aliasType}', 1.0, 'seed') ON CONFLICT (node_id, normalized_alias) DO NOTHING;\n`;
+}
+writeFileSync(join(OUT, 'kg_entity_aliases.sql'), aliasSql);
+
 let kgSql = 'TRUNCATE kg_chunks;\n';
 chunks.forEach((c, i) => {
   const sourceUrl = c[3] ? `'${sqlEsc(c[3])}'` : 'NULL';
   const sourceStatus = c[3] ? 'unverified' : 'missing';
-  kgSql += `INSERT INTO kg_chunks (node_id, node_type, chunk_text, embedding, source_url, source_title, source_status, content_hash, retrieved_at) VALUES ('${c[0]}', '${c[1]}', '${sqlEsc(c[2])}', '[${vecs[i].join(',')}]', ${sourceUrl}, '${sqlEsc(c[4])}', '${sourceStatus}', encode(digest(convert_to('${sqlEsc(c[2])}', 'UTF8'), 'sha256'), 'hex'), now());\n`;
+  const resourceKind = c[1] === 'resource' || c[1] === 'document' ? 'resource' : 'non_resource';
+  kgSql += `INSERT INTO kg_chunks (node_id, node_type, resource_kind, chunk_text, embedding, source_url, source_title, source_status, content_hash, retrieved_at, visibility, owner_user_id, tenant_id) VALUES ('${c[0]}', '${c[1]}', '${resourceKind}', '${sqlEsc(c[2])}', '[${vecs[i].join(',')}]', ${sourceUrl}, '${sqlEsc(c[4])}', '${sourceStatus}', encode(digest(convert_to('${sqlEsc(c[2])}', 'UTF8'), 'sha256'), 'hex'), now(), 'public', NULL, NULL);\n`;
 });
 writeFileSync(join(OUT, 'kg_chunks.sql'), kgSql);
 
@@ -121,4 +140,4 @@ jobs.forEach((j, i) => {
   jobSql += `INSERT INTO jobs (node_id, title, company, city, salary, education, requires_raw, jd_snapshot, embedding, source, released, fetched_at) VALUES ('${j.id}', '${sqlEsc(j.title)}', '${sqlEsc(j.company)}', '${sqlEsc(j.city)}', '${sqlEsc(j.salary)}', '${sqlEsc(j.education)}', ARRAY[${j.requires.map(t => `'${sqlEsc(t)}'`).join(',')}], '${sqlEsc(j.jd_snapshot)}', '[${jobVec.get(j.id).join(',')}]', 'seed', ${released}, now());\n`;
 });
 writeFileSync(join(OUT, 'jobs.sql'), jobSql);
-console.log(`OUT_DIR=${OUT}\nDONE: seed.cypher / kg_chunks.sql / jobs.sql`);
+console.log(`OUT_DIR=${OUT}\nDONE: seed.cypher / kg_entity_aliases.sql / kg_chunks.sql / jobs.sql`);

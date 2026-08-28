@@ -11,8 +11,16 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Enforce immutable Flyway migrations on pull requests
+        if: github.event_name == 'pull_request'
+        run: bash scripts/check-flyway-migration-immutability.sh "${{ github.event.pull_request.base.sha }}"
+      - name: Enforce immutable Flyway migrations on pushes
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: bash scripts/check-flyway-migration-immutability.sh "${{ github.event.before }}"
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
           java-version: '21'
@@ -48,7 +56,7 @@ jobs:
         run: mvn -B test -DrunIntegrationTests=true -Dtest='*IT'
       - name: Upload backend reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: backend-test-reports
           path: |
@@ -59,8 +67,8 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: npm
@@ -85,7 +93,7 @@ jobs:
         run: npm run e2e
       - name: Upload frontend test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: frontend-test-reports
           path: |
@@ -96,10 +104,47 @@ jobs:
   containers:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Build backend image
         run: docker build --tag personal-ai-tutor-backend:ci ./backend
       - name: Build frontend image
         run: docker build --tag personal-ai-tutor-frontend:ci ./frontend
       - name: Validate production Compose contract
         run: docker compose -f docker-compose.prod.yml config --quiet
+
+  frontend-real-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend test dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Start isolated full stack
+        env:
+          POSTGRES_PASSWORD: e2e-postgres-password
+          NEO4J_PASSWORD: e2e-neo4j-password
+          JWT_SECRET: e2e-jwt-secret-must-be-at-least-32-characters
+          RESUME_ENC_KEY: e2e-resume-encryption-key
+          DEEPSEEK_API_KEY: e2e-no-external-llm-calls
+          SILICONFLOW_API_KEY: e2e-no-external-llm-calls
+        run: docker compose -p tutor-e2e -f docker-compose.prod.yml -f docker-compose.e2e.yml up --build --wait
+      - name: Browser smoke test against real stack
+        working-directory: frontend
+        env:
+          REAL_STACK_E2E: 'true'
+          E2E_BASE_URL: http://127.0.0.1:8081
+        run: npx playwright test e2e/real-stack.spec.ts
+      - name: Collect full-stack logs
+        if: always()
+        run: docker compose -p tutor-e2e -f docker-compose.prod.yml -f docker-compose.e2e.yml logs --no-color
+      - name: Stop isolated full stack
+        if: always()
+        run: docker compose -p tutor-e2e -f docker-compose.prod.yml -f docker-compose.e2e.yml down --volumes

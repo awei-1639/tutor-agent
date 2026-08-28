@@ -22,7 +22,7 @@ def main():
     conn = psycopg2.connect(host='localhost', port=5432, user='tutor', password=env['POSTGRES_PASSWORD'],
                             database='tutor', client_encoding='utf8')
     cur = conn.cursor()
-    cur.execute("SELECT id, head, relation, tail FROM staging_triples WHERE status='approved' ORDER BY id")
+    cur.execute("SELECT id, head, relation, tail, confidence, source FROM staging_triples WHERE status='approved' ORDER BY id")
     rows = cur.fetchall()
     print(f'approved 三元组: {len(rows)} 条')
 
@@ -31,7 +31,7 @@ def main():
     imported = 0; skipped = 0
     no_match = 0
     with driver.session() as session:
-        for tid, head, rel, tail in rows:
+        for tid, head, rel, tail, confidence, source in rows:
             if rel not in ALLOWED: skipped += 1; continue
             h_label, h_name = parse_endpoint(head)
             t_label, t_name = parse_endpoint(tail)
@@ -44,8 +44,11 @@ def main():
                 if hit_h and hit_t:
                     session.run(
                         f"MATCH (h:{h_label} {{name:$h}}) MATCH (t:{t_label} {{name:$t}}) "
-                        f"MERGE (h)-[:{rel}]->(t)",
-                        h=h_name, t=t_name)
+                        f"MERGE (h)-[r:{rel}]->(t) "
+                        f"SET r.confidence=coalesce($confidence, 1.0), "
+                        f"r.source=coalesce($source, 'staging_triple'), r.status='active', "
+                        f"r.created_at=coalesce(r.created_at, datetime())",
+                        h=h_name, t=t_name, confidence=confidence, source=source)
                     imported += 1
                 else:
                     no_match += 1

@@ -1,10 +1,12 @@
 package com.tutor.chat.internal;
 
-import com.tutor.contract.Evidence;
-import com.tutor.contract.Intent;
 import com.tutor.expert.IntentRouter;
-import com.tutor.retrieval.agentic.AgenticRetriever;
-import com.tutor.retrieval.fusion.FusedRetriever;
+import com.tutor.expert.RoutingPolicy;
+import com.tutor.auth.AuthContext;
+import com.tutor.tool.ToolExecutionContext;
+import com.tutor.tool.ToolExecutor;
+import com.tutor.tool.ToolInputs;
+import org.slf4j.MDC;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -25,55 +27,59 @@ import java.util.Map;
 @RestController
 @RequestMapping("/internal")
 public class InternalController {
-    private final FusedRetriever retriever;
-    private final AgenticRetriever agenticRetriever;
     private final IntentRouter router;
+    private final RoutingPolicy routingPolicy;
 
-    public InternalController(FusedRetriever retriever,
-                              AgenticRetriever agenticRetriever,
-                              IntentRouter router,
-                              com.tutor.push.PushService pushService) {
-        this.retriever = retriever;
-        this.agenticRetriever = agenticRetriever;
+    public InternalController(IntentRouter router,
+                              RoutingPolicy routingPolicy,
+                              ToolExecutor toolExecutor) {
         this.router = router;
-        this.pushService = pushService;
+        this.routingPolicy = routingPolicy;
+        this.toolExecutor = toolExecutor;
     }
 
     public record RetrieveRequest(@NotBlank @Size(max = 4000) String query,
                                   @Min(1) @Max(20) Integer topK, @Size(max = 32) String mode) {}
 
+    @SuppressWarnings("unchecked")
     @PostMapping("/retrieve")
     public Map<String, Object> retrieve(@Valid @RequestBody RetrieveRequest req) {
-        String mode = req.mode() == null ? "agentic" : req.mode();
-        long t0 = System.currentTimeMillis();
-        List<Evidence> results;
-        if ("agentic".equals(mode)) {
-            results = agenticRetriever.retrieve(req.query(), req.topK() == null ? 5 : req.topK(), "eval");
-        } else {
-            boolean fused = !"vector_only".equals(mode);
-            boolean rerank = "fused_rerank".equals(mode);
-            results = retriever.retrieve(req.query(), req.topK() == null ? 5 : req.topK(), "eval", fused, rerank);
-        }
-        long ms = System.currentTimeMillis() - t0;
-        return Map.of(
-                "mode", mode,
-                "latency_ms", ms,
-                "results", results.stream().map(e -> Map.of(
-                        "node_id", e.nodeId(), "type", e.nodeType(), "score", e.score())).toList());
+        String traceId = MDC.get("traceId");
+        return (Map<String, Object>) toolExecutor.execute("retrieve", new ToolInputs.Retrieve(req.query(), req.topK(), req.mode()),
+                new ToolExecutionContext(traceId, "eval", AuthContext.requireUserId(), null, false));
     }
 
-    private final com.tutor.push.PushService pushService;
+    private final ToolExecutor toolExecutor;
 
     public record RouteRequest(@NotBlank @Size(max = 4000) String question) {}
 
+    @SuppressWarnings("unchecked")
     @PostMapping("/push-run")
-    public Map<String, Object> pushRun() {
-        return pushService.runOnce();
+    public Map<String, Object> pushRun(@org.springframework.web.bind.annotation.RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey) {
+        String traceId = MDC.get("traceId");
+        String key = idempotencyKey == null || idempotencyKey.isBlank() ? traceId : idempotencyKey;
+        return (Map<String, Object>) toolExecutor.execute("push_run", new ToolInputs.Empty(),
+                new ToolExecutionContext(traceId, "scheduler", AuthContext.requireUserId(), key, true));
     }
 
     @PostMapping("/route")
     public Map<String, Object> route(@Valid @RequestBody RouteRequest req) {
-        Intent intent = router.route(req.question(), List.of(), "eval");
-        return Map.of("intent", intent.name().toLowerCase());
+        IntentRouter.RouteDecision decision = router.routeDecision(req.question(), List.of(), "eval");
+        RoutingPolicy.ExecutionPlan plan = routingPolicy.plan(decision, req.question());
+        return Map.ofEntries(
+                Map.entry("intent", decision.intent().name().toLowerCase()),
+                Map.entry("sub_intents", decision.subIntents().stream().map(Enum::name).map(String::toLowerCase).toList()),
+                Map.entry("effective_intent", plan.intent().name().toLowerCase()),
+                Map.entry("retrieval_facets", plan.retrievalFacets().stream()
+                        .map(Enum::name).map(String::toLowerCase).toList()),
+                Map.entry("scope", decision.scope().name().toLowerCase()),
+                Map.entry("retrieval_hint", decision.retrievalHint().name().toLowerCase()),
+                Map.entry("skip_retrieval", plan.skipRetrieval()),
+                Map.entry("allow_multi_hop", plan.allowMultiHopEscalation()),
+                Map.entry("confidence", decision.confidence()),
+                Map.entry("calibrated_confidence", decision.calibratedConfidence() == null
+                        ? "uncalibrated" : decision.calibratedConfidence()),
+                Map.entry("reason_codes", decision.reasonCodes()),
+                Map.entry("degraded", decision.degraded() || plan.degraded()));
     }
 }

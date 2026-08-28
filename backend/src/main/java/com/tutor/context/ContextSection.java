@@ -24,9 +24,8 @@ public interface ContextSection {
     String render(TurnContextView ctx, TokenBudget budget);
 
     /**
-     * Renders a section together with trusted metadata.  EvidenceSection uses
-     * this to retain the exact citation ids that survived local rendering;
-     * ordinary sections keep the default empty metadata.
+     * 渲染分区及其可信元数据。EvidenceSection 通过它保留经本地渲染后仍存在的
+     * 精确引用 ID；普通分区保持默认的空元数据。
      */
     default Rendered renderWithMetadata(TurnContextView ctx, TokenBudget budget) {
         return new Rendered(render(ctx, budget), List.of());

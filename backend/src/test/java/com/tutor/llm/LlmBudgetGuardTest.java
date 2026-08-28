@@ -45,6 +45,6 @@ class LlmBudgetGuardTest {
                 Map.of("chat", "chat", "router", "router", "expert", "expert", "summary", "summary",
                         "extract", "extract", "embed", "embed"),
                 new LlmProperties.Budget(100_000, 10_000),
-                new LlmProperties.Timeout(1, 60, 120, 25));
+                new LlmProperties.Timeout(1, 60, 120, 25), LlmProperties.TokenLimits.defaults());
     }
 }

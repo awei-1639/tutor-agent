@@ -1,250 +1,179 @@
 package com.tutor.knowledge;
 
-import com.tutor.llm.LlmGateway;
-import com.tutor.config.ExecutorLifecycle;
-import com.tutor.retrieval.vector.VectorStore;
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import com.tutor.llm.EmbeddingGateway;
+import com.tutor.config.KnowledgeIngestionProperties;
+import com.tutor.config.KnowledgeUploadProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PreDestroy;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.HexFormat;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 /** 管理员知识库文档：OSS 存原文件，异步解析/切分/向量化，完成后纳入 RAG 检索。 */
 @Service
 public class KnowledgeDocumentService {
     private static final Logger log = LoggerFactory.getLogger(KnowledgeDocumentService.class);
-    private static final int MAX_TEXT_CHARS = 500_000;
-    private static final int CHUNK_SIZE = 800;
-    private static final int CHUNK_OVERLAP = 120;
     private static final int MAX_CHUNKS = 300;
+    private static final int MAX_INDEXED_CHARS = 300 * 3_600;
+    private static final String DOCUMENT_TRUNCATION_MARKER =
+            "\n\n[文档中间内容因索引资源上限省略]\n\n";
 
     private final JdbcTemplate jdbc;
     private final OssStorage oss;
-    private final LlmGateway gateway;
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    private final KnowledgeIngestionJobStore jobs;
+    private final StructuredChunker chunker;
+    private final ClamAvScanner scanner;
+    private final KnowledgeEmbeddingStagingService embeddingStager;
+    private final KnowledgeChunkPublicationService chunkPublisher;
+    private final DocumentTextExtractor textExtractor;
+    private final KnowledgeUploadSessionService uploadSessions;
+    private final KnowledgeDocumentAdminService adminDocuments;
 
-    public KnowledgeDocumentService(JdbcTemplate jdbc, OssStorage oss, LlmGateway gateway) {
+    public KnowledgeDocumentService(JdbcTemplate jdbc, OssStorage oss, EmbeddingGateway gateway,
+                                     KnowledgeIngestionJobStore jobs, TransactionTemplate transactions,
+                                     StructuredChunker chunker, KnowledgeUploadRateLimiter uploadLimiter,
+                                     ClamAvScanner scanner, AliyunOcrClient ocr, KnowledgeOssCleanupStore ossCleanup,
+                                     KnowledgeEmbeddingCache embeddingCache, KnowledgeUploadProperties uploadProperties,
+                                     KnowledgeIngestionProperties ingestionProperties,
+                                     @Qualifier("knowledgeEmbeddingExecutor") Executor embeddingExecutor) {
         this.jdbc = jdbc;
         this.oss = oss;
-        this.gateway = gateway;
-    }
-
-    @PreDestroy
-    void shutdownExecutor() {
-        ExecutorLifecycle.shutdown(executor, "knowledge-document", log);
+        this.jobs = jobs;
+        this.chunker = chunker;
+        this.scanner = scanner;
+        this.embeddingStager = new KnowledgeEmbeddingStagingService(jdbc, gateway, jobs, embeddingCache, embeddingExecutor);
+        this.chunkPublisher = new KnowledgeChunkPublicationService(jdbc, transactions, jobs);
+        this.textExtractor = new DocumentTextExtractor(ocr);
+        this.uploadSessions = new KnowledgeUploadSessionService(
+                jdbc, oss, jobs, transactions, uploadLimiter, ossCleanup, uploadProperties, ingestionProperties);
+        this.adminDocuments = new KnowledgeDocumentAdminService(
+                jdbc, oss, jobs, transactions, uploadLimiter, ossCleanup,
+                uploadProperties, ingestionProperties, uploadSessions);
     }
 
     public record UploadResult(String id, String status, boolean deduplicated) {}
 
-    public UploadResult upload(long adminId, MultipartFile file, String requestedTitle) {
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请选择要上传的文档");
+    public record PartUpload(int partNumber, String uploadUrl) {}
+    public record CompletedPart(int partNumber, String etag) {}
+    public record UploadSession(String id, String uploadUrl, String expiresAt, long maxBytes,
+                                boolean multipart, String uploadId, long partSize, List<PartUpload> parts,
+                                List<CompletedPart> completedParts, boolean objectReady, String status) {
+        public UploadSession(String id, String uploadUrl, String expiresAt, long maxBytes,
+                             boolean multipart, String uploadId, long partSize, List<PartUpload> parts) {
+            this(id, uploadUrl, expiresAt, maxBytes, multipart, uploadId, partSize, parts, List.of(), false, "pending");
         }
-        String filename = safeFilename(file.getOriginalFilename());
-        requireSupported(filename);
-        byte[] bytes;
-        try {
-            bytes = file.getBytes();
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "读取上传文件失败");
-        }
-        String hash = sha256(bytes);
-        List<UUID> duplicated = jdbc.query("""
-                SELECT id FROM knowledge_documents
-                WHERE content_hash=? AND deleted_at IS NULL AND status <> 'failed'
-                ORDER BY created_at DESC LIMIT 1
-                """, (rs, rowNum) -> rs.getObject(1, UUID.class), hash);
-        if (!duplicated.isEmpty()) return new UploadResult(duplicated.getFirst().toString(), "deduplicated", true);
+    }
 
-        UUID id = UUID.randomUUID();
-        String title = requestedTitle == null || requestedTitle.isBlank() ? titleFrom(filename) : requestedTitle.trim();
-        String objectKey = oss.documentKey(id, filename);
-        try {
-            oss.put(objectKey, bytes, file.getContentType());
-            jdbc.update("""
-                    INSERT INTO knowledge_documents
-                    (id, title, original_filename, content_type, size_bytes, content_hash, oss_object_key, status, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'uploaded', ?)
-                    """, id, title, filename, file.getContentType(), bytes.length, hash, objectKey, adminId);
-        } catch (RuntimeException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "文档上传到 OSS 失败，请检查 OSS 配置和权限");
-        }
-        audit(adminId, "KNOWLEDGE_DOCUMENT_UPLOADED", id);
-        queue(id, bytes, filename);
-        return new UploadResult(id.toString(), "uploaded", false);
+    public UploadSession prepareUpload(long adminId, String requestedFilename, long sizeBytes,
+                                       String contentType, String requestedTitle) {
+        return uploadSessions.prepareUpload(adminId, requestedFilename, sizeBytes, contentType, requestedTitle);
+    }
+
+    /** 重新签发短期 OSS URL，并返回 OSS 已持久化的分片。 */
+    public UploadSession resumeUpload(long adminId, UUID id) {
+        return uploadSessions.resumeUpload(adminId, id);
+    }
+
+    public UploadResult completeUpload(long adminId, UUID id) {
+        return completeUpload(adminId, id, List.of());
+    }
+
+    public UploadResult completeUpload(long adminId, UUID id, List<CompletedPart> completedParts) {
+        return uploadSessions.completeUpload(adminId, id, completedParts);
+    }
+
+    @Scheduled(fixedDelayString = "${knowledge.upload.session-cleanup-ms:300000}")
+    public void cleanupExpiredUploadSessions() {
+        uploadSessions.cleanupExpiredUploadSessions();
+    }
+
+    public UploadResult upload(long adminId, MultipartFile file, String requestedTitle) {
+        return adminDocuments.upload(adminId, file, requestedTitle);
     }
 
     public List<Map<String, Object>> list(int limit) {
-        int safeLimit = Math.min(Math.max(limit, 1), 100);
-        return jdbc.query("""
-                SELECT d.id, d.title, d.original_filename, d.content_type, d.size_bytes, d.status,
-                       d.error_message, d.chunk_count, d.created_at, d.updated_at, d.deleted_at, u.name AS creator_name
-                FROM knowledge_documents d JOIN users u ON u.id=d.created_by
-                ORDER BY d.created_at DESC LIMIT ?
-                """, (rs, rowNum) -> row(rs), safeLimit);
+        return adminDocuments.list(limit);
     }
 
     public void retry(long adminId, UUID id) {
-        Map<String, Object> document = document(id);
-        if (document.get("deleted_at") != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "已删除文档不能重试");
-        String filename = (String) document.get("original_filename");
-        String objectKey = (String) document.get("oss_object_key");
-        byte[] content = oss.get(objectKey);
-        jdbc.update("UPDATE knowledge_documents SET status='uploaded', error_message=NULL, updated_at=now() WHERE id=?", id);
-        audit(adminId, "KNOWLEDGE_DOCUMENT_RETRIED", id);
-        queue(id, content, filename);
+        adminDocuments.retry(adminId, id);
     }
 
     public void softDelete(long adminId, UUID id) {
-        Map<String, Object> document = document(id);
-        if (document.get("deleted_at") != null) return;
-        oss.delete((String) document.get("oss_object_key"));
-        jdbc.update("DELETE FROM knowledge_document_chunks WHERE document_id=?", id);
-        jdbc.update("UPDATE knowledge_documents SET status='deleted', deleted_at=now(), updated_at=now() WHERE id=?", id);
-        audit(adminId, "KNOWLEDGE_DOCUMENT_SOFT_DELETED", id);
+        adminDocuments.softDelete(adminId, id);
     }
 
-    private void queue(UUID id, byte[] content, String filename) {
-        executor.submit(() -> process(id, content, filename));
-    }
-
-    private void process(UUID id, byte[] content, String filename) {
-        try {
-            jdbc.update("UPDATE knowledge_documents SET status='processing', error_message=NULL, updated_at=now() WHERE id=?", id);
-            String text = extractText(content, filename);
-            if (text.length() > MAX_TEXT_CHARS) text = text.substring(0, MAX_TEXT_CHARS);
-            List<String> chunks = split(text);
+    void ingest(KnowledgeIngestionJobStore.Job job) {
+            Map<String, Object> document = adminDocuments.activeDocument(job.documentId(), job.documentGeneration());
+            requireLease(jobs.stage(job, "parsing"));
+            byte[] content = oss.get((String) document.get("oss_object_key"));
+            KnowledgeDocumentFilePolicy.requireContentMatchesExtension(
+                    (String) document.get("original_filename"), content);
+            scanner.scan(content);
+            String hash = KnowledgeDocumentFilePolicy.sha256(content);
+            jdbc.update("UPDATE knowledge_documents SET content_hash=? WHERE id=? AND generation=? AND deleted_at IS NULL",
+                    hash, job.documentId(), job.documentGeneration());
+            String text = textExtractor.extract(content, (String) document.get("original_filename"));
+            boolean partial = false;
+            String truncationReason = null;
+            if (text.length() > MAX_INDEXED_CHARS) {
+                text = retainHeadTail(text, MAX_INDEXED_CHARS);
+                partial = true;
+                truncationReason = "解析文本超过 1080000 字符上限，保留文档头尾";
+            }
+            StructuredChunker.ChunkingResult chunking = chunker.chunkWithStatus(
+                    text, (String) document.get("original_filename"), MAX_CHUNKS);
+            List<StructuredChunker.Chunk> chunks = chunking.chunks();
+            if (chunking.truncated()) {
+                partial = true;
+                truncationReason = appendTruncationReason(truncationReason,
+                        "chunk 数量达到 " + MAX_CHUNKS + " 上限");
+            }
             if (chunks.isEmpty()) throw new IllegalArgumentException("文档未解析出有效文本");
-            jdbc.update("DELETE FROM knowledge_document_chunks WHERE document_id=?", id);
-            for (int index = 0; index < chunks.size(); index++) {
-                String chunk = chunks.get(index);
-                float[] embedding = gateway.embed(chunk, "doc-" + id + "-" + index);
-                jdbc.update("""
-                        INSERT INTO knowledge_document_chunks (document_id, chunk_index, chunk_text, content_hash, embedding)
-                        VALUES (?, ?, ?, ?, ?::vector)
-                        """, id, index, chunk, sha256(chunk.getBytes(StandardCharsets.UTF_8)), VectorStore.toVectorLiteral(embedding));
-            }
-            jdbc.update("""
-                    UPDATE knowledge_documents SET status='indexed', chunk_count=?, error_message=NULL, updated_at=now()
-                    WHERE id=?
-                    """, chunks.size(), id);
-            log.info("知识文档已入库 document={} chunks={}", id, chunks.size());
-        } catch (Exception e) {
-            log.warn("知识文档入库失败 document={}: {}", id, e.getMessage());
-            jdbc.update("UPDATE knowledge_documents SET status='failed', error_message=?, updated_at=now() WHERE id=?",
-                    safeMessage(e), id);
-        }
+            requireLease(jobs.stage(job, "embedding"));
+            jdbc.update("DELETE FROM knowledge_document_chunk_staging WHERE job_id=?", job.id());
+            embedAndStage(job, chunks);
+            requireLease(jobs.stage(job, "publishing"));
+            publish(job, chunks.size(), partial, truncationReason);
+            log.info("知识文档已入库 document={} chunks={}", job.documentId(), chunks.size());
     }
 
-    private Map<String, Object> document(UUID id) {
-        try {
-            return jdbc.queryForMap("SELECT id, original_filename, oss_object_key, deleted_at FROM knowledge_documents WHERE id=?", id);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文档不存在");
-        }
+    private void embedAndStage(KnowledgeIngestionJobStore.Job job, List<StructuredChunker.Chunk> chunks) {
+        embeddingStager.embedAndStage(job, chunks);
     }
 
-    private void audit(long adminId, String action, UUID documentId) {
-        jdbc.update("INSERT INTO admin_audit_log (admin_user_id, action, metadata) VALUES (?, ?, ?::jsonb)",
-                adminId, action, "{\"documentId\":\"" + documentId + "\"}");
+    private static void requireLease(boolean active) {
+        if (!active) throw new IllegalStateException("摄取任务租约已失效，放弃提交结果");
     }
 
-    private static Map<String, Object> row(java.sql.ResultSet rs) throws java.sql.SQLException {
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("id", rs.getObject("id").toString());
-        row.put("title", rs.getString("title"));
-        row.put("filename", rs.getString("original_filename"));
-        row.put("contentType", rs.getString("content_type"));
-        row.put("sizeBytes", rs.getLong("size_bytes"));
-        row.put("status", rs.getString("status"));
-        row.put("error", rs.getString("error_message"));
-        row.put("chunkCount", rs.getInt("chunk_count"));
-        row.put("creatorName", rs.getString("creator_name"));
-        row.put("createdAt", String.valueOf(rs.getObject("created_at")));
-        row.put("updatedAt", String.valueOf(rs.getObject("updated_at")));
-        row.put("deletedAt", rs.getObject("deleted_at") == null ? null : String.valueOf(rs.getObject("deleted_at")));
-        return row;
+    static String retainHeadTail(String text, int maxChars) {
+        if (text == null || text.length() <= maxChars || maxChars <= 0) return text == null ? "" : text;
+        int available = maxChars - DOCUMENT_TRUNCATION_MARKER.length();
+        if (available <= 0) return text.substring(0, maxChars);
+        int head = (int) Math.floor(available * 0.6D);
+        int tail = available - head;
+        return text.substring(0, head) + DOCUMENT_TRUNCATION_MARKER
+                + text.substring(text.length() - tail);
     }
 
-    private static String extractText(byte[] bytes, String filename) {
-        try {
-            String normalizedFilename = filename.toLowerCase(Locale.ROOT);
-            if (normalizedFilename.endsWith(".pdf")) {
-                try (var document = Loader.loadPDF(bytes)) { return new PDFTextStripper().getText(document).strip(); }
-            }
-            if (normalizedFilename.endsWith(".docx")) {
-                try (var document = new XWPFDocument(new ByteArrayInputStream(bytes));
-                     var extractor = new XWPFWordExtractor(document)) { return extractor.getText().strip(); }
-            }
-            return new String(bytes, StandardCharsets.UTF_8).strip();
-        } catch (Exception e) {
-            throw new IllegalArgumentException("文件解析失败，请确认文件未加密且格式正确");
-        }
+    private static String appendTruncationReason(String current, String additional) {
+        if (current == null || current.isBlank()) return additional;
+        return current + "; " + additional;
     }
 
-    private static List<String> split(String source) {
-        String text = source.replace("\r\n", "\n").replace('\r', '\n').replaceAll("\n{3,}", "\n\n").strip();
-        if (text.length() < 20) return List.of();
-        List<String> out = new ArrayList<>();
-        for (int start = 0; start < text.length() && out.size() < MAX_CHUNKS;) {
-            int end = Math.min(text.length(), start + CHUNK_SIZE);
-            if (end < text.length()) {
-                int boundary = Math.max(text.lastIndexOf("\n\n", end), text.lastIndexOf('。', end));
-                if (boundary > start + CHUNK_SIZE / 2) end = boundary + 1;
-            }
-            String chunk = text.substring(start, end).strip();
-            if (!chunk.isBlank()) out.add(chunk);
-            if (end >= text.length()) break;
-            start = Math.max(end - CHUNK_OVERLAP, start + 1);
-        }
-        return out;
+    private void publish(KnowledgeIngestionJobStore.Job job, int chunkCount, boolean partial, String truncationReason) {
+        chunkPublisher.publish(job, chunkCount, partial, truncationReason);
     }
 
-    private static void requireSupported(String filename) {
-        String normalizedFilename = filename.toLowerCase(Locale.ROOT);
-        if (!(normalizedFilename.endsWith(".pdf") || normalizedFilename.endsWith(".docx")
-                || normalizedFilename.endsWith(".txt") || normalizedFilename.endsWith(".md"))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "仅支持 PDF、DOCX、TXT、Markdown 文档");
-        }
-    }
-
-    private static String safeFilename(String original) {
-        String file = original == null ? "document.txt" : original.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_");
-        return file.isBlank() ? "document.txt" : file;
-    }
-
-    private static String titleFrom(String filename) {
-        int dot = filename.lastIndexOf('.');
-        return dot > 0 ? filename.substring(0, dot) : filename;
-    }
-
-    private static String sha256(byte[] input) {
-        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input)); }
-        catch (Exception e) { throw new IllegalStateException("无法计算文档摘要", e); }
-    }
-
-    private static String safeMessage(Exception e) {
-        String message = e.getMessage();
-        return message == null ? "文档处理失败" : message.substring(0, Math.min(message.length(), 500));
-    }
 }

@@ -4,7 +4,7 @@ import { renderMarkdown } from '../lib/markdown';
 
 interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; }
 interface DisplayCitation extends Citation { key: string; }
-interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; }
+interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; clarifyOptions?: Array<{ id: string; label: string }>; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; }
 type Conv = ConversationSummary;
 
 function safeSourceUrl(value?: string): string | null {
@@ -165,6 +165,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const turnIdRef = useRef<string | null>(null);
   const activeStreamId = useRef<string | null>(null);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }); }, [messages, stage]);
@@ -202,14 +203,17 @@ export default function ChatPage() {
     setPanelOpen(false); setPinnedKey(null);
 
     const myStreamId = Math.random().toString(36).slice(2);
+    const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID() : `${Date.now()}-${myStreamId}`;
     activeStreamId.current = myStreamId;
 
     const ctrl = streamChat(
-      { conversationId: convId, message: text },
+      { conversationId: convId, message: text, requestId },
       {
         isActive: () => activeStreamId.current === myStreamId,
         onMeta: e => {
           assistantPlaceholder.trace_id = e.trace_id;
+          turnIdRef.current = e.turn_id ?? null;
           setConvId(e.conversation_id);
         },
         onStage: e => setStage(e.expert && e.status ? `${e.phase}:${e.expert}:${e.status}` : e.phase),
@@ -238,18 +242,23 @@ export default function ChatPage() {
             return copy;
           });
         },
-        onClarify: q => {
+        onClarify: event => {
           if (activeStreamId.current !== myStreamId) return;
-          assistantPlaceholder.clarify = q;
+          assistantPlaceholder.clarify = event.question;
+          assistantPlaceholder.clarifyOptions = event.options ?? [];
           setMessages(m => {
             const copy = [...m];
             const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant' && !last.locked) last.clarify = q;
+            if (last && last.role === 'assistant' && !last.locked) {
+              last.clarify = event.question;
+              last.clarifyOptions = event.options ?? [];
+            }
             return copy;
           });
         },
         onDone: e => {
           if (activeStreamId.current !== myStreamId) return;
+          turnIdRef.current = null;
           assistantPlaceholder.citationStatus = e.citation_status;
           assistantPlaceholder.citationIssues = e.citation_issues ?? [];
           setMessages(m => {
@@ -283,6 +292,7 @@ export default function ChatPage() {
         },
         onError: msg => {
           if (activeStreamId.current !== myStreamId) return;
+          turnIdRef.current = null;
           setStreaming(false); setStage(null);
           setMessages(m => [...m, { role: 'assistant', content: '⚠️ ' + msg }]);
         },
@@ -292,8 +302,11 @@ export default function ChatPage() {
   }
 
   function stop() {
+    const turnId = turnIdRef.current;
+    if (turnId) api.cancelChatTurn(turnId).catch(() => {});
     abortRef.current?.abort();
     activeStreamId.current = null;
+    turnIdRef.current = null;
     setStreaming(false); setStage(null);
   }
 
@@ -334,9 +347,9 @@ export default function ChatPage() {
   return (
     <div className="h-full flex bg-transparent">
       {/* 左侧会话列表 (Qwen 风格: 分组 + 时间) */}
-      <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r border-white/70 bg-white/55 backdrop-blur-xl flex flex-col transition-all overflow-hidden`}>
-        <div className="px-4 py-5 border-b border-white/80 shrink-0">
-          <button onClick={newChat} className="w-full px-3.5 py-2.5 bg-accent-600 hover:bg-accent-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition">
+      <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r editorial-rule bg-[#f8f7f3] flex flex-col transition-all overflow-hidden`}>
+        <div className="px-4 py-5 border-b editorial-rule shrink-0">
+          <button onClick={newChat} className="w-full px-3.5 py-2.5 bg-[#3155d9] hover:bg-[#2747c2] text-white rounded-sm text-sm font-semibold flex items-center justify-center gap-2 transition">
             <span className="text-lg leading-none">+</span><span>开启新对话</span>
           </button>
         </div>
@@ -372,16 +385,16 @@ export default function ChatPage() {
              }
            }}>
         {/* 顶部固定: 标题 + 上下滚动提示 */}
-        <header className="shrink-0 px-7 py-4 border-b border-white/70 bg-white/55 backdrop-blur-xl flex items-center justify-between">
+        <header className="shrink-0 px-7 py-5 border-b editorial-rule bg-[#f8f7f3] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(o => !o)} className="text-ink-500 hover:text-accent-600 hover:bg-white p-2 rounded-lg transition" title={sidebarOpen ? '折叠历史' : '展开历史'}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <div>
-              <div className="text-sm font-semibold tracking-tight text-ink-900">
+              <div className="editorial-kicker mb-1">当前工作区</div><div className="text-base font-semibold tracking-[-.02em] text-ink-900">
                 {convId ? `对话 #${convId}` : '新对话'}
               </div>
-              <div className="text-xs text-ink-500 mt-0.5">个人 AI 学习与求职教练 · 引用 [S#] 可溯源</div>
+              <div className="text-xs text-ink-500 mt-1">你的专属成长教练 · 每条建议均可溯源</div>
             </div>
           </div>
           <div className="text-xs text-ink-500">
@@ -392,9 +405,9 @@ export default function ChatPage() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-7 py-7">
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.length === 0 && (
-              <div className="text-center mt-24 space-y-5 text-ink-500">
-                <div className="mx-auto h-16 w-16 rounded-2xl border border-accent-200 bg-accent-50 text-accent-700 text-2xl font-semibold flex items-center justify-center">T</div>
-                <div><div className="text-2xl font-semibold tracking-tight text-ink-900">今天想向前走哪一步？</div><div className="text-sm mt-2">从一个问题开始，让学习和求职变得更清晰。</div></div>
+            <div className="text-center mt-24 space-y-6 text-ink-500">
+                <div className="mx-auto h-16 w-16 rounded-2xl bg-[#211950] text-white text-2xl font-semibold shadow-[0_16px_34px_rgba(45,32,113,.25)] flex items-center justify-center">T</div>
+                <div><div className="text-3xl font-semibold tracking-[-.035em] text-ink-900">今天，想向前走哪一步？</div><div className="text-sm mt-3">从一个问题开始，让学习和求职变得更清晰。</div></div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left max-w-2xl mx-auto pt-2">
                   {['帮我制定本周学习计划', '我适合什么技术岗位？', '推荐一个可做的实战项目'].map(prompt => (
                     <button key={prompt} onClick={() => setInput(prompt)} className="glass-panel rounded-xl p-3.5 text-xs text-ink-700 hover:text-accent-700 hover:-translate-y-0.5 transition text-left">{prompt}<span className="block mt-2 text-accent-500 text-sm">↗</span></button>
@@ -415,6 +428,16 @@ export default function ChatPage() {
                   {m.clarify && (
                     <div className="mt-2 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">
                       ❓ 追问: {m.clarify}
+                      {m.clarifyOptions?.length ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {m.clarifyOptions.map(option => (
+                            <button key={option.id} onClick={() => setInput(option.label)}
+                              className="px-2.5 py-1.5 rounded border border-accent-200 bg-white text-accent-700 hover:bg-accent-100 transition">
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   {m.role === 'assistant' && m.citationStatus && m.citationStatus !== 'not_applicable' && (
@@ -446,7 +469,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="border-t border-white/70 bg-white/55 backdrop-blur-xl px-7 py-5">
+        <div className="border-t editorial-rule bg-[#f8f7f3] px-7 py-6">
           <div className="max-w-3xl mx-auto flex gap-3 items-end">
             <textarea
               value={input}
@@ -454,12 +477,12 @@ export default function ChatPage() {
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder="输入你的问题，Enter 发送 / Shift+Enter 换行"
               rows={1}
-              className="flex-1 resize-none px-4 py-3.5 border border-white bg-white/90 shadow-soft rounded-2xl focus:outline-none focus:ring-4 focus:ring-accent-500/15 focus:border-accent-500 max-h-32 transition"
+              className="flex-1 resize-none px-4 py-3.5 border border-ink-200 bg-white shadow-none rounded-sm focus:outline-none focus:ring-2 focus:ring-[#3155d9]/20 focus:border-[#3155d9] max-h-32 transition"
             />
             {streaming ? (
               <button onClick={stop} className="px-5 py-3.5 bg-ink-200 hover:bg-ink-300 text-ink-700 rounded-xl font-medium transition">停止</button>
             ) : (
-              <button onClick={send} disabled={!input.trim()} className="px-5 py-3.5 bg-accent-600 hover:bg-accent-700 disabled:bg-ink-200 text-white rounded-xl font-medium transition">发送</button>
+              <button onClick={send} disabled={!input.trim()} className="px-5 py-3.5 bg-[#3155d9] hover:bg-[#2747c2] disabled:bg-ink-200 text-white rounded-sm font-medium transition">发送</button>
             )}
           </div>
         </div>

@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -54,7 +55,7 @@ class SummaryFolderTest {
 
         folder.maybeFold(1L, "trace-1");
 
-        verify(gateway, never()).chatJson(any(), any(), anyString());
+        verify(gateway, never()).chatJson(any(), any(), anyString(), isNull(), eq(1));
         verify(store, never()).saveSummary(anyLong(), anyString(), anyLong());
     }
 
@@ -74,12 +75,12 @@ class SummaryFolderTest {
         ); // 8 条
         when(store.messagesToFold(eq(7L), eq(0L), eq(12))).thenReturn(toFold);
         when(store.maxFoldableMsgId(eq(7L), eq(12))).thenReturn(123L);
-        when(gateway.chatJson(eq(Purpose.SUMMARY), any(), eq("trace-x")))
+        when(gateway.chatJson(eq(Purpose.SUMMARY), any(), eq("trace-x"), isNull(), eq(1)))
                 .thenReturn("{\"summary\":\"用户关注NLP方向\"}");
 
         folder.maybeFold(7L, "trace-x");
 
-        verify(gateway, times(1)).chatJson(eq(Purpose.SUMMARY), any(), eq("trace-x"));
+        verify(gateway, times(1)).chatJson(eq(Purpose.SUMMARY), any(), eq("trace-x"), isNull(), eq(1));
         verify(store, times(1)).saveSummary(eq(7L), eq("用户关注NLP方向"), eq(123L));
     }
 
@@ -92,13 +93,13 @@ class SummaryFolderTest {
                 .mapToObj(i -> new ConversationStore.Msg("user", "msg" + i)).toList();
         when(store.messagesToFold(eq(2L), eq(10L), eq(12))).thenReturn(eight);
         when(store.maxFoldableMsgId(eq(2L), eq(12))).thenReturn(99L);
-        when(gateway.chatJson(eq(Purpose.SUMMARY), any(), anyString()))
+        when(gateway.chatJson(eq(Purpose.SUMMARY), any(), anyString(), isNull(), eq(1)))
                 .thenReturn("{\"summary\":\"合并后摘要\"}");
 
         folder.maybeFold(2L, "t");
 
         ArgumentCaptor<List<ChatMessage>> captor = ArgumentCaptor.forClass(List.class);
-        verify(gateway).chatJson(eq(Purpose.SUMMARY), captor.capture(), anyString());
+        verify(gateway).chatJson(eq(Purpose.SUMMARY), captor.capture(), anyString(), isNull(), eq(1));
         assertThat(captor.getValue().toString()).contains("旧摘要");
     }
 
@@ -109,7 +110,7 @@ class SummaryFolderTest {
         List<ConversationStore.Msg> eight = IntStream.range(0, 8)
                 .mapToObj(i -> new ConversationStore.Msg("user", "m" + i)).toList();
         when(store.messagesToFold(eq(3L), eq(0L), eq(12))).thenReturn(eight);
-        when(gateway.chatJson(any(), any(), anyString()))
+        when(gateway.chatJson(any(), any(), anyString(), isNull(), eq(1)))
                 .thenThrow(new RuntimeException("网络超时"));
 
         // 不抛异常
@@ -124,7 +125,7 @@ class SummaryFolderTest {
         List<ConversationStore.Msg> eight = IntStream.range(0, 8)
                 .mapToObj(i -> new ConversationStore.Msg("user", "m" + i)).toList();
         when(store.messagesToFold(eq(4L), eq(0L), eq(12))).thenReturn(eight);
-        when(gateway.chatJson(any(), any(), anyString())).thenReturn("{\"summary\":\"\"}");
+        when(gateway.chatJson(any(), any(), anyString(), isNull(), eq(1))).thenReturn("{\"summary\":\"\"}");
 
         folder.maybeFold(4L, "t");
         verify(store, never()).saveSummary(anyLong(), anyString(), anyLong());

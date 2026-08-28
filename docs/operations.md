@@ -21,7 +21,29 @@
 | LLM 失败 | 按节点回退、重试或直答 | 显示可理解的失败/降级提示 | 检查模型、网络和预算 |
 | OSS 上传失败 | 不写入成功文档状态 | 提示检查 OSS 配置和权限 | 检查 Bucket、Endpoint、权限 |
 | 文档解析失败 | 状态置为 `failed` | 管理员可查看错误并重试 | 修正文档或解析问题后重试 |
+| 记忆同步 worker 崩溃 | 租约到期后由其他实例重新认领 | 云端同步可能延迟但不会永久卡死 | 检查 `MEMORY_SYNC_LEASE_SECONDS` 和 Outbox 堆积 |
 | PostgreSQL 不可用 | 业务请求失败，`/readyz` 为 503 | 需要恢复数据库 | 检查容器、磁盘、连接数和迁移 |
+
+### 文档上传吞吐参数
+
+默认单文件上限为 50 MB、单请求上限为 55 MB。管理端先创建一个 24 小时上传会话，浏览器直接把文件上传到 OSS；超过 8 MB 的文件会按 8 MB 分片并行上传（最多 4 片同时传），再由 API 校验并合并对象。会话 ID 只以文件指纹映射保存在浏览器 localStorage，页面刷新或切换页面后会重新获取会话并查询 OSS 已完成分片，只补传缺失部分；OSS 签名 URL 只有 15 分钟有效，恢复时会自动重新签发，上传过程中遇到签名过期也会自动刷新。这样大文件不会经过 API 服务的单次 multipart body。上传完成后仍会在后台做文件签名和恶意文件检查。后台队列达到 1000 个活动任务时返回 503，避免继续堆积。摄取 worker 默认每实例最多并行 4 个文档，每个文档最多并行 8 个 Embedding 请求。可按机器内存、OCR/Embedding 配额调整：
+
+```text
+KNOWLEDGE_UPLOAD_MAX_FILE_SIZE=50MB
+KNOWLEDGE_UPLOAD_MAX_REQUEST_SIZE=55MB
+KNOWLEDGE_MULTIPART_THRESHOLD=8MB
+KNOWLEDGE_MULTIPART_PART_SIZE=8MB
+KNOWLEDGE_UPLOAD_SESSION_TTL=24h
+KNOWLEDGE_INGESTION_MAX_IN_FLIGHT=4
+KNOWLEDGE_EMBEDDING_CONCURRENCY=8
+KNOWLEDGE_INGESTION_MAX_PENDING_JOBS=1000
+```
+
+路由只有在校准后的越界概率达到 `ROUTING_OUT_OF_SCOPE_THRESHOLD`（默认 0.92）时才会跳过知识检索；LLM 返回的原始 `confidence` 仅用于观测，不直接作为安全门槛。校准器通过 `ROUTING_CALIBRATION_ENABLED` 和 `ROUTING_CALIBRATION_MODEL_PATH` 配置，未启用、模型缺失或模型损坏时 `calibratedConfidence` 保持为空并走安全回退。路由故障或灰区请求走 `CHAT + SINGLE`，避免领域问题被误判后直接丢弃。
+
+每轮的 `turn_traces.snapshot` 会记录路由 scope、原始/生效意图、置信度、检索建议、是否跳过检索，以及实际检索跳数和停止原因。可据此统计路由降级率、无必要多跳率和 Judge 失败率；snapshot 只保存枚举、数值和原因码，不保存原始问题文本。
+
+扩大文件上限时必须同步修改反向代理 `client_max_body_size`、WAF/网关 body limit，并确认容器内存；当前上传实现仍会将单个文件读入 JVM 内存，超大文件不应直接提高到数百 MB。多实例部署时，worker 并发和上传限流仍是“每实例”保护，需要在网关/Redis 层增加集群级令牌桶和并发配额。
 
 ### LLM 节点明细
 
@@ -64,6 +86,13 @@ docker logs --tail 200 tutor-neo4j
 
 每个 HTTP 响应都会返回 `X-Request-Id`。客户端可以在排障请求中携带由字母、数字、`_`、`-` 构成且长度为 8 到 64 的同名值；其他输入会由服务端替换为新的随机 Trace ID。日志中使用 `traceId` MDC 字段关联同一请求。
 
+### Episode 密钥轮换（仅情景记忆）
+
+1. 生成新密钥，设置 `RESUME_ENC_KEY`、递增的 `RESUME_ENC_KEY_ID`，并暂时保留旧值到 `RESUME_ENC_PREVIOUS_KEY` 与 `RESUME_ENC_PREVIOUS_KEY_ID`。此回填只处理 Episode，不覆盖简历、PII 映射和会话消息/摘要。
+2. 发布并观察 `episode privacy backfill updated=...` 日志。轮换期间新写入使用当前密钥，旧 Episode 仍可用旧密钥读取。
+3. 通过数据库只读检查确认没有旧版本记录：`SELECT count(*) FROM episodes WHERE summary_encryption_key_id = '<旧版本>';`。确认备份可恢复后，删除旧密钥配置并重启。
+4. 若旧密钥不可用，系统不会覆盖不可解密的密文；对应记录只返回脱敏投影，需要先恢复旧密钥再继续回填。
+
 ## 5. 备份与恢复
 
 PostgreSQL 备份脚本：
@@ -87,3 +116,11 @@ docker compose --env-file .env -f docker-compose.prod.yml up -d --build
 本地评测需要显式设置 `INTERNAL_ENDPOINTS_ENABLED=true`；即使启用，`/internal/*` 默认也只接受回环地址请求。不要通过反向代理将它暴露给远程客户端。
 
 多实例部署前需要重新设计共享聊天限流、后台任务执行器、熔断状态、评测任务并发以及 Trace/指标聚合。
+
+记忆同步租约默认 300 秒，可通过 `MEMORY_SYNC_LEASE_SECONDS` 调整。租约过期后旧 worker 的完成/失败回调会因 fencing token 失效而被忽略；Mem0 写入使用幂等键，删除操作本身也应保持幂等。
+
+手动调用 `/memories/remote-deletion/retry` 按用户限流，默认每分钟最多 3 次，可通过 `MEMORY_SYNC_RETRY_LIMIT_PER_MINUTE` 调整；生产环境限流窗口存放在 PostgreSQL，多个 API 实例共享额度。超过限制或限流表不可用时返回 429，避免把 Mem0 列表发现和删除接口变成可反复放大的外部请求。
+
+同步 Outbox 暴露 `tutor.memory.sync.backlog`（待处理、退避中和处理中任务数）与 `tutor.memory.sync.failed`（终态失败任务数）两个低基数指标，默认每 10 秒刷新，可通过 `MEMORY_SYNC_METRICS_REFRESH_MS` 调整。生产环境应对失败数和持续增长的积压配置告警。
+
+OSS Bucket 还必须配置 CORS，允许前端站点对签名 URL 发起 `PUT`，至少放行 `Content-Type` 请求头并暴露 `ETag` 响应头；不要把 AccessKey 或 STS 长期凭证下发到浏览器。签名会在 15 分钟后失效，未完成的普通/分片会话由后台清理；同时建议配置 OSS 生命周期规则，自动终止长期未完成的 Multipart Upload，覆盖应用进程在创建会话后立即崩溃的极端情况。

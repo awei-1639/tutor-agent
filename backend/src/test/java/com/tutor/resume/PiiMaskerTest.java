@@ -39,4 +39,11 @@ class PiiMaskerTest {
         var r = PiiMasker.mask("主号13812345678 备用13987654321");
         assertThat(r.masked()).contains("[PHONE_1]", "[PHONE_2]");
     }
+
+    @Test
+    void masksLabeledContactFieldsAndWechat() {
+        var r = PiiMasker.mask("姓名：张三，地址：北京市海淀区中关村1号，微信号: wxid_abc123");
+        assertThat(r.masked()).doesNotContain("张三", "北京市海淀区中关村1号", "wxid_abc123");
+        assertThat(r.mapping().values()).contains("张三", "北京市海淀区中关村1号", "wxid_abc123");
+    }
 }

@@ -7,7 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** Bounds derived cross-session memory without deleting a user's conversation history. */
+/** 限制派生的跨会话记忆规模，不删除用户的会话历史。 */
 @Component
 public class EpisodeRetentionService {
     private static final Logger log = LoggerFactory.getLogger(EpisodeRetentionService.class);
@@ -38,7 +38,7 @@ public class EpisodeRetentionService {
                 log.info("episode retention pruned expired={} overflow={}", expired, overflow);
             }
         } catch (RuntimeException error) {
-            // Retention is best effort; it must never affect a chat turn.
+            // 保留清理属于尽力而为，绝不能影响聊天轮次。
             log.warn("episode retention failed: {}", error.getMessage());
         }
     }

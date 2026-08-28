@@ -17,6 +17,7 @@ import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.EpisodeSummarizer;
 import com.tutor.memory.local.SummaryFolder;
+import com.tutor.memory.policy.MemoryConsentService;
 import com.tutor.profile.ProfileService;
 import com.tutor.retrieval.agentic.AgenticRetriever;
 import com.tutor.retrieval.fusion.FusedRetriever;
@@ -65,16 +66,24 @@ class ChatServiceTest {
         LongTermMemoryService longTermMemory = mock(LongTermMemoryService.class);
         com.tutor.context.sections.EpisodeSection episodeSection = mock(com.tutor.context.sections.EpisodeSection.class);
         CitationGuard citationGuard = mock(CitationGuard.class);
+        com.tutor.expert.RoutingPolicy routingPolicy = new com.tutor.expert.RoutingPolicy();
+        MemoryConsentService memoryConsent = mock(MemoryConsentService.class);
+        CitationVerificationService citationVerification = new CitationVerificationService(conversations, citationGuard);
+        PostTurnTaskService postTurnTasks = new PostTurnTaskService(profiles, summaryFolder, episodeSummarizer,
+                longTermMemory, memoryConsent);
         ChatService service = new ChatService(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget,
-                gateway, conversations, profiles, router, expertRunner, aggregator, trace, resumes,
-                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, citationGuard);
+                gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
+                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, citationVerification, postTurnTasks,
+                memoryConsent);
 
         AuthContext.set(42L);
         when(conversations.ensureConversation(isNull(), eq(42L))).thenReturn(9L);
-        when(conversations.recentMessages(9L, 12)).thenReturn(List.of());
+        when(conversations.recentMessages(9L, 24)).thenReturn(List.of());
         when(conversations.summaryState(9L)).thenReturn(new ConversationStore.SummaryState(null, 0));
         when(profiles.snapshot(42L)).thenReturn(Map.of());
-        when(router.route(anyString(), any(), anyString())).thenReturn(Intent.OUT_OF_SCOPE);
+        when(router.routeDecision(anyString(), any(), anyString())).thenReturn(
+                new IntentRouter.RouteDecision(IntentRouter.Scope.OUT_OF_SCOPE, Intent.OUT_OF_SCOPE, List.of(), List.of(),
+                        IntentRouter.RetrievalHint.NONE, 1D, 1D, List.of("test"), false));
         when(promptAssembler.assembleWithMetadata(any(), anyString()))
                 .thenReturn(new PromptAssembler.Assembled("system", Set.of()));
         when(citationGuard.guard(anyString(), any(), anyString()))
@@ -88,8 +97,8 @@ class ChatServiceTest {
         service.turn(null, "hello", new NoopTurnEvents());
 
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
-            verify(profiles).updateFromMessage(eq(42L), eq("hello"), anyString());
-            verify(episodeSummarizer).maybeSummarize(eq(9L), eq(42L), anyString());
+            verify(profiles).updateFromMessage(eq(42L), eq("hello"), anyString(), anyLong());
+            verify(episodeSummarizer).maybeSummarize(eq(9L), eq(42L), anyString(), anyLong());
         });
     }
 

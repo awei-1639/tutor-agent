@@ -10,7 +10,7 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
 
-/** Central policy for presenting source provenance without performing request-time URL fetching. */
+/** 展示来源溯源信息的统一策略，不在请求期间抓取 URL。 */
 public final class CitationSourcePolicy {
     private static final Set<String> INGESTION_STATUSES = Set.of("managed", "verified", "unverified");
 

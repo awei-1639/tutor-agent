@@ -1,5 +1,9 @@
 # API 参考
 
+## 契约入口
+
+开发和测试环境可访问 `/v3/api-docs` 获取 OpenAPI JSON，或通过 `/swagger-ui.html` 查看交互式文档。生产环境默认关闭这两个端点；需要对外发布契约时，应由 CI 生成并审核 OpenAPI 制品，而不是直接暴露生产文档。
+
 接口以当前 Controller 实现为准。本页提供开源学习者需要的入口索引，完整请求体和响应结构请结合源码中的 record/DTO 阅读。
 
 ## 1. 通用约定
@@ -29,6 +33,8 @@
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
 | POST | `/chat` | SSE 流式对话 |
+| GET | `/chat/turns/{turnId}` | 查询持久化聊天回合状态 |
+| POST | `/chat/turns/{turnId}/cancel` | 显式取消聊天回合 |
 | GET | `/conversations` | 会话列表 |
 | GET | `/conversations/{id}/messages` | 会话消息 |
 | GET | `/profile` | 用户画像 |
@@ -54,13 +60,19 @@
 | GET | `/memory/consent` | 查看外部记忆授权 |
 | DELETE | `/memory/consent` | 关闭授权并删除记忆 |
 | GET | `/memories` | 查看本地跨会话记忆 |
-| DELETE | `/memories/{id}` | 删除单条本地跨会话记忆 |
+| DELETE | `/memories/{id}` | 删除单条跨会话记忆；已关联或后续发现的 Mem0 副本异步删除 |
 | DELETE | `/memories` | 清除所有跨会话记忆；云端删除异步处理 |
-| GET | `/memories/remote-deletion` | 查看云端记忆删除状态 |
+| DELETE | `/memories/profile` | 仅清除用户画像及画像事件 |
+| DELETE | `/memories/conversations/{id}` | 删除指定会话及其原文消息/摘要 |
+| GET | `/memories/remote-deletion` | 查看当前用户最近一次云端记忆删除（整用户或单条）状态 |
+| GET | `/memories/{id}/remote-deletion` | 查看指定跨会话记忆的云端删除状态 |
+| POST | `/memories/remote-deletion/retry` | 重新排队当前用户耗尽自动重试次数的云端同步 |
 
 ## 4. SSE `/chat` 事件
 
 请求示例：
+
+`POST /chat` 建议携带 `Idempotency-Key`（最长 80 个字符）。服务端按用户和幂等键去重；同一会话已有活动回合时，新的不同请求返回 `409`。SSE 的 `meta` 事件额外返回 `turn_id`，用于查询或取消回合。
 
 ```json
 {
@@ -71,7 +83,7 @@
 
 | 事件 | 主要字段 | 前端用途 |
 | --- | --- | --- |
-| `meta` | `conversation_id`, `trace_id` | 建立本轮上下文 |
+| `meta` | `conversation_id`, `trace_id`, `turn_id` | 建立本轮上下文；回合状态持久化，SSE 断开不等于任务被删除 |
 | `stage` | `phase`, `expert?`, `status?`, `detail?` | 展示路由、检索和专家状态；专家状态为 `success`、`timeout`、`failed`、`cancelled` 或 `rejected` |
 | `clarify` | `question` | 需要澄清时暂停 |
 | `citation` | `sid`, `node_id`, `text`, `source_url`, `source_status`, `evidence_hash`, `graph_path` | 证据卡片；`managed` 表示平台固化且哈希一致，外部来源默认 `unverified`，哈希异常为 `integrity_mismatch`；请求链路不会主动抓取 URL |

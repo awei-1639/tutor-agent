@@ -25,22 +25,24 @@ public class PromptAssembler {
         this.planner = planner;
     }
 
-    public String assemble(TurnContextView ctx, String traceId) {
-        return assembleWithMetadata(ctx, traceId).prompt();
-    }
+    public record Assembled(String prompt, Set<String> citationIds,
+                            List<ContextPlanner.Allocation> allocations) {
+        public Assembled(String prompt, Set<String> citationIds) {
+            this(prompt, citationIds, List.of());
+        }
 
-    public record Assembled(String prompt, Set<String> citationIds) {
         public Assembled {
             citationIds = citationIds == null ? Set.of() : Set.copyOf(citationIds);
+            allocations = allocations == null ? List.of() : List.copyOf(allocations);
         }
     }
 
-    /** Returns the prompt plus citation IDs that survived every context budget. */
+    /** 返回 Prompt 及在所有上下文预算裁剪后仍保留的引用 ID。 */
     public Assembled assembleWithMetadata(TurnContextView ctx, String traceId) {
         ContextPlanner.Plan plan = planner.plan(sections, ctx, budget);
         plan.allocations().stream().filter(a -> a.originalTokens() > a.allocatedTokens())
                 .forEach(a -> log.info("context section={} {}→{} dropped={} trace={}", a.name(), a.originalTokens(),
                         a.allocatedTokens(), a.dropped(), traceId));
-        return new Assembled(plan.prompt(), plan.citationIds());
+        return new Assembled(plan.prompt(), plan.citationIds(), plan.allocations());
     }
 }

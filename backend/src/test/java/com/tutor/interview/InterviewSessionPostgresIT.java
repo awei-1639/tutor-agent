@@ -25,12 +25,14 @@ import org.testcontainers.utility.DockerImageName;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -60,11 +62,11 @@ class InterviewSessionPostgresIT {
         auth = new AuthService(jdbc, new JwtService("test_only_jwt_secret_at_least_32_characters_long"));
 
         LlmGateway gateway = mock(LlmGateway.class);
-        when(gateway.chatJson(eq(Purpose.PLAN), anyList(), anyString())).thenReturn("""
+        when(gateway.chatJson(eq(Purpose.PLAN), anyList(), anyString(), isNull(), eq(1))).thenReturn("""
                 {"question":"请说明缓存击穿的处理方案","required_points":["互斥重建","过期策略"],
                 "bonus_points":["监控指标"],"critical_errors":["将缓存击穿等同于雪崩"]}
                 """);
-        when(gateway.chatJson(eq(Purpose.JUDGE), anyList(), anyString())).thenReturn("""
+        when(gateway.chatJson(eq(Purpose.JUDGE), anyList(), anyString(), isNull(), eq(1))).thenReturn("""
                 {"score":8,"strengths":["能说明互斥重建"],"missing_points":["补充监控指标"],
                 "confidence":0.85,"evidence_quotes":["缓存"]}
                 """);

@@ -3,7 +3,12 @@ package com.tutor.resume;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmGateway;
+import com.tutor.llm.EmbeddingGateway;
+import com.tutor.llm.JsonGenerationGateway;
+import com.tutor.llm.structured.ResumeExtractOutput;
+import com.tutor.llm.structured.StructuredOutputResult;
+import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.llm.structured.StructuredTask;
 import com.tutor.retrieval.vector.VectorStore;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -14,6 +19,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,18 +49,30 @@ public class ResumeService {
             """;
 
     private final JdbcTemplate jdbc;
-    private final LlmGateway gateway;
+    private final JsonGenerationGateway jsonGateway;
+    private final EmbeddingGateway embeddingGateway;
     private final com.tutor.profile.ProfileService profileService;
+    private final StructuredOutputService structuredOutputService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${security.resume-enc-key:}")
     String encKey;
 
-    public ResumeService(JdbcTemplate jdbc, LlmGateway gateway,
+    public ResumeService(JdbcTemplate jdbc, JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
                          com.tutor.profile.ProfileService profileService) {
+        this(jdbc, jsonGateway, embeddingGateway, profileService,
+                new StructuredOutputService(jsonGateway, null));
+    }
+
+    @Autowired
+    public ResumeService(JdbcTemplate jdbc, JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
+                         com.tutor.profile.ProfileService profileService,
+                         StructuredOutputService structuredOutputService) {
         this.jdbc = jdbc;
-        this.gateway = gateway;
+        this.jsonGateway = jsonGateway;
+        this.embeddingGateway = embeddingGateway;
         this.profileService = profileService;
+        this.structuredOutputService = structuredOutputService;
     }
 
     public record UploadResult(long resumeId, JsonNode structured, int maskedPiiCount) {}
@@ -73,18 +91,28 @@ public class ResumeService {
         PiiMasker.MaskResult masked = PiiMasker.mask(text);
 
         // 2) LLM结构化 (只见脱敏文本)
-        String structJson = gateway.chatJson(Purpose.EXTRACT, List.of(
-                SystemMessage.from(STRUCT_SYS),
-                UserMessage.from(masked.masked())), traceId);
-        JsonNode structured;
-        try {
-            structured = mapper.readTree(structJson);
-        } catch (Exception e) {
+        StructuredOutputResult<ResumeExtractOutput> extracted = structuredOutputService.generate(
+                StructuredTask.RESUME_EXTRACT,
+                Purpose.EXTRACT,
+                List.of(SystemMessage.from(STRUCT_SYS), UserMessage.from(masked.masked())),
+                ResumeExtractOutput.class,
+                this::validateExtractedResume,
+                traceId
+        );
+        if (!extracted.success()) {
             throw new IllegalStateException("简历结构化失败, 请稍后重试");
+        }
+        ResumeExtractOutput structuredOutput = extracted.value();
+        JsonNode structured = mapper.valueToTree(structuredOutput);
+        String structJson;
+        try {
+            structJson = mapper.writeValueAsString(structuredOutput);
+        } catch (Exception e) {
+            throw new IllegalStateException("简历结构化序列化失败, 请稍后重试", e);
         }
 
         // 3) 脱敏文本embedding (外呼同样不见PII)
-        float[] vec = gateway.embed(masked.masked(), traceId);
+        float[] vec = embeddingGateway.embed(masked.masked(), traceId);
 
         // 4) 加密落库 (pgcrypto); 多次上传保留历史版本, 读取端总取最新
         Long resumeId = jdbc.queryForObject("""
@@ -104,6 +132,14 @@ public class ResumeService {
 
         log.info("简历入库 user={} resume={} pii={} trace={}", userId, resumeId, masked.mapping().size(), traceId);
         return new UploadResult(resumeId, structured, masked.mapping().size());
+    }
+
+    private void validateExtractedResume(ResumeExtractOutput output) {
+        if (output.education() == null || output.experiences() == null
+                || output.projects() == null || output.skills() == null
+                || output.summary() == null) {
+            throw new IllegalArgumentException("resume extraction contains null collections or summary");
+        }
     }
 
     /** 最新简历的结构化紧凑文本 (专家简报注入用, 实现设计3.4分级注入); 无简历返回空串 */

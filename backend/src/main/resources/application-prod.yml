@@ -9,6 +9,12 @@ management:
       exposure:
         include: health,info,prometheus
 
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 neo4j:
   password: ${NEO4J_PASSWORD}
   resilience:
@@ -18,8 +24,17 @@ neo4j:
 
 security:
   resume-enc-key: ${RESUME_ENC_KEY}
+  resume-enc-key-id: ${RESUME_ENC_KEY_ID:v1}
+  resume-enc-previous-key: ${RESUME_ENC_PREVIOUS_KEY:}
+  resume-enc-previous-key-id: ${RESUME_ENC_PREVIOUS_KEY_ID:}
 
 memory:
+  sync:
+    lease-seconds: ${MEMORY_SYNC_LEASE_SECONDS:300}
+    retry-limit-per-minute: ${MEMORY_SYNC_RETRY_LIMIT_PER_MINUTE:3}
+    metrics-refresh-ms: ${MEMORY_SYNC_METRICS_REFRESH_MS:10000}
+  episode:
+    min-new-messages: ${MEMORY_EPISODE_MIN_NEW_MESSAGES:12}
   mem0:
     enabled: ${MEM0_ENABLED:false}
     base-url: ${MEM0_BASE_URL:https://api.mem0.ai}
@@ -31,6 +46,10 @@ memory:
 tutor:
   chat:
     rate-limit-per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:10}
+    tool-loop-enabled: ${CHAT_TOOL_LOOP_ENABLED:false}
+    turn:
+      poll-ms: ${CHAT_TURN_POLL_MS:1000}
+      lease-renew-ms: ${CHAT_TURN_LEASE_RENEW_MS:30000}
   auth:
     dev-login-enabled: false
     cookie-secure: true

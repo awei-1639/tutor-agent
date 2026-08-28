@@ -28,7 +28,7 @@ class InterviewControllerTest {
         when(service.open(42L, "后端开发", "负责高并发服务", "technical", "MID", 45, "trace-1"))
                 .thenReturn(new InterviewSession.InterviewMessage("session-1", "IN_PROGRESS", "问题 1"));
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service)).build();
 
         mvc.perform(post("/interview/open").contentType(APPLICATION_JSON)
                         .header("X-Trace-Id", "trace-1")
@@ -42,16 +42,18 @@ class InterviewControllerTest {
     @Test
     void submitsAnswerWithClientRequestIdForSafeRetry() throws Exception {
         InterviewSession service = mock(InterviewSession.class);
-        when(service.answer(42L, "session-1", "我的回答", "request-1", "interview"))
-                .thenReturn(new InterviewSession.InterviewMessage("session-1", "IN_PROGRESS", "评分: 8/10"));
+        InterviewTurnService turns = mock(InterviewTurnService.class);
+        when(turns.submit(42L, "session-1", "我的回答", "request-1", "interview"))
+                .thenReturn(new InterviewTurnService.TurnJob("turn-1", "session-1", "request-1",
+                        "PENDING", 1, null, null, null, java.time.Instant.now(), null));
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service, turns, new InterviewRateLimiter(5, 30))).build();
 
         mvc.perform(post("/interview/session-1/answer").contentType(APPLICATION_JSON)
                         .content("{\"answer\":\"我的回答\",\"requestId\":\"request-1\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isAccepted());
 
-        verify(service).answer(42L, "session-1", "我的回答", "request-1", "interview");
+        verify(turns).submit(42L, "session-1", "我的回答", "request-1", "interview");
     }
 
     @Test
@@ -62,8 +64,7 @@ class InterviewControllerTest {
                 "PENDING", 0, null, null, null, java.time.Instant.now(), null);
         when(turns.retry(42L, "session-1", "turn-1")).thenReturn(retry);
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service, new InterviewRateLimiter(5, 30),
-                new InterviewMetrics(new SimpleMeterRegistry()), turns)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service, turns, new InterviewRateLimiter(5, 30))).build();
 
         mvc.perform(post("/interview/session-1/turns/turn-1/retry"))
                 .andExpect(status().isAccepted())
@@ -77,7 +78,7 @@ class InterviewControllerTest {
         InterviewSession service = mock(InterviewSession.class);
         when(service.history(42L, 5)).thenReturn(java.util.List.of());
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service)).build();
 
         mvc.perform(get("/interview/history?limit=5"))
                 .andExpect(status().isOk());
@@ -91,7 +92,7 @@ class InterviewControllerTest {
         when(service.retest(42L, "completed-1", "interview"))
                 .thenReturn(new InterviewSession.InterviewMessage("retest-1", "IN_PROGRESS", "问题 1"));
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service)).build();
 
         mvc.perform(post("/interview/completed-1/retest"))
                 .andExpect(status().isCreated())
@@ -109,7 +110,7 @@ class InterviewControllerTest {
                 5, 6.7, 0.82, java.util.List.of("表达清晰"), java.util.List.of("补充指标"),
                 java.util.List.of("skill:Redis"), comparison));
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service)).build();
 
         mvc.perform(get("/interview/retest-1/report"))
                 .andExpect(status().isOk())
@@ -125,7 +126,7 @@ class InterviewControllerTest {
         when(service.cancel(42L, "session-1"))
                 .thenReturn(new InterviewSession.InterviewMessage("session-1", "CANCELLED", "已结束"));
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service)).build();
 
         mvc.perform(post("/interview/session-1/cancel"))
                 .andExpect(status().isOk())
@@ -138,7 +139,7 @@ class InterviewControllerTest {
     void storesScoringCalibrationFeedbackForAuthenticatedUser() throws Exception {
         InterviewSession service = mock(InterviewSession.class);
         AuthContext.set(42L);
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InterviewController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller(service)).build();
 
         mvc.perform(post("/interview/session-1/feedback").contentType(APPLICATION_JSON)
                         .content("{\"rating\":\"inaccurate\",\"reason\":\"遗漏了项目取舍说明\"}"))
@@ -154,7 +155,7 @@ class InterviewControllerTest {
                 .thenReturn(new InterviewSession.InterviewMessage("session-1", "IN_PROGRESS", "问题 1"));
         AuthContext.set(42L);
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InterviewController(service, new InterviewRateLimiter(1, 1))).build();
+                controller(service, mock(InterviewTurnService.class), new InterviewRateLimiter(1, 1))).build();
         String body = "{\"targetRole\":\"后端开发\",\"interviewType\":\"technical\",\"difficulty\":\"MID\",\"durationMinutes\":45}";
 
         mvc.perform(post("/interview/open").contentType(APPLICATION_JSON).content(body))
@@ -163,5 +164,14 @@ class InterviewControllerTest {
                 .andExpect(status().isTooManyRequests());
 
         verify(service).open(42L, "后端开发", null, "technical", "MID", 45, "interview");
+    }
+
+    private InterviewController controller(InterviewSession sessions) {
+        return controller(sessions, mock(InterviewTurnService.class), new InterviewRateLimiter(5, 30));
+    }
+
+    private InterviewController controller(InterviewSession sessions, InterviewTurnService turns,
+                                            InterviewRateLimiter rateLimiter) {
+        return new InterviewController(sessions, rateLimiter, new InterviewMetrics(new SimpleMeterRegistry()), turns);
     }
 }

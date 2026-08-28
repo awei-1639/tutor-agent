@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /** HTTP boundary for the durable, authenticated interview runtime. */
 @RestController
@@ -23,16 +22,6 @@ public class InterviewController {
     private final InterviewMetrics metrics;
     private final InterviewTurnService turns;
 
-    /** Kept for focused MVC unit tests; Spring uses the injected constructor below. */
-    public InterviewController(InterviewSession sessions) {
-        this(sessions, new InterviewRateLimiter(5, 30), new InterviewMetrics(new SimpleMeterRegistry()), null);
-    }
-
-    public InterviewController(InterviewSession sessions, InterviewRateLimiter rateLimiter) {
-        this(sessions, rateLimiter, new InterviewMetrics(new SimpleMeterRegistry()), null);
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired
     public InterviewController(InterviewSession sessions, InterviewRateLimiter rateLimiter, InterviewMetrics metrics, InterviewTurnService turns) {
         this.sessions = sessions;
         this.rateLimiter = rateLimiter;
@@ -81,11 +70,6 @@ public class InterviewController {
         }
         Timer.Sample timer = metrics.startTimer();
         try {
-            if (turns == null) {
-                InterviewSession.InterviewMessage result = sessions.answer(userId, sessionId, req.answer(), req.requestId(), traceIdOrDefault(traceId));
-                metrics.request("answer", result.status().toLowerCase(java.util.Locale.ROOT));
-                return ResponseEntity.ok(result);
-            }
             InterviewTurnService.TurnJob result = turns.submit(userId, sessionId, req.answer(), req.requestId(), traceIdOrDefault(traceId));
             metrics.request("answer", result.status().toLowerCase(java.util.Locale.ROOT));
             return ResponseEntity.accepted().body(result);
@@ -97,14 +81,12 @@ public class InterviewController {
 
     @GetMapping("/{sessionId}/turns/{turnId}")
     public InterviewTurnService.TurnJob turn(@PathVariable @NotBlank String sessionId, @PathVariable @NotBlank String turnId) {
-        if (turns == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "回答任务不存在");
         return turns.get(currentUserId(), sessionId, turnId);
     }
 
     @PostMapping("/{sessionId}/turns/{turnId}/retry")
     public ResponseEntity<InterviewTurnService.TurnJob> retryTurn(@PathVariable @NotBlank String sessionId,
             @PathVariable @NotBlank String turnId) {
-        if (turns == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "回答任务不存在");
         InterviewTurnService.TurnJob result = turns.retry(currentUserId(), sessionId, turnId);
         metrics.request("answer_retry", "accepted");
         return ResponseEntity.accepted().body(result);

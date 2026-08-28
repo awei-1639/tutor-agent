@@ -12,7 +12,9 @@ import org.springframework.context.annotation.Configuration;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
-@EnableConfigurationProperties({LlmProperties.class, Mem0Properties.class, Neo4jProperties.class, OssProperties.class})
+@EnableConfigurationProperties({LlmProperties.class, Mem0Properties.class, Neo4jProperties.class, OssProperties.class,
+        ClamAvProperties.class, AliyunOcrProperties.class, KnowledgeUploadProperties.class,
+        KnowledgeIngestionProperties.class})
 public class LlmConfig {
 
     @Bean(destroyMethod = "close")

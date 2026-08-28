@@ -9,7 +9,7 @@ export function getToken(): string | null {
 }
 
 export function setSessionHint(userId: number, name: string, role = 'USER') {
-  // Authentication is held exclusively in HttpOnly cookies.
+  // 认证信息仅保存在 HttpOnly Cookie 中。
   saveSessionHint(userId, name, role);
 }
 
@@ -84,10 +84,11 @@ export function toUserMessage(error: unknown, fallback = '操作失败，请稍�
     if (error.status === 403) return '页面验证已过期，请刷新页面后重试。';
     if (error.status === 404) return '请求的内容不存在或已下线。';
     if (error.status === 409) {
+      if (error.path.includes('/admin/documents')) return error.detail ?? '上传会话已失效，请重新上传。';
       if (error.path.includes('/admin/interview-evals/annotations/replay')) return error.detail ?? fallback;
       return '该邮箱已注册，请直接登录。';
     }
-    if (error.status === 413) return '文件超过大小限制，请选择 5MB 以内的文件。';
+    if (error.status === 413) return '文件超过大小限制，请检查服务端配置的单文件上限。';
     if (error.status === 429) return '当前请求较多，请稍后再试。';
     if (error.status === 502 && error.path.includes('/admin/documents')) return 'OSS 暂时无法写入，请检查 Bucket、地域和 RAM 权限。';
     if (error.status >= 500) return '服务暂时不可用，请稍后重试。';
@@ -137,7 +138,9 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  // Auth
+  cancelChatTurn: (turnId: string) =>
+    request<{ id: string; status: string }>(`/chat/turns/${encodeURIComponent(turnId)}/cancel`, { method: 'POST' }),
+  // 认证
   login: (email: string, password: string) =>
     request<{ user_id: number; name: string; role: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email: string, password: string, name?: string) =>
@@ -145,14 +148,14 @@ export const api = {
   devLogin: (name: string) =>
     request<{ user_id: number; name: string; role: string }>('/auth/dev-login', { method: 'POST', body: JSON.stringify({ name }) }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
-  // Conversations
+  // 会话
   listConversations: () => request<ConversationSummary[]>('/conversations'),
   getMessages: (id: number) => request<{ id: number; role: string; content: string; citations?: string; citationStatus?: string; citationIssues?: string; traceId?: string; feedback?: string }[]>(`/conversations/${id}/messages`),
   submitMessageFeedback: (messageId: number, rating: 'helpful' | 'not_helpful', reason?: string) =>
     request<{ id: number; messageId: number; rating: string; traceId?: string }>('/feedback', {
       method: 'POST', body: JSON.stringify({ messageId, rating, reason }),
     }),
-  // Profile
+  // 用户画像
   getProfile: () => request<ProfileData>('/profile'),
   getProfileEvents: (limit = 12) => request<ProfileEvent[]>(`/profile/events?limit=${limit}`),
   getCareerGaps: () => request<CareerGapCard[]>('/career/gaps'),
@@ -161,12 +164,12 @@ export const api = {
   }),
   confirmProfile: (field: string, accept: boolean) =>
     request('/profile/confirm', { method: 'POST', body: JSON.stringify({ field, accept }) }),
-  // Cross-session memories
+  // 跨会话记忆
   listMemories: () => request<ManagedMemory[]>('/memories'),
   deleteMemory: (id: number) => request<void>(`/memories/${id}`, { method: 'DELETE' }),
   clearMemories: () => request<MemoryClearResult>('/memories', { method: 'DELETE' }),
   getRemoteMemoryDeletion: () => request<RemoteMemoryDeletionStatus>('/memories/remote-deletion'),
-  // Resume
+  // 简历
   uploadResume: async (file: File) => {
     const form = new FormData();
     form.append('file', file);
@@ -184,10 +187,10 @@ export const api = {
     }
     return res.json() as Promise<ResumeUploadResponse>;
   },
-  // Notifications
+  // 通知
   listNotifications: () => request<Notification[]>('/notifications'),
   markRead: (id: number) => request(`/notifications/read`, { method: 'POST', body: JSON.stringify({ ids: [id] }) }),
-  // Plans
+  // 学习计划
   generatePlan: (body: { goal: string; currentSkills?: string; checkinHistory?: string }) =>
     request<PlanGenerationJob>('/plans', { method: 'POST', body: JSON.stringify(body) }),
   getPlanGenerationJob: (id: number) => request<PlanGenerationJob>(`/plans/jobs/${id}`),
@@ -195,7 +198,7 @@ export const api = {
   checkin: (taskId: number, status: string, feedback?: string) =>
     request('/plans/checkin', { method: 'POST', body: JSON.stringify({ taskId, status, feedback }) }),
   shouldReplan: () => request<{ should_replan: boolean }>('/plans/should-replan'),
-  // Interview
+  // 面试
   openInterview: (config: InterviewConfig) =>
     request<InterviewMessage>('/interview/open', { method: 'POST', body: JSON.stringify(config) }),
   answerInterview: (sessionId: string, answer: string, requestId: string) =>
@@ -214,14 +217,14 @@ export const api = {
   getInterviewCompletion: (sessionId: string) => request<InterviewCompletionStatus>(`/interview/${encodeURIComponent(sessionId)}/completion`),
   submitInterviewFeedback: (sessionId: string, rating: 'accurate' | 'inaccurate', reason = '') =>
     request<void>(`/interview/${encodeURIComponent(sessionId)}/feedback`, { method: 'POST', body: JSON.stringify({ rating, reason }) }),
-  // RAG evaluation (development/internal workspace)
+  // RAG 评测（开发/内部工作台）
   listEvalRuns: () => request<EvalRunSummary[]>('/internal/evals'),
   getEvalRun: (id: number) => request<EvalRunDetail>(`/internal/evals/${id}`),
   startEval: (body: { topK?: number; limit?: number; modes?: string[] } = {}) =>
     request<{ id: number; status: string; datasetVersion: string; topK: number; totalCases: number; modes: string[] }>('/internal/evals', {
       method: 'POST', body: JSON.stringify(body),
     }),
-  // Admin console
+  // 管理控制台
   adminOverview: () => request<AdminOverview>('/admin/overview'),
   adminUsers: (params: { search?: string; status?: string; page?: number; size?: number } = {}) => {
     const query = new URLSearchParams();
@@ -236,17 +239,134 @@ export const api = {
   adminAudit: (limit = 50) => request<AdminAudit[]>(`/admin/audit?limit=${limit}`),
   adminDocuments: (limit = 50) => request<AdminDocument[]>(`/admin/documents?limit=${limit}`),
   adminUploadDocument: async (file: File, title?: string) => {
-    const form = new FormData();
-    form.append('file', file);
-    if (title?.trim()) form.append('title', title.trim());
-    const res = await fetch(BASE + '/admin/documents', {
-      method: 'POST', body: form, credentials: 'same-origin', headers: { 'X-CSRF-Token': csrfToken() ?? '' },
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new ApiError('/admin/documents', res.status, backendDetail(text));
+    const contentType = file.type || 'application/octet-stream';
+    type CompletedPart = { partNumber: number; etag: string };
+    type UploadSession = {
+      id: string; uploadUrl: string; expiresAt: string; maxBytes: number;
+      multipart: boolean; uploadId?: string; partSize: number;
+      parts: Array<{ partNumber: number; uploadUrl: string }>;
+      completedParts: CompletedPart[]; objectReady: boolean; status: string;
+    };
+    // 仅保留非敏感的文档指纹和服务端 UUID；文件原始字节与凭据绝不写入
+    // localStorage，因此页面刷新后仍可继续上传。
+    const fingerprint = `${file.name}\u0000${file.size}\u0000${file.lastModified}`;
+    const digest = globalThis.crypto?.subtle
+      ? await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(fingerprint))
+      : null;
+    let fallbackHash = 2166136261;
+    for (let index = 0; !digest && index < fingerprint.length; index += 1) {
+      fallbackHash = Math.imul(fallbackHash ^ fingerprint.charCodeAt(index), 16777619);
     }
-    return res.json() as Promise<{ id: string; status: string; deduplicated: boolean }>;
+    const resumeFingerprint = digest
+      ? Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+      : (fallbackHash >>> 0).toString(16);
+    const resumeKey = `tutor_knowledge_upload:${resumeFingerprint}`;
+    const readResumeId = () => {
+      try { return localStorage.getItem(resumeKey); } catch { return null; }
+    };
+    const writeResumeId = (id: string) => {
+      try { localStorage.setItem(resumeKey, id); } catch { /* private browsing can disable storage */ }
+    };
+    const clearResumeId = () => {
+      try { localStorage.removeItem(resumeKey); } catch { /* nothing to clean up */ }
+    };
+    let session: UploadSession | null = null;
+    const savedId = readResumeId();
+    if (savedId) {
+      try {
+        session = await request<UploadSession>(`/admin/documents/${encodeURIComponent(savedId)}/upload-session`);
+      } catch (error) {
+        if (error instanceof ApiError && [404, 409, 410].includes(error.status)) {
+          clearResumeId();
+        } else {
+          throw error;
+        }
+      }
+    }
+    if (!session) {
+      session = await request<UploadSession>(
+        '/admin/documents/upload-session',
+        { method: 'POST', body: JSON.stringify({ filename: file.name, sizeBytes: file.size, contentType, title: title?.trim() || null }) },
+      );
+      writeResumeId(session.id);
+    }
+    const refreshSession = async () => {
+      session = await request<UploadSession>(`/admin/documents/${encodeURIComponent(session!.id)}/upload-session`);
+      return session;
+    };
+
+    if (!session.multipart) {
+      if (!session.objectReady) {
+        let uploadUrl = session.uploadUrl;
+        let upload: Response | null = null;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          upload = await fetch(uploadUrl, {
+            method: 'PUT', body: file, credentials: 'omit', headers: { 'Content-Type': contentType },
+          });
+          if (upload.status !== 403 || attempt === 1) break;
+          const refreshed = await refreshSession();
+          if (refreshed.objectReady) break;
+          uploadUrl = refreshed.uploadUrl;
+        }
+        if (upload && !upload.ok && !session.objectReady) {
+          const text = await upload.text().catch(() => '');
+          throw new ApiError('/admin/documents', upload.status, backendDetail(text));
+        }
+      }
+    } else {
+      const completedByPart = new Map<number, CompletedPart>();
+      for (const part of session.completedParts ?? []) {
+        if (part.partNumber >= 1 && part.etag?.trim()) completedByPart.set(part.partNumber, part);
+      }
+      const pendingParts = session.parts.filter(part => !completedByPart.has(part.partNumber));
+      const partSize = session.partSize;
+      let cursor = 0;
+      const uploadPart = async (part: UploadSession['parts'][number]) => {
+        const start = (part.partNumber - 1) * partSize;
+        const body = file.slice(start, Math.min(file.size, start + partSize));
+        let uploadUrl = part.uploadUrl;
+        let lastError: unknown;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const response = await fetch(uploadUrl, {
+              method: 'PUT', body, credentials: 'omit', headers: { 'Content-Type': 'application/octet-stream' },
+            });
+            if (response.status === 403 && attempt < 2) {
+              const refreshed = await refreshSession();
+              const replacement = refreshed.parts.find(candidate => candidate.partNumber === part.partNumber);
+              if (!replacement) throw new Error(`OSS part ${part.partNumber} URL refresh failed`);
+              uploadUrl = replacement.uploadUrl;
+              continue;
+            }
+            if (!response.ok) throw new Error(`OSS part ${part.partNumber} HTTP ${response.status}`);
+            const etag = response.headers.get('ETag')?.replace(/^"|"$/g, '').trim();
+            if (!etag) throw new Error(`OSS part ${part.partNumber} did not return ETag`);
+            completedByPart.set(part.partNumber, { partNumber: part.partNumber, etag });
+            return;
+          } catch (error) {
+            lastError = error;
+            await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+          }
+        }
+        throw lastError ?? new Error(`OSS part ${part.partNumber} upload failed`);
+      };
+      const worker = async () => {
+        while (true) {
+          const index = cursor++;
+          if (index >= pendingParts.length) return;
+          await uploadPart(pendingParts[index]);
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(4, pendingParts.length) }, () => worker()));
+      const result = await request<{ id: string; status: string; deduplicated: boolean }>(`/admin/documents/${session.id}/complete`, {
+        method: 'POST', body: JSON.stringify({ parts: [...completedByPart.values()].sort((a, b) => a.partNumber - b.partNumber) }),
+      });
+      clearResumeId();
+      return result;
+    }
+    const result = await request<{ id: string; status: string; deduplicated: boolean }>(`/admin/documents/${session.id}/complete`, { method: 'POST' });
+    clearResumeId();
+    return result;
   },
   adminDocumentAction: (id: string, action: 'retry' | 'soft-delete') =>
     request<void>(`/admin/documents/${id}/${action}`, { method: 'POST' }),
@@ -524,6 +644,12 @@ export interface AdminDocument {
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
+  jobStatus?: string | null;
+  jobStage?: string | null;
+  jobAttempts?: number;
+  jobError?: string | null;
+  partialIndexed?: boolean;
+  truncationReason?: string | null;
 }
 
 export interface InterviewAnnotationQueueItem {
@@ -646,13 +772,13 @@ export interface EvalDiagnosis {
  * token 事件带 seq；同一连接内按序缓冲，并忽略已处理序号，避免重放或并发推送造成错序、重复拼接。
  */
 export function streamChat(
-  body: { conversationId?: number | null; message: string },
+  body: { conversationId?: number | null; message: string; requestId?: string },
   handlers: {
-    onMeta?: (e: { conversation_id: number; trace_id: string }) => void;
+    onMeta?: (e: { conversation_id: number; trace_id: string; turn_id?: string }) => void;
     onStage?: (e: { phase: string; expert?: string; status?: string; detail?: string }) => void;
     onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string }) => void;
     onToken?: (text: string, seq?: number) => void;
-    onClarify?: (question: string) => void;
+    onClarify?: (event: { question: string; options?: Array<{ id: string; label: string }> }) => void;
     onDone?: (e: { message_id: number; trace_id?: string; citation_status?: string; citation_issues?: string[] }) => void;
     onError?: (msg: string) => void;
     isActive?: () => boolean;
@@ -665,6 +791,7 @@ export function streamChat(
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
       'X-CSRF-Token': csrfToken() ?? '',
+      ...(body.requestId ? { 'Idempotency-Key': body.requestId } : {}),
     },
     credentials: 'same-origin',
     body: JSON.stringify(body),

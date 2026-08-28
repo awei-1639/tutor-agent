@@ -54,4 +54,20 @@ class EpisodeStoreTest {
         assertThat(out.get(0).topics()).containsExactly("NLP", "RAG");
         assertThat(out.get(0).openItems()).containsExactly("完成微调实验");
     }
+
+    @Test
+    @DisplayName("密钥轮换期间按版本选择当前或旧密钥")
+    void readsWithCurrentAndPreviousEncryptionKey() {
+        EpisodeStore rotating = new EpisodeStore(jdbc, "new-key", "v2", "old-key", "v1");
+        when(jdbc.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<EpisodeStore.Episode>>any(),
+                eq("v2"), eq("new-key"), eq("v1"), eq("old-key"), eq(1L), eq(10)))
+                .thenReturn(List.of());
+
+        assertThat(rotating.recentByUser(1L, 10)).isEmpty();
+
+        org.mockito.Mockito.verify(jdbc).query(
+                org.mockito.ArgumentMatchers.contains("summary_encryption_key_id"),
+                org.mockito.ArgumentMatchers.<RowMapper<EpisodeStore.Episode>>any(),
+                eq("v2"), eq("new-key"), eq("v1"), eq("old-key"), eq(1L), eq(10));
+    }
 }

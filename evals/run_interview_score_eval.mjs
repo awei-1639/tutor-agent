@@ -1,8 +1,8 @@
-// Replay recorded interview scores against the human-calibration gate.
-// Usage:
+// 使用人工校准门禁回放已记录的面试分数。
+// 用法：
 //   node evals/run_interview_score_eval.mjs --input ./interview_score_gold.json --ci
-// The input is a ReplayRequest JSON object (datasetVersion + cases) or a cases array.
-// This command never calls the model; it only evaluates recorded model output.
+// 输入为 ReplayRequest JSON 对象（datasetVersion + cases）或 cases 数组。
+// 本命令绝不调用模型，只评估已记录的模型输出。
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';

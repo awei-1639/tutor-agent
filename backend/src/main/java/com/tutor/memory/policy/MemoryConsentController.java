@@ -28,8 +28,12 @@ public class MemoryConsentController {
 
     @PutMapping
     public Map<String, Boolean> update(@Valid @RequestBody UpdateRequest request) {
-        if (request.enabled()) consent.setEnabled(currentUser(), true);
-        else memory.forget(currentUser());
+        long userId = currentUser();
+        if (request.enabled()) {
+            if (!consent.enabledFor(userId)) memory.enableExternalMemory(userId);
+        } else {
+            memory.forget(userId);
+        }
         return Map.of("enabled", request.enabled());
     }
 

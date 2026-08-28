@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Run from WSL, where Testcontainers can access the Docker daemon.
+# 请在 WSL 中运行，Testcontainers 可在其中访问 Docker 守护进程。
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root/backend"
 
-# Testcontainers already gives this test a process-isolated PostgreSQL. Running
-# it in Maven's WSL JVM avoids Surefire's fork-exit watchdog and its spurious
-# 30-second warning when docker-java is still closing an HTTP connection.
+# Testcontainers 已为该测试提供进程隔离的 PostgreSQL。在 Maven 的 WSL JVM 中运行
+# 可避免 Surefire 的 fork-exit 看门狗，以及 docker-java 仍在关闭 HTTP 连接时产生的
+# 虚假 30 秒警告。
 mvn -B -DforkCount=0 -DrunIntegrationTests=true -Dtest=InterviewSessionPostgresIT test

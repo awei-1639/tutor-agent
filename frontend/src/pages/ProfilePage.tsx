@@ -65,10 +65,11 @@ export default function ProfilePage() {
     typeof item.field === 'string' ? [{ field: item.field, value: typeof item.value === 'string' ? item.value : '' }] : []);
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink-900">个人画像</h1>
+    <div className="h-full overflow-y-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="border-b border-ink-200 pb-6">
+          <div className="editorial-kicker mb-2">Profile / Evidence</div>
+          <h1 className="workspace-heading text-3xl text-ink-900">个人画像</h1>
           <p className="text-sm text-ink-500 mt-1">基于对话/简历/打卡自动抽取，每日 4 点衰减。"✓" 关键字段确认 → 置信度锁 0.9</p>
         </div>
 
@@ -165,9 +166,9 @@ export default function ProfilePage() {
             <div className="flex flex-wrap gap-2">
               {skills.map((s, i) => (
                 <div key={i} className="group inline-flex items-center gap-2 px-3 py-1.5 bg-ink-50 hover:bg-ink-100 border border-ink-100 rounded-full">
-                  <span className="text-sm font-medium text-ink-900">{s.name}</span>
+                  <span className="text-sm font-medium text-ink-900">{skillLabel(s.name)}</span>
                   <span className="text-xs text-ink-500">{Math.round(s.confidence * 100)}%</span>
-                  <span className="text-[10px] text-ink-500 uppercase">{s.source}</span>
+                  <span className="text-[10px] text-ink-500">{sourceLabel(s.source)}</span>
                 </div>
               ))}
             </div>
@@ -238,5 +239,34 @@ function GapLine({ label, values, tone }: { label: string; values: string[]; ton
 }
 
 function skillLabel(value: string): string {
-  return value.replace(/^skill:/, '').replaceAll('-', ' ');
+  const normalized = value
+    .replace(/^skill:/i, '')
+    .replaceAll('_', ' ')
+    .replaceAll('-', ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const translated = SKILL_LABELS[normalized.toLowerCase()];
+  return translated ?? normalized;
 }
+
+function sourceLabel(value: string): string {
+  return ({ explicit: '已确认', inferred: '系统推断', conversation: '来自对话', resume: '来自简历', checkin: '来自打卡' } as Record<string, string>)[value.toLowerCase()] ?? value;
+}
+
+// 技能实体保留模型、框架和缩写等专有名词，其余展示名称使用中文。
+const SKILL_LABELS: Record<string, string> = {
+  'natural language processing': '自然语言处理',
+  'fine tuning pretrained models': '预训练模型微调',
+  'fine tuning pre trained models': '预训练模型微调',
+  'deep learning basics': '深度学习基础',
+  'sequence labeling': '序列标注',
+  'word embeddings': '词嵌入',
+  'prompt engineering': '提示词工程',
+  'python basics': 'Python 基础',
+  'pytorch basics': 'PyTorch 基础',
+  transformers: 'Transformers',
+  bert: 'BERT',
+  gpt: 'GPT',
+  rag: 'RAG',
+  langchain: 'LangChain',
+};

@@ -1,0 +1,8 @@
+{
+  "version": "development-v1",
+  "development_only": true,
+  "points": [
+    {"raw": 0.0, "calibrated": 0.1},
+    {"raw": 1.0, "calibrated": 0.9}
+  ]
+}

@@ -28,7 +28,7 @@ class CsrfInterceptorTest {
     }
 
     @Test
-    void acceptsMatchingTokenAndLegacyBearerClient() throws Exception {
+    void acceptsMatchingTokenAndBearerApiClient() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
         when(request.getMethod()).thenReturn("POST");
@@ -38,7 +38,7 @@ class CsrfInterceptorTest {
         assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
 
         when(request.getHeader(CsrfTokenService.HEADER)).thenReturn(null);
-        when(request.getHeader("Authorization")).thenReturn("Bearer legacy");
+        when(request.getHeader("Authorization")).thenReturn("Bearer api-client");
         assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
     }
 

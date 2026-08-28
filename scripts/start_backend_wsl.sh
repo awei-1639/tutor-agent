@@ -12,7 +12,7 @@ set +a
 export INTERNAL_ENDPOINTS_ENABLED=true
 export JWT_SECRET="${JWT_SECRET:-agent-local-dev-secret-32-bytes-minimum-2026}"
 
-# Keep Docker API sessions alive for the current WSL Docker lifecycle behavior.
+# 针对当前 WSL Docker 生命周期行为，保持 Docker API 会话活跃。
 docker events --filter container=tutor-postgres >/tmp/tutor-postgres-events.log 2>&1 &
 docker events --filter container=tutor-neo4j >/tmp/tutor-neo4j-events.log 2>&1 &
 docker start tutor-postgres tutor-neo4j >/dev/null 2>&1 || docker compose up -d postgres neo4j

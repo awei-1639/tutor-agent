@@ -109,7 +109,7 @@ export default function InterviewPage() {
           timer = window.setTimeout(() => { void poll(); }, 1500);
         }
       } catch {
-        // The report remains available even while the downstream completion status is unavailable.
+        // 即使下游完成状态暂不可用，报告仍然可以访问。
       }
     };
     void poll();

@@ -1,7 +1,7 @@
 package com.tutor.interview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.llm.LlmGateway;
+import com.tutor.llm.JsonGenerationGateway;
 import com.tutor.plan.PlanService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -41,7 +41,7 @@ public class InterviewSession {
     }
 
     /** Convenience constructor retained for focused tests with a mock gateway. */
-    public InterviewSession(JdbcTemplate jdbc, LlmGateway gateway, PlanService plans) {
+    public InterviewSession(JdbcTemplate jdbc, JsonGenerationGateway gateway, PlanService plans) {
         this(jdbc, new InterviewLlmService(gateway), new InterviewSessionRepository(jdbc),
                 new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans), plans);
     }
@@ -105,7 +105,7 @@ public class InterviewSession {
     /** Executes all uncertain LLM work before acquiring any database lock. */
     TurnEvaluation evaluateTurn(long userId, String sessionId, String userAnswer, String traceId) {
         SessionRow session = findSession(userId, sessionId);
-        if (!"IN_PROGRESS".equals(session.status())) throw new ResponseStatusException(HttpStatus.CONFLICT, "面试已结束，不能继续提交回答");
+        InterviewStateGuard.requireInProgress(session.status());
         if (!Instant.now().isBefore(session.deadlineAt())) throw new ResponseStatusException(HttpStatus.CONFLICT, "面试时间已到，请结束面试查看复盘");
         QuestionRow question = sessions.findCurrentQuestion(sessionId, session.currentSequence());
         if (question.answer() != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "当前问题已经提交过回答");
@@ -128,9 +128,7 @@ public class InterviewSession {
     @Transactional
     public InterviewMessage commitTurn(long userId, String sessionId, String userAnswer, String requestId, TurnEvaluation evaluation) {
         SessionRow session = findSessionForUpdate(userId, sessionId);
-        if (!"IN_PROGRESS".equals(session.status())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "面试已结束，不能继续提交回答");
-        }
+        InterviewStateGuard.requireInProgress(session.status());
         if (!Instant.now().isBefore(session.deadlineAt())) {
             advanceSession(sessionId, session.currentSequence(), session.mainQuestionCount(), "COMPLETED");
             reports.enqueueCompletion(userId, sessionId);
@@ -190,9 +188,7 @@ public class InterviewSession {
     /** Creates a comparable new session from a completed source session. */
     public InterviewMessage retest(long userId, String sourceSessionId, String traceId) {
         SessionRow source = findSession(userId, sourceSessionId);
-        if (!"COMPLETED".equals(source.status())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "仅已完成的面试可以复测");
-        }
+        InterviewStateGuard.requireCompleted(source.status());
         return open(userId, source.targetRole(), source.jobDescription(), source.interviewType(), source.difficulty(),
                 source.durationMinutes(), traceId, source.id());
     }
@@ -200,9 +196,7 @@ public class InterviewSession {
     @Transactional
     public InterviewMessage cancel(long userId, String sessionId) {
         SessionRow session = findSessionForUpdate(userId, sessionId);
-        if (!"IN_PROGRESS".equals(session.status())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "面试已结束，不能重复收卷");
-        }
+        InterviewStateGuard.requireCancellable(session.status());
         advanceSession(sessionId, session.currentSequence(), session.mainQuestionCount(), "CANCELLED");
         reports.enqueueCompletion(userId, sessionId);
         return new InterviewMessage(sessionId, "CANCELLED", "已结束本场面试，复盘报告已按已完成题目生成。");

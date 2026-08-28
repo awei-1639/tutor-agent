@@ -1,7 +1,5 @@
 package com.tutor.auth;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.llm.LlmGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -46,26 +44,24 @@ class AuthHttpPostgresIT {
     }
 
     @Autowired MockMvc mvc;
-    @Autowired ObjectMapper mapper;
 
     @MockitoBean LlmGateway llmGateway;
     @MockitoBean Driver neo4jDriver;
 
     @Test
     void registerThenAccessProtectedEndpointsWithIssuedJwt() throws Exception {
-        String registration = mvc.perform(post("/auth/register")
+        var registration = mvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"http-user@example.com\",\"password\":\"correct-horse\",\"name\":\"HTTP User\"}"))
                 .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        JsonNode body = mapper.readTree(registration);
-        String token = body.path("token").asText();
+                .andReturn().getResponse();
+        String token = registration.getCookie("tutor_access").getValue();
         assertThat(token).isNotBlank();
 
         mvc.perform(get("/profile"))
                 .andExpect(status().isUnauthorized());
 
-        mvc.perform(get("/profile").header("Authorization", "Bearer " + token))
+        mvc.perform(get("/profile").cookie(registration.getCookie("tutor_access")))
                 .andExpect(status().isOk())
                 .andExpect(content().json("{}"));
 

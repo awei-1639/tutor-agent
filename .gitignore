@@ -26,6 +26,7 @@ evals/results/
 evals/private/
 evals/_last_insert.sql
 results/
+.runtime/
 
 # IDE / 系统
 .DS_Store

@@ -1,13 +1,20 @@
 package com.tutor.memory.local;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmGateway;
+import com.tutor.llm.JsonGenerationGateway;
+import com.tutor.llm.structured.StructuredOutputResult;
+import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.llm.structured.StructuredTask;
+import com.tutor.llm.structured.SummaryOutput;
 import com.tutor.memory.local.ConversationStore;
+import com.tutor.memory.policy.MemoryAdmissionPolicy;
+import com.tutor.resume.PiiMasker;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -28,17 +35,43 @@ public class SummaryFolder {
             """;
 
     private final ConversationStore store;
-    private final LlmGateway gateway;
+    private final JsonGenerationGateway gateway;
+    private final MemoryAdmissionPolicy admission;
+    private final StructuredOutputService structuredOutputService;
     private final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-    public SummaryFolder(ConversationStore store, LlmGateway gateway) {
+    public SummaryFolder(ConversationStore store, JsonGenerationGateway gateway) {
+        this(store, gateway, new MemoryAdmissionPolicy(), new StructuredOutputService(gateway, null));
+    }
+
+    public SummaryFolder(ConversationStore store, JsonGenerationGateway gateway, MemoryAdmissionPolicy admission) {
+        this(store, gateway, admission, new StructuredOutputService(gateway, null));
+    }
+
+    @Autowired
+    public SummaryFolder(ConversationStore store, JsonGenerationGateway gateway,
+                         MemoryAdmissionPolicy admission,
+                         StructuredOutputService structuredOutputService) {
         this.store = store;
         this.gateway = gateway;
+        this.admission = admission;
+        this.structuredOutputService = structuredOutputService;
     }
 
     /** 回答完成后由后台线程调用 */
     public void maybeFold(long conversationId, String traceId) {
+        maybeFoldInternal(conversationId, 0L, Long.MIN_VALUE, traceId);
+    }
+
+    /** Fenced variant used by the request pipeline. */
+    public void maybeFold(long conversationId, long userId, long expectedGeneration, String traceId) {
+        maybeFoldInternal(conversationId, userId, expectedGeneration, traceId);
+    }
+
+    private void maybeFoldInternal(long conversationId, long userId, long expectedGeneration, String traceId) {
         try {
+            if (expectedGeneration != Long.MIN_VALUE
+                    && !store.memoryGenerationCurrent(conversationId, userId, expectedGeneration)) return;
             ConversationStore.SummaryState state = store.summaryState(conversationId);
             List<ConversationStore.Msg> toFold = store.messagesToFold(
                     conversationId, state.uptoMsgId(), KEEP_RECENT_MESSAGES);
@@ -54,11 +87,32 @@ public class SummaryFolder {
                 sb.append(m.role.equals("user") ? "用户: " : "助手: ")
                         .append(m.content, 0, Math.min(m.content.length(), 500)).append('\n');
             }
-            String json = gateway.chatJson(Purpose.SUMMARY,
-                    List.of(SystemMessage.from(SYS), UserMessage.from(sb.toString())), traceId);
-            String summary = mapper.readTree(json).path("summary").asText("");
-            if (summary.isBlank()) return;
-            store.saveSummary(conversationId, summary, store.maxFoldableMsgId(conversationId, KEEP_RECENT_MESSAGES));
+            String safePrompt = PiiMasker.mask(sb.toString()).masked();
+            StructuredOutputResult<SummaryOutput> structured = structuredOutputService.generate(
+                    StructuredTask.SUMMARY_FOLDER,
+                    Purpose.SUMMARY,
+                    List.of(SystemMessage.from(SYS), UserMessage.from(safePrompt)),
+                    SummaryOutput.class,
+                    output -> {
+                        if (output.summary() == null || output.summary().isBlank()) {
+                            throw new IllegalArgumentException("summary is blank");
+                        }
+                    },
+                    traceId
+            );
+            if (!structured.success()) return;
+            String summary = structured.value().summary();
+            PiiMasker.MaskResult safeSummary = PiiMasker.mask(summary);
+            if (!admission.acceptsSummary(safeSummary.masked())) return;
+            if (expectedGeneration != Long.MIN_VALUE
+                    && !store.memoryGenerationCurrent(conversationId, userId, expectedGeneration)) return;
+            long upto = store.maxFoldableMsgId(conversationId, KEEP_RECENT_MESSAGES);
+            if (expectedGeneration == Long.MIN_VALUE) {
+                store.saveSummary(conversationId, safeSummary.masked(), upto);
+            } else if (!store.saveSummaryIfGeneration(conversationId, userId, expectedGeneration,
+                    safeSummary.masked(), upto)) {
+                return;
+            }
             log.info("会话摘要折叠 conv={} folded={} trace={}", conversationId, toFold.size(), traceId);
         } catch (Exception e) {
             log.error("摘要折叠失败(不影响对话) conv={}: {}", conversationId, e.getMessage());

@@ -1,0 +1,8 @@
+{
+  "version": "test-resource-v1",
+  "points": [
+    {"raw": 0.0, "calibrated": 0.05},
+    {"raw": 0.5, "calibrated": 0.60},
+    {"raw": 1.0, "calibrated": 0.99}
+  ]
+}

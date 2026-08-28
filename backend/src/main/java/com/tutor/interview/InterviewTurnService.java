@@ -37,7 +37,8 @@ public class InterviewTurnService {
 
     public record TurnJob(String id, String sessionId, String requestId, String status, int attempts,
                           String responseStatus, String responseMessage, String lastError, Instant createdAt, Instant finishedAt) {}
-    private record ClaimedJob(String id, long userId, String sessionId, String answer, String requestId, String traceId, int attempts) {}
+    private record ClaimedJob(String id, long userId, String sessionId, String answer, String requestId,
+                              String traceId, int attempts, UUID leaseToken) {}
 
     @Transactional
     public TurnJob submit(long userId, String sessionId, String answer, String requestId, String traceId) {
@@ -98,7 +99,7 @@ public class InterviewTurnService {
         }
         int updated = jdbc.update("""
                 UPDATE interview_turn_jobs
-                SET status='PENDING', attempts=0, lease_until=NULL, next_attempt_at=now(),
+                SET status='PENDING', attempts=0, lease_until=NULL, lease_token=NULL, next_attempt_at=now(),
                     response_status=NULL, response_message=NULL, last_error=NULL, finished_at=NULL, updated_at=now()
                 WHERE id=? AND user_id=? AND session_id=? AND status='FAILED'
                 """, jobId, userId, sessionId);
@@ -128,35 +129,50 @@ public class InterviewTurnService {
                   ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1
                 )
                 UPDATE interview_turn_jobs j SET status='PROCESSING', attempts=j.attempts+1,
-                    started_at=COALESCE(j.started_at, now()), lease_until=now() + interval '90 seconds', updated_at=now()
+                    started_at=COALESCE(j.started_at, now()), lease_token=?,
+                    lease_until=now() + interval '90 seconds', updated_at=now()
                 FROM candidate WHERE j.id=candidate.id
-                RETURNING j.id, j.user_id, j.session_id, j.answer, j.request_id, j.trace_id, j.attempts
+                RETURNING j.id, j.user_id, j.session_id, j.answer, j.request_id, j.trace_id, j.attempts, j.lease_token
                 """, (rs, i) -> new ClaimedJob(rs.getString(1), rs.getLong(2), rs.getString(3), rs.getString(4),
-                rs.getString(5), rs.getString(6), rs.getInt(7))).stream().findFirst().orElse(null);
+                rs.getString(5), rs.getString(6), rs.getInt(7), rs.getObject(8, UUID.class)),
+                UUID.randomUUID()).stream().findFirst().orElse(null);
     }
 
     private void process(ClaimedJob job) {
         try {
             InterviewSession.TurnEvaluation evaluation = interviews.evaluateTurn(job.userId(), job.sessionId(), job.answer(), job.traceId());
+            if (!ownsLease(job)) {
+                log.info("面试回答任务租约已失效，跳过旧 worker job={}", job.id());
+                return;
+            }
             InterviewSession.InterviewMessage result = interviews.commitTurn(job.userId(), job.sessionId(), job.answer(), job.requestId(), evaluation);
             jdbc.update("""
                     UPDATE interview_turn_jobs SET status='COMPLETED', response_status=?, response_message=?, last_error=NULL,
-                      lease_until=NULL, finished_at=now(), updated_at=now() WHERE id=? AND status='PROCESSING'
-                    """, result.status(), result.message(), job.id());
+                      lease_until=NULL, lease_token=NULL, finished_at=now(), updated_at=now()
+                    WHERE id=? AND status='PROCESSING' AND lease_token=? AND lease_until > now()
+                    """, result.status(), result.message(), job.id(), job.leaseToken());
             event("completed");
         } catch (Exception error) {
             boolean retryable = job.attempts() < MAX_ATTEMPTS && !(error instanceof ResponseStatusException);
             String status = retryable ? "RETRYABLE_FAILED" : "FAILED";
             jdbc.update("""
-                    UPDATE interview_turn_jobs SET status=?, last_error=?, lease_until=NULL,
+                    UPDATE interview_turn_jobs SET status=?, last_error=?, lease_until=NULL, lease_token=NULL,
                       next_attempt_at=CASE WHEN ? THEN now() + interval '5 seconds' ELSE next_attempt_at END,
                       finished_at=CASE WHEN ? THEN NULL ELSE now() END, updated_at=now()
-                    WHERE id=?
-                    """, status, safeError(error), retryable, retryable, job.id());
+                    WHERE id=? AND status='PROCESSING' AND lease_token=? AND lease_until > now()
+                    """, status, safeError(error), retryable, retryable, job.id(), job.leaseToken());
             log.warn("interview turn failed job={} attempt={} retryable={} type={}", job.id(), job.attempts(), retryable,
                     error.getClass().getSimpleName());
             event(retryable ? "retryable_failed" : "failed");
         }
+    }
+
+    private boolean ownsLease(ClaimedJob job) {
+        Integer active = jdbc.queryForObject("""
+                SELECT count(*) FROM interview_turn_jobs
+                WHERE id=? AND status='PROCESSING' AND lease_token=? AND lease_until > now()
+                """, Integer.class, job.id(), job.leaseToken());
+        return active != null && active == 1;
     }
 
     private TurnJob map(java.sql.ResultSet rs) throws java.sql.SQLException {

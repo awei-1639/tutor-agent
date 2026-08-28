@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** Graceful, bounded shutdown policy for locally-created asynchronous workloads. */
+/** 本地创建的异步工作负载采用的有界优雅关闭策略。 */
 public final class ExecutorLifecycle {
     private static final long GRACEFUL_SHUTDOWN_SECONDS = 15;
 

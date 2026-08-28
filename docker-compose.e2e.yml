@@ -1,0 +1,14 @@
+# CI-only overlay. Keep production's HTTPS-only cookie policy unchanged.
+services:
+  backend:
+    environment:
+      AUTH_COOKIE_SECURE: "false"
+
+  frontend:
+    ports:
+      - "127.0.0.1:8081:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/api/readyz | grep -q '\"ready\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30

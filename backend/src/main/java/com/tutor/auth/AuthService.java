@@ -52,9 +52,9 @@ public class AuthService {
         }
         String hash = encoder.encode(password);
         long id = jdbc.queryForObject(
-                "INSERT INTO users (email, password_hash, name) VALUES (?,?,?) RETURNING id",
+                "INSERT INTO users (email, password_hash, name, tenant_id) VALUES (?,?,?,'default') RETURNING id",
                 Long.class, normalizedEmail, hash, name == null ? "" : name.trim());
-        return issueSession(id, name, "USER");
+        return issueSession(id, name, "USER", "default");
     }
 
     /** 登录: 校验密码, 失败抛 */
@@ -65,7 +65,7 @@ public class AuthService {
         String normalizedEmail = email.trim().toLowerCase();
         try {
             Map<String, Object> row = jdbc.queryForMap(
-                    "SELECT id, password_hash, name, role, disabled_at, deleted_at FROM users WHERE LOWER(email)=?",
+                    "SELECT id, password_hash, name, role, disabled_at, deleted_at, tenant_id FROM users WHERE LOWER(email)=?",
                     normalizedEmail);
             if (row.get("deleted_at") != null) {
                 throw new IllegalArgumentException("账号已删除");
@@ -79,7 +79,7 @@ public class AuthService {
             }
             long id = ((Number) row.get("id")).longValue();
             String name = (String) row.get("name");
-            return issueSession(id, name, String.valueOf(row.getOrDefault("role", "USER")));
+            return issueSession(id, name, String.valueOf(row.getOrDefault("role", "USER")), (String) row.get("tenant_id"));
         } catch (EmptyResultDataAccessException e) {
             throw new IllegalArgumentException("邮箱或密码错误");
         }
@@ -94,7 +94,7 @@ public class AuthService {
         Map<String, Object> row;
         try {
             row = jdbc.queryForMap("""
-                    SELECT r.user_id, u.name, u.role FROM refresh_tokens r
+                    SELECT r.user_id, u.name, u.role, u.tenant_id FROM refresh_tokens r
                     JOIN users u ON u.id = r.user_id
                     WHERE r.token_hash=? AND r.revoked_at IS NULL AND r.expires_at > now()
                       AND u.disabled_at IS NULL AND u.deleted_at IS NULL
@@ -107,11 +107,11 @@ public class AuthService {
                 WHERE token_hash=? AND revoked_at IS NULL AND expires_at > now()
                 """, hash);
         if (consumed != 1) {
-            // Another concurrent request consumed this token after the read. Do not mint a second session.
+            // 读取后令牌可能已被其他并发请求使用，不能再签发第二个会话。
             throw new IllegalArgumentException("refresh token 无效或已过期");
         }
         return issueSession(((Number) row.get("user_id")).longValue(), (String) row.get("name"),
-                String.valueOf(row.getOrDefault("role", "USER")));
+                String.valueOf(row.getOrDefault("role", "USER")), (String) row.get("tenant_id"));
     }
 
     public void revokeRefreshToken(String refreshToken) {
@@ -125,13 +125,17 @@ public class AuthService {
     }
 
     private AuthResult issueSession(long userId, String name, String role) {
+        return issueSession(userId, name, role, null);
+    }
+
+    private AuthResult issueSession(long userId, String name, String role, String tenantId) {
         byte[] bytes = new byte[48];
         random.nextBytes(bytes);
         String refresh = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         Timestamp expiresAt = Timestamp.from(Instant.now().plus(Duration.ofDays(30)));
         jdbc.update("INSERT INTO refresh_tokens (token_hash, user_id, expires_at) VALUES (?,?,?)",
                 hash(refresh), userId, expiresAt);
-        return new AuthResult(userId, jwt.issue(userId, name), refresh, name, role);
+        return new AuthResult(userId, jwt.issue(userId, name, tenantId), refresh, name, role);
     }
 
     private static String hash(String value) {

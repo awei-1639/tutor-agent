@@ -1,6 +1,9 @@
 package com.tutor.retrieval.graph;
 
 import com.tutor.retrieval.graph.GraphStore;
+import com.tutor.retrieval.GraphScope;
+import com.tutor.config.Neo4jProperties;
+import com.tutor.retrieval.resilience.Neo4jResilience;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.neo4j.driver.AuthTokens;
@@ -37,13 +40,30 @@ class GraphStoreNeo4jIT {
                     CREATE (java)-[:UNRELATED]->(hidden)
                     """).consume();
 
-            List<GraphStore.Neighbor> neighbors = new GraphStore(driver)
-                    .expand(List.of("skill:java", "res:spring-guide"), 5, 10);
+            Neo4jProperties properties = new Neo4jProperties(2, 3, 30);
+            GraphStore store = new GraphStore(driver, new Neo4jResilience(properties), properties);
+            List<GraphStore.Neighbor> neighbors = store
+                    .expand(List.of("skill:java", "res:spring-guide"), 5, 10,
+                            GraphExpansionPolicy.of(
+                                    new GraphExpansionPolicy.Rule("PREREQUISITE", GraphExpansionPolicy.Direction.OUTGOING),
+                                    new GraphExpansionPolicy.Rule("TEACHES", GraphExpansionPolicy.Direction.OUTGOING)),
+                            GraphScope.publicOnly());
 
             assertThat(neighbors).containsExactlyInAnyOrder(
-                    new GraphStore.Neighbor("skill:java", "PREREQUISITE", "skill:spring", "Spring Boot"),
-                    new GraphStore.Neighbor("res:spring-guide", "TEACHES", "skill:spring", "Spring Boot"));
+                    new GraphStore.Neighbor("skill:java", "PREREQUISITE", "skill:spring", "Spring Boot",
+                            GraphExpansionPolicy.Direction.OUTGOING, 1D, "seed", "active", "skill"),
+                    new GraphStore.Neighbor("res:spring-guide", "TEACHES", "skill:spring", "Spring Boot",
+                            GraphExpansionPolicy.Direction.OUTGOING, 1D, "seed", "active", "skill"));
             assertThat(neighbors).noneMatch(n -> n.dstId().equals("skill:hidden"));
+
+            List<GraphStore.Neighbor> prerequisites = store
+                    .expand(List.of("skill:spring"), 5, 10,
+                            GraphExpansionPolicy.of(new GraphExpansionPolicy.Rule(
+                                    "PREREQUISITE", GraphExpansionPolicy.Direction.INCOMING)),
+                            GraphScope.publicOnly());
+            assertThat(prerequisites).containsExactly(
+                    new GraphStore.Neighbor("skill:spring", "PREREQUISITE", "skill:java", "Java",
+                            GraphExpansionPolicy.Direction.INCOMING, 1D, "seed", "active", "skill"));
         }
     }
 }

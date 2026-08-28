@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-/** Adds a safe request trace identifier to logs and every HTTP response. */
+/** 为日志和每个 HTTP 响应添加安全的请求追踪标识。 */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestTraceFilter extends OncePerRequestFilter {

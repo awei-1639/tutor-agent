@@ -23,8 +23,8 @@ wait_http() {
   return 1
 }
 
-# A smoke test must exercise the current workspace; reusing a tagged local image
-# could otherwise report success for code and migrations from an earlier build.
+# 烟雾测试必须覆盖当前工作区；复用带标签的本地镜像可能会错误报告先前构建的
+# 代码和迁移已通过。
 "${compose[@]}" up -d --build
 wait_http "http://127.0.0.1:${backend_port}/healthz" "backend healthz"
 wait_http "http://127.0.0.1:${backend_port}/readyz" "backend readyz"

@@ -80,6 +80,8 @@ node evals/run_eval.mjs --ci
 
 `--smoke` 只跑少量样本，用于验证依赖和链路；完整 Golden Set 才能作为发布门禁。结果写入 `evals/results/`，并尝试写入 PostgreSQL 的 `eval_runs`。
 
+同一脚本还会调用真实的 `POST /internal/route`。路由结果除了总体 Accuracy，还会输出意图与检索 facet 的 Precision/Recall/F1、Macro-F1、混淆矩阵，以及“领域内问题误判为越界”的比例。`--ci` 模式下，路由 Accuracy、意图/Facet Macro-F1、Facet Exact-Match 和越界假阴性率任一不达标都会阻断发布；`--skip-router` 仅适用于检索链路诊断。
+
 启动前端后打开 RAG 评测页面，页面支持启动真实评测、查看运行历史、总体指标、分类切片、历史基线和失败用例根因。
 
 后端评测接口：
@@ -108,6 +110,16 @@ RAG_EVAL_MIN_OVERALL_HIT=0.70
 RAG_EVAL_MIN_OVERALL_RECALL=0.40
 RAG_EVAL_MIN_MULTI_HOP_HIT=0.50
 RAG_EVAL_MAX_ERRORS=0
+```
+
+路由门禁默认值：
+
+```text
+router_accuracy >= 0.85
+router_macro_f1 >= 0.80
+router_facet_exact_match >= 0.85
+router_facet_macro_f1 >= 0.80
+in_scope_to_out_of_scope <= 0.05
 ```
 
 完整 Golden Set 通过质量门禁后才标记为 `releaseEligible=true`。抽样运行只能用于诊断，状态会是 `sample_only`，不能作为发布证明。

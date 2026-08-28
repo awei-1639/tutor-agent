@@ -45,7 +45,7 @@ class ChatControllerTest {
             events.onStage("routing");
             events.onExpertDone("resume", "timeout", "专家执行超时");
             events.onCitations(List.of(new Evidence("skill:java", "skill", "skill|Java|基础", 0.9, null,
-                    "https://docs.oracle.com/en/java/")));
+                    "https://docs.oracle.com/en/java/", "verified", null)));
             events.onToken("hello");
             events.onDone(9L, "hello", "pending", List.of());
             return null;

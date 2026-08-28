@@ -2,39 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+  --canvas: #f1f0eb;
+  --ink: #181817;
+  --muted: #74736d;
+  --signal: #3155d9;
+}
 html, body, #root { height: 100%; }
 body {
   font-feature-settings: 'cv02', 'cv03', 'cv11';
-  color: #111a2e;
-  background: #f7f8fc;
+  color: #18181b;
+  background: var(--canvas);
 }
 
-::selection { background: rgba(118, 87, 246, .2); }
+::selection { background: rgba(49, 85, 217, .18); }
 
 .app-shell {
-  background: #f7f8fc;
+  background: transparent;
 }
 
 .app-sidebar {
-  background: linear-gradient(165deg, #17213d 0%, #11182d 58%, #0c1223 100%);
-  box-shadow: 18px 0 45px rgba(17, 24, 39, .08);
+  background: #181817;
+  box-shadow: none;
 }
 
 .brand-mark {
-  background: #6045d5;
+  background: #3155d9;
+  color: #171717;
   box-shadow: none;
 }
 
 .glass-panel {
-  background: #fff;
-  border: 1px solid #e5e8f0;
-  box-shadow: 0 4px 18px rgba(33, 39, 76, .06);
+  background: #f8f7f3;
+  border: 1px solid #d9d8d1;
+  box-shadow: none;
 }
 
+.workspace-heading {
+  letter-spacing: -.035em;
+  font-weight: 650;
+}
+
+.quiet-button {
+  color: #71717a;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+.quiet-button:hover { color: #18181b; background: #f4f4f5; }
+
 /* 卡片悬停 */
-.card { @apply bg-white/80 border border-white rounded-xl shadow-soft transition; }
-.card:hover { @apply shadow-lift border-white; }
+.card { @apply bg-white border border-ink-100 rounded-xl transition; }
+.card:hover { @apply border-ink-300; }
+
+.editorial-rule { border-color: #d4d3cc; }
+.editorial-kicker { color: #3155d9; letter-spacing: .16em; text-transform: uppercase; font-size: 10px; font-weight: 700; }
 
 /* 引用标号 */
 .cite-ref {
@@ -53,8 +74,14 @@ body {
 .prose-chat code { @apply px-1 py-0.5 bg-ink-100 rounded text-sm font-mono; }
 .prose-chat pre { @apply bg-ink-900 text-ink-50 p-3 rounded my-2 overflow-x-auto; }
 .prose-chat pre code { @apply bg-transparent text-ink-50 p-0; }
-.prose-chat blockquote { @apply border-l-4 border-ink-200 pl-3 my-2 text-ink-700; }
+.prose-chat blockquote { @apply border-l border-ink-300 pl-3 my-2 text-ink-700; }
 
 .login-shell {
-  background: #f5f7fb;
+  background: #f1f0eb;
 }
+
+button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(49, 85, 217, .24); outline-offset: 2px; }
+* { scrollbar-width: thin; scrollbar-color: #a1a1aa transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #a1a1aa; border: 2px solid transparent; border-radius: 999px; background-clip: content-box; }

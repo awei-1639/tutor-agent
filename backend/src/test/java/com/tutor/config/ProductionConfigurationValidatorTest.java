@@ -19,7 +19,8 @@ class ProductionConfigurationValidatorTest {
         LlmProperties llm = new LlmProperties(
                 new LlmProperties.Endpoint("", "https://api.deepseek.com"),
                 new LlmProperties.Endpoint("silicon-key", "https://api.siliconflow.cn/v1"),
-                routing(), new LlmProperties.Budget(1, 1), new LlmProperties.Timeout(1, 1, 1));
+                routing(), new LlmProperties.Budget(1, 1), new LlmProperties.Timeout(1, 1, 1, 25),
+                LlmProperties.TokenLimits.defaults());
 
         assertThrows(IllegalStateException.class, () -> validator(llm,
                 new OssProperties(false, "", "", "", "", "", ""),
@@ -33,15 +34,25 @@ class ProductionConfigurationValidatorTest {
                 new Mem0Properties(true, "https://api.mem0.ai", "", 2)).afterSingletonsInstantiated());
     }
 
+    @Test
+    void rejectsEnabledOcrWithoutCredentials() {
+        assertThrows(IllegalStateException.class, () -> new ProductionConfigurationValidator(validLlm(),
+                new OssProperties(false, "", "", "", "", "", ""),
+                new Mem0Properties(false, "", "", 2), new ClamAvProperties(false, "", 0, 2),
+                new AliyunOcrProperties(true, "cn-hangzhou", "", "", 80, 100, 15)).afterSingletonsInstantiated());
+    }
+
     private static ProductionConfigurationValidator validator(LlmProperties llm, OssProperties oss, Mem0Properties mem0) {
-        return new ProductionConfigurationValidator(llm, oss, mem0);
+        return new ProductionConfigurationValidator(llm, oss, mem0, new ClamAvProperties(false, "", 0, 2),
+                new AliyunOcrProperties(false, "", "", "", 80, 100, 15));
     }
 
     private static LlmProperties validLlm() {
         return new LlmProperties(
                 new LlmProperties.Endpoint("deepseek-key", "https://api.deepseek.com"),
                 new LlmProperties.Endpoint("silicon-key", "https://api.siliconflow.cn/v1"),
-                routing(), new LlmProperties.Budget(100, 10), new LlmProperties.Timeout(1, 1, 1));
+                routing(), new LlmProperties.Budget(100, 10), new LlmProperties.Timeout(1, 1, 1, 25),
+                LlmProperties.TokenLimits.defaults());
     }
 
     private static Map<String, String> routing() {

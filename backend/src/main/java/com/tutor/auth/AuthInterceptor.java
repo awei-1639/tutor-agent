@@ -68,7 +68,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             return false;
         }
         req.setAttribute(USER_ID_ATTR, uid);
-        AuthContext.set(uid);
+        AuthContext.set(uid, jwt.parseTenantId(token));
         return true;
     }
 

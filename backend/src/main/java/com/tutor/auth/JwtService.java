@@ -16,6 +16,8 @@ import java.time.Duration;
  */
 @Component
 public class JwtService {
+    public record Principal(long userId, String tenantId) { }
+
     private final SecretKey key;
     private static final long ACCESS_TTL_MS = Duration.ofMinutes(15).toMillis();
 
@@ -26,24 +28,32 @@ public class JwtService {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** 签发 token: subject=userId, claims={name} */
-    public String issue(long userId, String name) {
+    public String issue(long userId, String name, String tenantId) {
         Date now = new Date();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("name", name == null ? "" : name)
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + ACCESS_TTL_MS))
-                .signWith(key)
-                .compact();
+                .expiration(new Date(now.getTime() + ACCESS_TTL_MS));
+        if (tenantId != null && !tenantId.isBlank()) builder.claim("tenant_id", tenantId.trim());
+        return builder.signWith(key).compact();
     }
 
     /** 解析 token: 失败返回 null (静默降级) */
     public Long parse(String token) {
+        Principal principal = parsePrincipal(token);
+        return principal == null ? null : principal.userId();
+    }
+
+    public String parseTenantId(String token) {
+        Principal principal = parsePrincipal(token);
+        return principal == null ? null : principal.tenantId();
+    }
+
+    public Principal parsePrincipal(String token) {
         try {
-            String sub = Jwts.parser().verifyWith(key).build()
-                    .parseSignedClaims(token).getPayload().getSubject();
-            return Long.valueOf(sub);
+            var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+            return new Principal(Long.parseLong(claims.getSubject()), claims.get("tenant_id", String.class));
         } catch (Exception e) {
             return null;
         }

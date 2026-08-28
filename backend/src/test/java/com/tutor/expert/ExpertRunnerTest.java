@@ -1,5 +1,6 @@
 package com.tutor.expert;
 
+import com.tutor.contract.Intent;
 import com.tutor.config.LlmProperties;
 import com.tutor.context.TokenBudget;
 import com.tutor.contract.Evidence;
@@ -50,21 +51,24 @@ class ExpertRunnerTest {
 
     @Test
     void keepsCurrentQuestionAfterContextTruncation() {
-        String briefing = runner.briefing(
+        ExpertRunner.Briefing result = runner.buildBriefing(
                 "历史画像 ".repeat(5000),
-                List.of(new Evidence("skill:agent", "skill", "证据 ".repeat(2000), 0.9, null)),
-                "请分析 Agent 的失败重试和幂等设计"
-        );
+                List.of(new Evidence("skill:agent", "skill", "证据 ".repeat(2000), 0.9, null, null, null, null)),
+                "请分析 Agent 的失败重试和幂等设计");
+        String briefing = result.text();
 
         assertThat(briefing).contains("<request>")
                 .contains("请分析 Agent 的失败重试和幂等设计")
                 .endsWith("</request>");
+        assertThat(result.usage().profileOriginalTokens())
+                .isGreaterThanOrEqualTo(result.usage().profileAllocatedTokens());
+        assertThat(result.usage().questionTokens()).isGreaterThan(0);
     }
 
     @Test
     void citationIdsOnlyIncludeEvidenceBlocksThatSurvivedBudgeting() {
         List<Evidence> evidences = java.util.stream.IntStream.rangeClosed(1, 10)
-                .mapToObj(i -> new Evidence("skill:" + i, "skill", "证据 " + i + "复杂内容".repeat(5000), 0.9, null))
+                .mapToObj(i -> new Evidence("skill:" + i, "skill", "证据 " + i + "复杂内容".repeat(5000), 0.9, null, null, null, null))
                 .toList();
 
         ExpertRunner.Briefing briefing = runner.buildBriefing("", evidences, "请分析这些证据");
@@ -91,6 +95,12 @@ class ExpertRunnerTest {
 
         assertThatThrownBy(() -> runner.run(List.of("resume"), "briefing", "trace", null))
                 .isInstanceOf(ExpertRunner.ExpertUnavailableException.class);
+    }
+
+    @Test
+    void mixedSubIntentsDispatchOnlyRequestedExperts() {
+        assertThat(ExpertRunner.expertsFor(List.of(Intent.RESUME, Intent.INTERVIEW)))
+                .containsExactly("resume", "interview");
     }
 
     @Test
@@ -188,6 +198,6 @@ class ExpertRunnerTest {
                 Map.of("chat", "chat", "router", "router", "expert", "expert", "summary", "summary",
                         "extract", "extract", "embed", "embed"),
                 new LlmProperties.Budget(100_000, 10_000),
-                new LlmProperties.Timeout(1, 60, 120, expertSeconds));
+                new LlmProperties.Timeout(1, 60, 120, expertSeconds), LlmProperties.TokenLimits.defaults());
     }
 }

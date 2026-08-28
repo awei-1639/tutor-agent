@@ -5,8 +5,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Request-scoped cancellation signal shared by the SSE boundary and async work.
- * Listeners are invoked at most once when the request is cancelled.
+ * 由 SSE 边界和异步工作共享的请求级取消信号。请求取消时，监听器最多调用一次。
  */
 public final class CancellationToken {
     private final AtomicBoolean cancelled = new AtomicBoolean();
@@ -24,7 +23,7 @@ public final class CancellationToken {
             try {
                 listener.run();
             } catch (RuntimeException ignored) {
-                // Cancellation must remain best-effort even if one cleanup hook fails.
+                // 即使一个清理钩子失败，取消操作仍必须保持尽力而为。
             }
         }
         listeners.clear();
@@ -32,7 +31,7 @@ public final class CancellationToken {
     }
 
     /**
-     * Registers a cleanup hook and returns a handle that removes it after normal completion.
+     * 注册清理钩子，并返回一个可在正常完成后移除该钩子的句柄。
      */
     public AutoCloseable onCancel(Runnable listener) {
         Objects.requireNonNull(listener, "listener");

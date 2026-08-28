@@ -15,7 +15,7 @@ class InternalFeedbackControllerTest {
     void returnsAggregatedFeedbackWithoutExposingUserData() {
         MessageFeedbackService service = mock(MessageFeedbackService.class);
         MessageFeedbackService.Summary expected = new MessageFeedbackService.Summary(
-                4, 3, 1, List.of(new MessageFeedbackService.ReasonCount("citation_irrelevant", 1)), List.of());
+                4, 3, 1, List.of(new MessageFeedbackService.ReasonCount("citation_irrelevant", 1)), List.of(), List.of());
         when(service.summary()).thenReturn(expected);
 
         assertThat(new InternalFeedbackController(service).summary()).isEqualTo(expected);

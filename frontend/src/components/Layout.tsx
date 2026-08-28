@@ -32,25 +32,25 @@ export default function Layout() {
         onClick={() => setMobileNavOpen(false)}
       />}
       <aside id="app-navigation" className={`app-sidebar fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 -translate-x-full flex-col overflow-hidden text-white transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${mobileNavOpen ? 'translate-x-0' : ''}`}>
-        <div className="px-5 py-6 border-b border-white/10 relative">
+        <div className="px-4 py-5 border-b border-white/10 relative">
           <div className="flex items-center gap-3">
-            <div className="brand-mark h-10 w-10 rounded-xl flex items-center justify-center text-lg font-black">T</div>
+            <div className="brand-mark h-8 w-8 rounded-sm flex items-center justify-center text-sm font-black text-white">T</div>
             <div>
-              <div className="text-[15px] font-semibold tracking-tight">学习与求职助手</div>
-              <div className="text-[10px] text-white/45 mt-0.5 tracking-[.14em] uppercase">Personal workspace</div>
+              <div className="text-[13px] font-semibold tracking-tight">学习与求职助手</div>
+              <div className="text-[10px] text-white/45 mt-0.5">个人成长工作台</div>
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 pt-5 space-y-1 relative">
-          <div className="px-3 pb-2 text-[10px] font-medium tracking-[.16em] text-white/35 uppercase">Workspace</div>
+        <nav className="flex-1 p-2 pt-4 space-y-0.5 relative">
+          <div className="px-3 pb-2 editorial-kicker text-white/35">工作区</div>
           {NAV.map(n => (
             <NavLink
               key={n.to}
               to={n.to}
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition ${
-                  isActive ? 'bg-white/13 text-white font-medium shadow-[inset_0_1px_0_rgba(255,255,255,.12)]' : 'text-white/60 hover:text-white hover:bg-white/8'
+                  `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
+                  isActive ? 'bg-[#3155d9] text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                 }`}
               >
               <NavIcon name={n.icon} />
@@ -59,13 +59,13 @@ export default function Layout() {
           ))}
           {isAdmin && (
             <>
-              <div className="px-3 pt-5 pb-2 text-[10px] font-medium tracking-[.16em] text-white/35 uppercase">Operations</div>
+              <div className="px-3 pt-5 pb-2 editorial-kicker text-white/35">管理</div>
               <NavLink
                 to="/admin"
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition ${
-                    isActive ? 'bg-white/13 text-white font-medium shadow-[inset_0_1px_0_rgba(255,255,255,.12)]' : 'text-white/60 hover:text-white hover:bg-white/8'
+                    `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
+                    isActive ? 'bg-[#3155d9] text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                   }`}
               >
                 <NavIcon name="admin" />
@@ -75,8 +75,8 @@ export default function Layout() {
                 to="/admin/documents"
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition ${
-                    isActive ? 'bg-white/13 text-white font-medium shadow-[inset_0_1px_0_rgba(255,255,255,.12)]' : 'text-white/60 hover:text-white hover:bg-white/8'
+                    `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
+                    isActive ? 'bg-[#3155d9] text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                   }`}
               >
                 <NavIcon name="knowledge" />
@@ -86,8 +86,8 @@ export default function Layout() {
           )}
         </nav>
         <div className="p-4 border-t border-white/10 relative">
-          <div className="flex items-center gap-2.5 rounded-xl bg-white/7 p-2.5">
-            <div className="h-8 w-8 rounded-lg bg-accent-600 flex items-center justify-center text-xs font-bold">{(name || 'U').slice(0, 1).toUpperCase()}</div>
+          <div className="flex items-center gap-2.5 rounded-md bg-white/6 p-2">
+            <div className="h-7 w-7 rounded-md bg-white/15 flex items-center justify-center text-[11px] font-bold">{(name || 'U').slice(0, 1).toUpperCase()}</div>
             <div className="min-w-0 flex-1">
               <div className="text-xs text-white font-medium truncate">{name || '用户'}</div>
               <div className="text-[10px] text-white/40 mt-0.5">ID · {getUserId()}</div>
@@ -96,7 +96,7 @@ export default function Layout() {
           <button
             type="button"
             onClick={() => { void api.logout().catch(() => undefined); clearToken(); nav('/login'); }}
-            className="mt-3 min-h-11 px-2 text-left text-xs text-white/45 transition hover:text-white"
+            className="mt-2 min-h-9 px-2 text-left text-xs text-white/40 transition hover:text-white"
           >
             退出登录
           </button>

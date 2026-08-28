@@ -18,7 +18,7 @@ import java.time.Duration;
  * 认证端点 (Phase 4 V4 4.x): 注册 + 登录。
  * - POST /auth/register: email + password + name → token
  * - POST /auth/login: email + password → token
- * /auth/login 单参数模式 (name only) 保留为 dev 入口, 自动建账号
+ * /auth/dev-login 仅在开发配置显式开启时可用，自动创建开发账号
  */
 @RestController
 @RequestMapping("/auth")
@@ -47,7 +47,7 @@ public class AuthController {
             @Email @NotBlank String email,
             @NotBlank String password) {}
 
-    /** Dev 单用户模式: name 直接登录 (向后兼容) */
+    /** 开发环境单用户登录请求。 */
     public record DevLoginRequest(@NotBlank String name) {}
 
     @PostMapping("/register")
@@ -70,7 +70,7 @@ public class AuthController {
         }
     }
 
-    /** Dev 兼容: 单字段 name 登录, 自动创建 user_id=1 占位 */
+    /** 开发环境单字段 name 登录，自动创建开发账号。 */
     @PostMapping("/dev-login")
     public ResponseEntity<Map<String, Object>> devLogin(@Valid @RequestBody DevLoginRequest req) {
         if (!devLoginEnabled) {
@@ -110,7 +110,7 @@ public class AuthController {
     }
 
     private ResponseEntity<Map<String, Object>> authenticated(AuthService.AuthResult result) {
-        // Browser authentication is cookie-only. Do not expose an access token to JavaScript.
+        // 浏览器认证仅使用 Cookie，绝不向 JavaScript 暴露访问令牌。
         return ResponseEntity.ok()
                 .header("Set-Cookie", accessCookie(result.token()).toString())
                 .header("Set-Cookie", refreshCookie(result.refreshToken()).toString())

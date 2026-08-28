@@ -49,29 +49,36 @@ export default function LoginPage() {
 
   return (
     <div className="login-shell relative h-full min-h-[680px] flex items-center justify-center overflow-hidden p-6">
-      <div className="relative w-full max-w-[440px] bg-white rounded-2xl shadow-lift border border-ink-100 p-8 sm:p-9">
-        <div className="flex items-center gap-3 mb-7">
+      <div className="absolute -left-24 top-20 h-72 w-72 rounded-full bg-accent-300/20 blur-3xl" />
+      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/70 bg-white/78 shadow-[0_32px_90px_rgba(45,35,107,.18)] backdrop-blur-xl lg:grid-cols-[1.05fr_.95fr]">
+        <section className="hidden min-h-[620px] flex-col justify-between bg-[#20184d] p-12 text-white lg:flex">
+          <div className="flex items-center gap-3"><div className="brand-mark h-11 w-11 rounded-xl flex items-center justify-center text-lg font-black">T</div><span className="font-semibold">学习与求职助手</span></div>
+          <div><h1 className="max-w-md text-5xl font-semibold leading-[1.08] tracking-[-.035em]">让每一次投入，都成为更好的自己。</h1><p className="mt-6 max-w-sm text-sm leading-7 text-white/60">把学习、项目与职业选择放进同一个清晰的成长工作台。</p></div>
+          <div className="flex gap-7 text-xs text-white/55"><span>AI 深度陪练</span><span>可溯源建议</span><span>持续成长</span></div>
+        </section>
+        <div className="relative w-full p-8 sm:p-12">
+        <div className="flex items-center gap-3 mb-10 lg:hidden">
           <div className="brand-mark h-11 w-11 rounded-xl text-white flex items-center justify-center text-lg font-black">T</div>
           <div><div className="text-sm font-semibold text-ink-900">学习与求职助手</div><div className="text-[11px] text-ink-500 mt-0.5">你的成长工作台</div></div>
         </div>
-        <div className="text-2xl font-semibold tracking-tight text-ink-900 mb-1">{mode === 'login' ? '欢迎回来' : '开启你的成长之旅'}</div>
+        <div className="text-3xl font-semibold tracking-[-.03em] text-ink-900 mb-2">{mode === 'login' ? '欢迎回来' : '创建你的工作台'}</div>
         <div className="text-sm text-ink-500 mb-6 leading-relaxed">
           {mode === 'login' ? '登录继续你的学习' : '创建账号开始'}
         </div>
 
         {/* Tab 切换 */}
-        <div className="flex gap-1 mb-6 p-1 bg-ink-100/70 rounded-xl">
+        <div className="flex gap-1 mb-7 p-1 bg-ink-100/70 rounded-xl">
           <button
             type="button"
             onClick={() => setMode('login')}
-            className={`flex-1 py-2 text-sm rounded-lg transition ${mode === 'login' ? 'bg-white text-ink-900 shadow-soft font-medium' : 'text-ink-500 hover:text-ink-700'}`}
+            className={`flex-1 py-2.5 text-sm rounded-lg transition ${mode === 'login' ? 'bg-white text-ink-900 shadow-soft font-semibold' : 'text-ink-500 hover:text-ink-700'}`}
           >
             登录
           </button>
           <button
             type="button"
             onClick={() => setMode('register')}
-            className={`flex-1 py-2 text-sm rounded-lg transition ${mode === 'register' ? 'bg-white text-ink-900 shadow-soft font-medium' : 'text-ink-500 hover:text-ink-700'}`}
+            className={`flex-1 py-2.5 text-sm rounded-lg transition ${mode === 'register' ? 'bg-white text-ink-900 shadow-soft font-semibold' : 'text-ink-500 hover:text-ink-700'}`}
           >
             注册
           </button>
@@ -109,7 +116,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !email.trim() || !password}
-            className="w-full px-4 py-3 bg-accent-600 hover:bg-accent-700 disabled:bg-ink-200 text-white rounded-xl font-medium transition"
+            className="w-full px-4 py-3.5 bg-accent-600 hover:bg-accent-700 disabled:bg-ink-200 text-white rounded-xl font-semibold shadow-[0_12px_22px_rgba(96,69,213,.25)] transition"
           >
             {loading ? '处理中…' : mode === 'login' ? '登录' : '注册并登录'}
           </button>
@@ -133,6 +140,7 @@ export default function LoginPage() {
               dev 进入
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>

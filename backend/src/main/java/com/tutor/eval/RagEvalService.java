@@ -4,8 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Evidence;
 import com.tutor.config.ExecutorLifecycle;
+import com.tutor.expert.IntentRouter;
+import com.tutor.expert.RoutingPolicy;
+import com.tutor.retrieval.GraphScope;
 import com.tutor.retrieval.agentic.AgenticRetriever;
 import com.tutor.retrieval.fusion.FusedRetriever;
+import com.tutor.retrieval.graph.GraphExpansionPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -184,7 +188,7 @@ public class RagEvalService {
             List<String> gold = strings(testCase.path("gold"));
             long started = System.nanoTime();
             try {
-                List<Evidence> results = retrieve(mode, query, topK, "eval-" + runId + "-" + mode + "-" + caseId);
+                List<Evidence> results = retrieve(mode, testCase, topK, "eval-" + runId + "-" + mode + "-" + caseId);
                 List<String> retrieved = results.stream().map(Evidence::nodeId).toList();
                 List<String> hits = gold.stream().filter(retrieved::contains).distinct().toList();
                 int firstRank = firstRank(retrieved, new LinkedHashSet<>(gold));
@@ -232,13 +236,31 @@ public class RagEvalService {
         return result;
     }
 
-    private List<Evidence> retrieve(String mode, String query, int topK, String traceId) {
+    private List<Evidence> retrieve(String mode, JsonNode evalCase, int topK, String traceId) {
+        String query = evalCase.path("query").asText();
+        boolean multiHop = "agentic".equals(mode);
+        GraphExpansionPolicy policy = GraphExpansionPolicy.forFacets(
+                evalFacets(evalCase.path("gold_intent").asText()),
+                multiHop ? IntentRouter.RetrievalHint.MULTI_CANDIDATE : IntentRouter.RetrievalHint.SINGLE);
+        GraphScope scope = GraphScope.publicOnly();
         return switch (mode) {
-            case "vector_only" -> fusedRetriever.retrieve(query, topK, traceId, false, false);
-            case "fused" -> fusedRetriever.retrieve(query, topK, traceId, true, false);
-            case "fused_rerank" -> fusedRetriever.retrieve(query, topK, traceId, true, true);
-            case "agentic" -> agenticRetriever.retrieve(query, topK, traceId);
+            case "vector_only" -> fusedRetriever.retrieve(query, topK, traceId, false, false, policy, scope).evidences();
+            case "fused" -> fusedRetriever.retrieve(query, topK, traceId, true, false, policy, scope).evidences();
+            case "fused_rerank" -> fusedRetriever.retrieve(query, topK, traceId, true, true, policy, scope).evidences();
+            case "agentic" -> agenticRetriever.retrieveAdaptiveResult(
+                    query, topK, traceId, true, policy, scope).evidences();
             default -> throw new IllegalArgumentException("unsupported eval mode: " + mode);
+        };
+    }
+
+    /** 评测选择由数据集声明，不能在脚本中用问题文本再建一套隐式路由规则。 */
+    private static List<RoutingPolicy.RetrievalFacet> evalFacets(String goldIntent) {
+        return switch (goldIntent) {
+            case "find_resource" -> List.of(RoutingPolicy.RetrievalFacet.RESOURCE);
+            case "find_job" -> List.of(RoutingPolicy.RetrievalFacet.CAREER);
+            case "learn_path" -> List.of(RoutingPolicy.RetrievalFacet.LEARNING);
+            case "learn" -> List.of();
+            default -> throw new IllegalArgumentException("unsupported eval gold_intent: " + goldIntent);
         };
     }
 

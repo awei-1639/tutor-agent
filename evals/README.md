@@ -21,6 +21,18 @@ node evals/run_eval.mjs
 node evals/run_eval.mjs --ci
 ```
 
+路由评测结果会保留逐条 `calibration_samples`，可用真实标注结果拟合越界校准模型：
+
+```powershell
+node scripts/collect-routing-calibration.mjs
+node scripts/fit-routing-calibration.mjs `
+  .\evals\results\router_calibration_<timestamp>.json `
+  --output .\backend\src\main\resources\routing\isotonic-oos-v1.json `
+  --version routing-oos-isotonic-dev-v1
+```
+
+训练脚本默认要求至少 50 条“预测为越界”的样本，并且同时包含真阳性和误判反例；只有开发验证时才允许加 `--allow-small`。仓库现有 30 条路由用例仅适合生成开发模型，不足以作为生产校准依据。
+
 面试评分 replay 不会再次调用模型。输入可以是 `ReplayRequest` 对象，也可以直接是 cases 数组；每条记录必须带 `reviewerCount`，并达到至少两名独立评审：
 
 ```powershell

@@ -31,9 +31,8 @@ public class LlmBudgetGuard {
         try {
             reserveDay(amount);
         } catch (RuntimeException error) {
-            // The turn reservation must not survive a failed daily reservation.
-            // This is especially important when the second statement fails outside
-            // a real transaction (tests, replicas, or a transient DB connection loss).
+            // 单轮预留不得在每日预留失败后继续存在。这在第二条语句位于真实事务外失败时
+            // 尤其重要，例如测试、副本或瞬时数据库连接丢失。
             try {
                 jdbc.update("""
                         UPDATE llm_turn_budget
@@ -41,9 +40,8 @@ public class LlmBudgetGuard {
                         WHERE trace_id=?
                         """, amount, traceId);
             } catch (RuntimeException rollbackFailure) {
-                // Never hide the daily-limit failure. A real transaction will
-                // roll back both statements; this log covers non-transactional
-                // test adapters and transient connection failures.
+                // 不得掩盖每日限额失败。真实事务会回滚两条语句；此日志覆盖非事务测试
+                // 适配器和瞬时连接失败。
                 log.error("failed to roll back turn token reservation trace={}: {}",
                         traceId, rollbackFailure.getMessage());
             }
@@ -86,10 +84,8 @@ public class LlmBudgetGuard {
     @Transactional
     public void settle(String traceId, long reservedTokens, long actualTokens) {
         long reserved = Math.max(0, reservedTokens);
-        // Never let provider-reported usage push actual_tokens beyond the amount
-        // atomically reserved for this call. The estimate is intentionally the
-        // hard accounting ceiling; a provider with incompatible tokenization must
-        // not bypass the daily/turn limit.
+        // 供应商上报的用量不得让 actual_tokens 超过本次调用原子预留的数量。估算值被
+        // 刻意作为记账硬上限；分词方式不兼容的供应商不得绕过每日/单轮限额。
         long actual = Math.min(reserved, Math.max(0, actualTokens));
         jdbc.update("""
                 UPDATE llm_turn_budget

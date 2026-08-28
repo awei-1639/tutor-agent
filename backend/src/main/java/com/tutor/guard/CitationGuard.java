@@ -1,14 +1,18 @@
 package com.tutor.guard;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmGateway;
+import com.tutor.llm.JsonGenerationGateway;
+import com.tutor.llm.structured.CitationGuardOutput;
+import com.tutor.llm.structured.StructuredOutputResult;
+import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.llm.structured.StructuredTask;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,11 +41,18 @@ public class CitationGuard {
             输出 JSON {"claims":[{"text":"...","sid":"S1","verdict":"supported|unsupported"}], "summary":"N条/M条被支撑"}
             """;
 
-    private final LlmGateway gateway;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final JsonGenerationGateway gateway;
+    private final StructuredOutputService structuredOutputService;
 
-    public CitationGuard(LlmGateway gateway) {
+    public CitationGuard(JsonGenerationGateway gateway) {
+        this(gateway, new StructuredOutputService(gateway, null));
+    }
+
+    @Autowired
+    public CitationGuard(JsonGenerationGateway gateway,
+                         StructuredOutputService structuredOutputService) {
         this.gateway = gateway;
+        this.structuredOutputService = structuredOutputService;
     }
 
     /**
@@ -88,20 +99,28 @@ public class CitationGuard {
         String prompt = "回答:\n" + safeAnswer + "\n\n引用的证据:\n" + evidenceList;
 
         try {
-            String json = gateway.chatJson(Purpose.JUDGE, List.of(
-                    SystemMessage.from(SYS), UserMessage.from(prompt)), traceId);
-            var node = mapper.readTree(json);
+            StructuredOutputResult<CitationGuardOutput> structured = structuredOutputService.generate(
+                    StructuredTask.CITATION_GUARD,
+                    Purpose.JUDGE,
+                    List.of(SystemMessage.from(SYS), UserMessage.from(prompt)),
+                    CitationGuardOutput.class,
+                    output -> {
+                        if (output.claims() == null || output.claims().isEmpty()) {
+                            throw new IllegalArgumentException("citation claims must not be empty");
+                        }
+                    },
+                    traceId
+            );
+            if (!structured.success()) throw new IllegalStateException("citation guard structured output invalid");
+            CitationGuardOutput output = structured.value();
             int supported = 0, unsupported = 0;
             List<String> issues = new ArrayList<>();
             List<String> invalidJudgeReferences = new ArrayList<>();
-            if (!node.path("claims").isArray()) {
-                throw new IllegalStateException("citation guard response has no claims array");
-            }
             int claims = 0;
-            for (var c : node.path("claims")) {
+            for (CitationGuardOutput.Claim c : output.claims()) {
                 if (++claims > MAX_CLAIMS) break;
-                String verdict = c.path("verdict").asText("");
-                String sid = c.path("sid").asText("");
+                String verdict = c.verdict() == null ? "" : c.verdict();
+                String sid = c.sid() == null ? "" : c.sid();
                 boolean knownCitation = !sid.isBlank() && usedIndices.stream()
                         .map(index -> "S" + (index + 1))
                         .anyMatch(sid::equals);
@@ -109,7 +128,7 @@ public class CitationGuard {
                     supported++;
                 } else {
                     unsupported++;
-                    String issue = c.path("text").asText("");
+                    String issue = c.text() == null ? "" : c.text();
                     if (!knownCitation && !sid.isBlank()) {
                         if (!invalidJudgeReferences.contains(sid)) invalidJudgeReferences.add(sid);
                         issue = "无效引用编号 " + sid + "：" + issue;
@@ -123,9 +142,8 @@ public class CitationGuard {
             int total = supported + unsupported;
             double rate = total > 0 ? (double) supported / total : 1.0;
             log.info("护栏 trace={} supported={}/{} rate={}", traceId, supported, total, rate);
-            // An invalid citation id is a distinct integrity failure.  Do not
-            // collapse it into the softer "unsupported" verdict merely because
-            // another, valid citation was also present in the answer.
+            // 无效引用 ID 是独立的完整性失败，不能仅因回答中还存在其他有效引用，
+            // 就将其弱化为“证据不足”的结论。
             issues.addAll(invalidJudgeReferences);
             String status = !invalidReferences.isEmpty() || !invalidJudgeReferences.isEmpty()
                     ? "invalid_reference"

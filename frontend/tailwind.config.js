@@ -4,15 +4,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: { 50: '#f7f8fc', 100: '#edf0f7', 200: '#dce1ec', 300: '#b9c1d1', 500: '#647087', 700: '#34405a', 900: '#111a2e' },
-        accent: { 50: '#f2efff', 500: '#7657f6', 600: '#6242e8', 700: '#4f31c6' },
+        ink: { 50: '#f7f7f4', 100: '#e9e8e2', 200: '#d5d4cc', 300: '#b4b3ac', 500: '#74736d', 700: '#45443f', 900: '#181817' },
+        accent: { 50: '#eef2ff', 500: '#3155d9', 600: '#2747c2', 700: '#203aa1' },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'sans-serif'],
       },
       boxShadow: {
-        soft: '0 2px 8px rgba(30,41,59,0.05), 0 1px 2px rgba(30,41,59,0.04)',
-        lift: '0 18px 45px rgba(38,31,84,0.12), 0 4px 12px rgba(30,41,59,0.06)',
+        soft: '0 2px 8px rgba(24,24,23,0.05), 0 1px 2px rgba(24,24,23,0.04)',
+        lift: '0 18px 45px rgba(24,24,23,0.10), 0 4px 12px rgba(24,24,23,0.05)',
       },
     },
   },
