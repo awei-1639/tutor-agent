@@ -14,6 +14,13 @@ function interviewSession(status = 'IN_PROGRESS') {
 }
 
 test.beforeEach(async ({ context, page }) => {
+  // InterviewPage 从 sessionStorage 恢复进行中的面试，且只在没有 session 时渲染目标岗位表单。
+  // 串行执行会复用同一个 worker，上一个用例残留的 session 会让下一个用例等不到表单。
+  await page.addInitScript(() => {
+    sessionStorage.removeItem('tutor_active_interview_session');
+    sessionStorage.removeItem('tutor_active_interview_turn');
+    sessionStorage.removeItem('tutor_active_interview_retry');
+  });
   await context.addCookies([
     { name: 'tutor_access', value: 'test-access', domain: '127.0.0.1', path: '/', httpOnly: true, sameSite: 'Lax' },
     { name: 'tutor_csrf', value: 'test-csrf', domain: '127.0.0.1', path: '/', httpOnly: false, sameSite: 'Lax' },
