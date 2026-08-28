@@ -11,7 +11,9 @@ test.describe('real-stack smoke flow', () => {
     await page.goto('/login');
     await page.getByRole('button', { name: '注册' }).click();
     await page.getByPlaceholder('昵称 (可选, 默认取邮箱前缀)').fill('E2E User');
-    await page.getByPlaceholder('邮箱').fill(email);
+    // 昵称占位符里也含“邮箱”二字，getByPlaceholder 默认按子串匹配会命中两个输入框，
+    // 这里要求精确匹配。
+    await page.getByPlaceholder('邮箱', { exact: true }).fill(email);
     await page.getByPlaceholder('密码 (≥6 字符)').fill('correct-horse');
     await page.getByRole('button', { name: '注册并登录' }).click();
 
