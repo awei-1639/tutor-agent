@@ -14,9 +14,13 @@ function interviewSession(status = 'IN_PROGRESS') {
 }
 
 test.beforeEach(async ({ context, page }) => {
-  // InterviewPage 从 sessionStorage 恢复进行中的面试，且只在没有 session 时渲染目标岗位表单。
-  // 串行执行会复用同一个 worker，上一个用例残留的 session 会让下一个用例等不到表单。
+  // /interview 是受保护路由，App 的守卫用 localStorage.tutor_user_id 判断会话。
+  // 依赖 mock 登录写入该值存在时序竞态（CI 较慢时 goto 先执行，守卫会重定向回 /login，
+  // 目标岗位表单便不存在）。这里直接预置会话提示，让用例专注面试页本身。
+  // 同时清理 InterviewPage 的 sessionStorage 恢复键：串行执行会复用 worker，
+  // 上一个用例残留的 session 会让表单不渲染。
   await page.addInitScript(() => {
+    localStorage.setItem('tutor_user_id', '7');
     sessionStorage.removeItem('tutor_active_interview_session');
     sessionStorage.removeItem('tutor_active_interview_turn');
     sessionStorage.removeItem('tutor_active_interview_retry');
@@ -38,6 +42,8 @@ async function loginAndOpen(page: Page) {
   await page.locator('input[type="password"]').fill('correct-horse');
   await page.locator('form').getByRole('button', { name: '登录' }).click();
   await page.goto('/interview');
+  // 等页面真正落在面试页，而不是被路由守卫重定向回 /login。
+  await expect(page.getByRole('heading', { name: '模拟面试' })).toBeVisible();
 }
 
 test('completes the interview and exposes asynchronous learning status', async ({ page }) => {
