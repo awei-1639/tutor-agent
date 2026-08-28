@@ -1,0 +1,135 @@
+name: RAG Eval (report-only)
+
+# 报告式检索评测：把 Golden Set 评测接进 CI，但当前不阻断构建。
+# 原因：run_eval.mjs 的 --ci 阈值是硬编码的，而当前真实指标 (路由/facet) 低于阈值，
+# 且 embedding 存在 ~1e-3 抖动 (见 scripts/check-embedding-determinism.mjs)。
+# 直接阻断会立刻红或被噪声误触发。先报告、上传 artifact，待用一次真实全量跑校准阈值后，
+# 再把 run_eval.mjs 换成 --ci 翻成阻断式门禁。
+#
+# 需要仓库 secret: SILICONFLOW_API_KEY (embedding), DEEPSEEK_API_KEY (router)。
+# 未配置时本 job 会跳过 (见下方 guard step)，不会让 PR 变红。
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend/src/main/java/com/tutor/retrieval/**'
+      - 'backend/src/main/java/com/tutor/context/**'
+      - 'backend/src/main/java/com/tutor/expert/**'
+      - 'graph_data/**'
+      - 'evals/**'
+
+permissions:
+  contents: read
+
+jobs:
+  rag-eval:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: tutor
+          POSTGRES_USER: tutor
+          POSTGRES_PASSWORD: eval_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tutor -d tutor"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      neo4j:
+        image: neo4j:5-community
+        env:
+          NEO4J_AUTH: neo4j/eval_ci_only
+          NEO4J_server_memory_heap_max__size: 1G
+        ports:
+          - 7474:7474
+          - 7687:7687
+        options: >-
+          --health-cmd "wget -qO- http://localhost:7474 >/dev/null 2>&1 || exit 1"
+          --health-interval 5s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Guard — require eval secrets
+        id: guard
+        env:
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          if [ -z "$SILICONFLOW_API_KEY" ] || [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::RAG eval skipped — SILICONFLOW_API_KEY / DEEPSEEK_API_KEY not configured."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up JDK 21
+        if: steps.guard.outputs.enabled == 'true'
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Node 20
+        if: steps.guard.outputs.enabled == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: Package backend
+        if: steps.guard.outputs.enabled == 'true'
+        working-directory: backend
+        run: mvn -B -DskipTests package
+
+      - name: Start backend
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          POSTGRES_PASSWORD: eval_ci_only
+          NEO4J_PASSWORD: eval_ci_only
+          JWT_SECRET: eval-ci-jwt-secret-must-be-at-least-32-chars
+          RESUME_ENC_KEY: eval-ci-resume-encryption-key-32chars
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          INTERNAL_ENDPOINTS_ENABLED: 'true'
+        run: |
+          java -jar backend/target/personal-ai-tutor-0.1.0-SNAPSHOT.jar > /tmp/backend.log 2>&1 &
+          echo $! > /tmp/backend.pid
+          for _ in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8180/readyz || true)
+            [ "$code" = "200" ] && { echo "backend ready"; break; }
+            if ! kill -0 "$(cat /tmp/backend.pid)" 2>/dev/null; then
+              echo "backend exited early"; tail -n 60 /tmp/backend.log; exit 1
+            fi
+            sleep 3
+          done
+
+      - name: Import seed (embeds via SiliconFlow)
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          SILICONFLOW_BASE_URL: https://api.siliconflow.cn/v1
+          OUT_DIR: /tmp/tutor-seed
+        run: |
+          node scripts/import_seed.mjs
+          PGPASSWORD=eval_ci_only psql -h 127.0.0.1 -U tutor -d tutor -q -f /tmp/tutor-seed/kg_chunks.sql
+          [ -f /tmp/tutor-seed/jobs.sql ] && PGPASSWORD=eval_ci_only psql -h 127.0.0.1 -U tutor -d tutor -q -f /tmp/tutor-seed/jobs.sql || true
+          cypher-shell -a bolt://127.0.0.1:7687 -u neo4j -p eval_ci_only < /tmp/tutor-seed/seed.cypher || true
+
+      - name: Run RAG eval (report-only, does not block)
+        if: steps.guard.outputs.enabled == 'true'
+        continue-on-error: true
+        run: node evals/run_eval.mjs
+
+      - name: Upload eval results
+        if: steps.guard.outputs.enabled == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rag-eval-results
+          path: evals/results/
+          if-no-files-found: warn
+
+      - name: Backend log tail
+        if: always() && steps.guard.outputs.enabled == 'true'
+        run: tail -n 40 /tmp/backend.log || true
