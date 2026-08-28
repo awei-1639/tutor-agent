@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// 本文件三个用例共用同一套 mock 路由和固定的 session-1，并发执行会相互干扰
+// （登录跳转与 page.route 拦截存在竞态，CI 上表现为随机超时）。改为串行。
+test.describe.configure({ mode: 'serial' });
+
 function interviewSession(status = 'IN_PROGRESS') {
   return {
     sessionId: 'session-1', status, targetRole: 'Agent 工程师', topic: 'Agent 工具调用',
