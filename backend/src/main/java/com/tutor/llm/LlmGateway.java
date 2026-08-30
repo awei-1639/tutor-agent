@@ -24,6 +24,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +73,9 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     private final ObjectMapper mapper = new ObjectMapper();
     private final StructuredOutputService structuredOutputService;
     private volatile GenAiTelemetry telemetry = new GenAiTelemetry(null);
+    private volatile BudgetPressureService budgetPressure;
+    /** 预留估算校准：实测/估算比值的 EMA（钳制 0.8~1.5，种子 1.2），只由供应商实测用量驱动。 */
+    private volatile double reserveCalibration = 1.2;
     private final ExecutorService streamingExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -106,6 +110,12 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         if (tracer != null) this.telemetry = new GenAiTelemetry(tracer);
     }
 
+    /** 可选注入预算压力感知；注入后 CHAT 输出上限在 ELEVATED 及以上收紧。 */
+    @Autowired(required = false)
+    void setBudgetPressure(BudgetPressureService budgetPressure) {
+        this.budgetPressure = budgetPressure;
+    }
+
     /** 查询/文档向量化。失败重试1次 (429/5xx/超时同一策略, Spike1结论: 轻量即可)。 */
     public float[] embed(String text, String traceId) {
         return embedInternal(text, traceId, false);
@@ -120,9 +130,9 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         String safeText = preserveHeadTail
                 ? tokenBudget.headTail(text, tokenLimits().embedInputTokens(), 0.6D)
                 : boundedText(text, tokenLimits().embedInputTokens());
-        long perAttemptEstimate = estimate(safeText);
+        long perAttemptEstimate = estimateText(safeText);
         long reserved = scaleEstimate(perAttemptEstimate, EMBED_MAX_ATTEMPTS);
-        budgetGuard.reserve(traceId, reserved);
+        LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, false);
         boolean acquired = false;
         long t0 = System.currentTimeMillis();
         RuntimeException last = null;
@@ -150,7 +160,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
             actual = failedEstimate;
             throw last;
         } finally {
-            settleAndRelease(traceId, reserved, actual, acquired);
+            settleAndRelease(reservation, actual, acquired);
         }
     }
 
@@ -164,9 +174,10 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         List<String> safeTexts = texts.stream()
                 .map(text -> boundedText(text, tokenLimits().embedInputTokens()))
                 .toList();
-        long perAttemptEstimate = safeTexts.stream().mapToLong(LlmGateway::estimate).sum();
+        long perAttemptEstimate = safeTexts.stream().mapToLong(this::estimateText).sum();
         long reserved = scaleEstimate(perAttemptEstimate, EMBED_MAX_ATTEMPTS);
-        budgetGuard.reserve(traceId, reserved);
+        // 批量嵌入属于知识入库等后台工作，占用后台子预算，不挤占前台可用额度。
+        LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, true);
         boolean acquired = false;
         long startedAt = System.currentTimeMillis();
         long actual = 0;
@@ -192,7 +203,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                     actual, 0, System.currentTimeMillis() - startedAt, "error_estimated_batch");
             throw last == null ? new IllegalStateException("embedding batch failed") : last;
         } finally {
-            settleAndRelease(traceId, reserved, actual, acquired);
+            settleAndRelease(reservation, actual, acquired);
         }
     }
 
@@ -212,10 +223,11 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         if (cancellation.isCancelled()) return;
         List<ChatMessage> safeMessages = boundedMessages(purpose, messages);
         long reserved = estimate(purpose, safeMessages);
-        budgetGuard.reserve(traceId, reserved);
+        LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, false);
         boolean acquired = false;
         AtomicBoolean finished = new AtomicBoolean();
         AtomicLong actualTokens = new AtomicLong();
+        AtomicBoolean truncated = new AtomicBoolean();
         java.util.concurrent.atomic.AtomicReference<InputStream> inputStream = new java.util.concurrent.atomic.AtomicReference<>();
         java.util.concurrent.atomic.AtomicReference<Future<?>> streamTask = new java.util.concurrent.atomic.AtomicReference<>();
         java.util.concurrent.atomic.AtomicReference<AutoCloseable> cancellationRegistration = new java.util.concurrent.atomic.AtomicReference<>();
@@ -223,20 +235,20 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
             concurrency.acquire();
             acquired = true;
             if (cancellation.isCancelled()) {
-                settleAndRelease(traceId, reserved, 0, true);
+                settleAndRelease(reservation, 0, true);
                 return;
             }
             String model = props.routing().getOrDefault(purpose.name().toLowerCase(), "deepseek-chat");
             Runnable finish = () -> {
                 if (finished.compareAndSet(false, true)) {
-                    settleAndRelease(traceId, reserved, actualTokens.get(), true);
+                    settleAndRelease(reservation, actualTokens.get(), true);
                     closeCancellationRegistration(cancellationRegistration);
                 }
             };
             HttpRequest request = chatStreamClient.buildRequest(model, safeMessages, outputLimit(purpose));
             Future<?> task = streamingExecutor.submit(() -> runStreamingRequest(
                     request, purpose, model, traceId, handler, cancellation, inputStream, finish,
-                    outputLimit(purpose)));
+                    outputLimit(purpose), actualTokens, truncated, reserved));
             streamTask.set(task);
             cancellationRegistration.set(cancellation.onCancel(() -> {
                 Future<?> running = streamTask.get();
@@ -260,10 +272,10 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
             }
         } catch (RuntimeException e) {
             if (acquired && finished.compareAndSet(false, true)) {
-                settleAndRelease(traceId, reserved, actualTokens.get(), true);
+                settleAndRelease(reservation, actualTokens.get(), true);
                 closeCancellationRegistration(cancellationRegistration);
             } else if (!acquired) {
-                settleAndRelease(traceId, reserved, 0, false);
+                settleAndRelease(reservation, 0, false);
             }
             throw e;
         }
@@ -272,7 +284,8 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     private void runStreamingRequest(HttpRequest request, Purpose purpose, String model, String traceId,
                                      StreamingChatResponseHandler handler, CancellationToken cancellation,
                                      java.util.concurrent.atomic.AtomicReference<InputStream> inputStream,
-                                     Runnable finish, int maxOutputTokens) {
+                                     Runnable finish, int maxOutputTokens,
+                                     AtomicLong actualTokens, AtomicBoolean truncated, long reservedEstimate) {
         long startedAt = System.currentTimeMillis();
         StringBuilder fullText = new StringBuilder();
         AtomicLong inputTokens = new AtomicLong(-1);
@@ -288,7 +301,8 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
             }
             inputStream.set(response.body());
             try (InputStream body = response.body()) {
-                streamSse(body, fullText, inputTokens, outputTokens, handler, cancellation, maxOutputTokens);
+                streamSse(body, fullText, inputTokens, outputTokens, actualTokens, truncated,
+                        handler, cancellation, maxOutputTokens);
             } finally {
                 inputStream.set(null);
             }
@@ -308,10 +322,15 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                     .aiMessage(AiMessage.from(fullText.toString()))
                     .modelName(model)
                     .tokenUsage(usage)
+                    .finishReason(truncated.get() ? FinishReason.LENGTH : FinishReason.STOP)
                     .build();
             actualTokensFor(usage, inputTokens, outputTokens);
             recordStreamUsage(traceId, purpose, model, inputTokens, outputTokens,
                     startedAt, "ok", usageRecorded);
+            // 供应商实测用量到位后校准预留估算（仅在正常完成时，失败路径的估算会失真）。
+            if (inputTokens.get() > 0 || outputTokens.get() > 0) {
+                calibrate(reservedEstimate, Math.max(0, inputTokens.get()) + Math.max(0, outputTokens.get()));
+            }
             finish.run();
             if (!cancellation.isCancelled()) handler.onCompleteResponse(complete);
         } catch (InterruptedException e) {
@@ -332,6 +351,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
 
     private void streamSse(InputStream body, StringBuilder fullText,
                            AtomicLong inputTokens, AtomicLong outputTokens,
+                           AtomicLong actualTokens, AtomicBoolean truncated,
                            StreamingChatResponseHandler handler, CancellationToken cancellation,
                            int maxOutputTokens) throws IOException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
@@ -339,8 +359,8 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
             StringBuilder data = new StringBuilder();
             while (!cancellation.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
-                    if (consumeSseData(data.toString(), fullText, inputTokens, outputTokens, handler, cancellation,
-                            maxOutputTokens)) return;
+                    if (consumeSseData(data.toString(), fullText, inputTokens, outputTokens,
+                            actualTokens, truncated, handler, cancellation, maxOutputTokens)) return;
                     data.setLength(0);
                 } else if (line.startsWith("data:")) {
                     if (data.length() > 0) data.append('\n');
@@ -348,14 +368,15 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                 }
             }
             if (!cancellation.isCancelled() && data.length() > 0) {
-                consumeSseData(data.toString(), fullText, inputTokens, outputTokens, handler, cancellation,
-                        maxOutputTokens);
+                consumeSseData(data.toString(), fullText, inputTokens, outputTokens,
+                        actualTokens, truncated, handler, cancellation, maxOutputTokens);
             }
         }
     }
 
     private boolean consumeSseData(String data, StringBuilder fullText,
                                    AtomicLong inputTokens, AtomicLong outputTokens,
+                                   AtomicLong actualTokens, AtomicBoolean truncated,
                                    StreamingChatResponseHandler handler, CancellationToken cancellation,
                                    int maxOutputTokens) throws IOException {
         if (data == null || data.isBlank()) return false;
@@ -365,24 +386,44 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         if (usage.isObject()) {
             inputTokens.set(usage.path("prompt_tokens").asLong(usage.path("input_tokens").asLong(-1)));
             outputTokens.set(usage.path("completion_tokens").asLong(usage.path("output_tokens").asLong(-1)));
+            // 供应商上报的实测总量覆盖本地逐 chunk 估算，保证结算尽量接近真实成本。
+            if (inputTokens.get() > 0 || outputTokens.get() > 0) {
+                actualTokens.set(Math.max(0, inputTokens.get()) + Math.max(0, outputTokens.get()));
+            }
         }
         JsonNode choices = root.path("choices");
         if (!choices.isArray() || choices.isEmpty() || cancellation.isCancelled()) return false;
-        JsonNode delta = choices.get(0).path("delta");
+        JsonNode choice = choices.get(0);
+        if ("length".equals(choice.path("finish_reason").asText(null))) {
+            truncated.set(true);
+        }
+        JsonNode delta = choice.path("delta");
         String token = delta.path("content").asText("");
         if (!token.isEmpty()) {
             int remaining = maxOutputTokens - tokenBudget.count(fullText.toString());
-            if (remaining <= 0) return true;
+            if (remaining <= 0) {
+                truncated.set(true);
+                return true;
+            }
             String boundedToken = tokenBudget.truncate(token, remaining);
             // truncate() 会为面向用户的文本添加省略号；流式增量不应凭空添加它，
             // 因此硬上限截断供应商分块时需要移除该标记。
             if (!boundedToken.equals(token) && boundedToken.endsWith("…")) {
                 boundedToken = boundedToken.substring(0, boundedToken.length() - 1);
             }
-            if (boundedToken.isEmpty()) return true;
+            if (boundedToken.isEmpty()) {
+                truncated.set(true);
+                return true;
+            }
             fullText.append(boundedToken);
             handler.onPartialResponse(boundedToken);
-            if (tokenBudget.count(fullText.toString()) >= maxOutputTokens) return true;
+            int total = tokenBudget.count(fullText.toString());
+            // 实际用量随流式增量累计，取消回调先于流任务结束时也能结算到已产生的部分。
+            actualTokens.set(total);
+            if (total >= maxOutputTokens) {
+                truncated.set(true);
+                return true;
+            }
         }
         return false;
     }
@@ -406,43 +447,6 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         long out = Math.max(0, output.get());
         actualTokensFor(new TokenUsage((int) in, (int) out), input, output);
         recordUsage(traceId, purpose, model, in, out, System.currentTimeMillis() - startedAt, status);
-    }
-
-    private String streamEndpoint() {
-        String base = props.deepseek().baseUrl();
-        String normalized = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
-        return normalized.endsWith("/v1") ? normalized + "/chat/completions" : normalized + "/v1/chat/completions";
-    }
-
-    private String streamBody(String model, List<ChatMessage> messages, int maxOutputTokens) {
-        var root = mapper.createObjectNode();
-        root.put("model", model);
-        root.put("temperature", 0.3);
-        root.put("stream", true);
-        root.put("max_tokens", maxOutputTokens);
-        var array = mapper.createArrayNode();
-        for (ChatMessage message : messages) {
-            var node = mapper.createObjectNode();
-            if (message instanceof SystemMessage system) {
-                node.put("role", "system");
-                node.put("content", system.text());
-            } else if (message instanceof UserMessage user && user.hasSingleText()) {
-                node.put("role", "user");
-                node.put("content", user.singleText());
-            } else if (message instanceof AiMessage ai && ai.text() != null) {
-                node.put("role", "assistant");
-                node.put("content", ai.text());
-            } else {
-                throw new IllegalArgumentException("unsupported chat message type: " + message.type());
-            }
-            array.add(node);
-        }
-        root.set("messages", array);
-        try {
-            return mapper.writeValueAsString(root);
-        } catch (Exception e) {
-            throw new IllegalStateException("failed to encode chat request", e);
-        }
     }
 
     private void closeCancellationRegistration(java.util.concurrent.atomic.AtomicReference<AutoCloseable> registrationRef) {
@@ -476,7 +480,9 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         List<ChatMessage> safeMessages = boundedMessages(purpose, messages);
         long perAttemptEstimate = estimate(purpose, safeMessages);
         long reserved = scaleEstimate(perAttemptEstimate, maxAttempts);
-        budgetGuard.reserve(traceId, reserved);
+        // 摘要/抽取是回合后的后台工作，占用后台子预算；其余用途属于用户可见路径。
+        boolean background = purpose == Purpose.SUMMARY || purpose == Purpose.EXTRACT;
+        LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, background);
         boolean acquired = false;
         RuntimeException last = null;
         long actual = 0;
@@ -497,6 +503,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                     // 仿佛该调用没有成本。
                     if (measured == 0) measured = perAttemptEstimate;
                     actual = cappedAdd(failedEstimate, measured, reserved);
+                    calibrate(perAttemptEstimate, measured);
                     recordUsage(traceId, purpose, model,
                             usageInput(u), usageOutput(u),
                             System.currentTimeMillis() - t0, "ok");
@@ -519,6 +526,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                     long measured = usageInput(u) + usageOutput(u);
                     if (measured == 0) measured = perAttemptEstimate;
                     actual = cappedAdd(failedEstimate, measured, reserved);
+                    calibrate(perAttemptEstimate, measured);
                     recordUsage(traceId, purpose, fallbackModel,
                             usageInput(u), usageOutput(u),
                             System.currentTimeMillis() - t0, "ok_fallback");
@@ -535,7 +543,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                     System.currentTimeMillis() - t0, "error_estimated");
             throw last;
         } finally {
-            settleAndRelease(traceId, reserved, actual, acquired);
+            settleAndRelease(reservation, actual, acquired);
         }
     }
 
@@ -635,7 +643,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                 .map(doc -> boundedText(doc == null ? "" : doc, perDocumentLimit))
                 .toList();
         long reserved = estimateRerank(safeQuery, safeDocs);
-        budgetGuard.reserve(traceId, reserved);
+        LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, false);
         boolean acquired = false;
         long t0 = System.currentTimeMillis();
         long actual = 0;
@@ -653,20 +661,27 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                     System.currentTimeMillis() - t0, "error");
             throw e instanceof RuntimeException re ? re : new IllegalStateException(e);
         } finally {
-            settleAndRelease(traceId, reserved, actual, acquired);
+            settleAndRelease(reservation, actual, acquired);
         }
     }
 
-    private void settleAndRelease(String traceId, long reserved, long actual, boolean acquired) {
+    private void settleAndRelease(LlmBudgetGuard.Reservation reservation, long actual, boolean acquired) {
         try {
-            budgetGuard.settle(traceId, reserved, actual);
+            budgetGuard.settle(reservation, actual);
         } finally {
             if (acquired) concurrency.release();
         }
     }
 
-    private static long estimate(String text) {
-        return Math.max(128, (text == null ? 0 : text.length() / 2) + 128);
+    private long estimateText(String text) {
+        return Math.max(128, (text == null ? 0 : tokenBudget.count(text)) + 128);
+    }
+
+    /** 用最近实测/估算比值的 EMA 校准预留，避免 cl100k 与 DeepSeek 分词的系统性偏差。 */
+    private synchronized void calibrate(long estimated, long measured) {
+        if (estimated <= 0 || measured <= 0) return;
+        double ratio = Math.max(0.5, Math.min(2.0, (double) measured / estimated));
+        reserveCalibration = Math.max(0.8, Math.min(1.5, 0.9 * reserveCalibration + 0.1 * ratio));
     }
 
     private static long scaleEstimate(long estimate, int attempts) {
@@ -695,7 +710,8 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
 
     private long estimate(Purpose purpose, List<ChatMessage> messages) {
         int input = messages.stream().mapToInt(message -> tokenBudget.count(messageText(message))).sum();
-        return Math.max(256, input + outputLimit(purpose) + 128L);
+        long raw = Math.max(256, input + outputLimit(purpose) + 128L);
+        return (long) Math.ceil(raw * reserveCalibration);
     }
 
     private List<ChatMessage> boundedMessages(Purpose purpose, List<ChatMessage> messages) {
@@ -775,7 +791,14 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
 
     private int inputLimit(Purpose purpose) { return limitFor(purpose).inputTokens(); }
 
-    private int outputLimit(Purpose purpose) { return limitFor(purpose).outputTokens(); }
+    private int outputLimit(Purpose purpose) {
+        int limit = limitFor(purpose).outputTokens();
+        // 预算压力 ELEVATED 及以上时收紧聊天输出，缩短单次调用的占用窗口。
+        if (purpose == Purpose.CHAT && budgetPressure != null) {
+            return Math.min(limit, budgetPressure.chatOutputCap(limit));
+        }
+        return limit;
+    }
 
     private double finalMessageShare(Purpose purpose) {
         return switch (purpose) {

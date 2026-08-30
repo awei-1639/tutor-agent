@@ -18,11 +18,11 @@ public class LlmConcurrencyGate {
     public void acquire() {
         try {
             if (!permits.tryAcquire(5, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("LLM 并发队列已满，请稍后重试");
+                throw new LlmBusyException("LLM 并发队列已满，请稍后重试");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("LLM 请求被中断", e);
+            throw new LlmBusyException("LLM 请求被中断");
         }
     }
 

@@ -28,6 +28,16 @@ class LlmGatewayFallbackTest {
     @Mock LlmBudgetGuard budgetGuard;
     @Mock LlmConcurrencyGate concurrency;
 
+    @org.junit.jupiter.api.BeforeEach
+    void stubReservation() {
+        org.mockito.Mockito.when(budgetGuard.reserve(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenAnswer(invocation -> new LlmBudgetGuard.Reservation(
+                        invocation.getArgument(0, String.class),
+                        invocation.getArgument(1, Long.class),
+                        invocation.getArgument(2, Boolean.class), null));
+    }
+
     @Test
     void fallsBackToSecondaryProviderWhenPrimaryFails() throws Exception {
         AtomicInteger primaryHits = new AtomicInteger();

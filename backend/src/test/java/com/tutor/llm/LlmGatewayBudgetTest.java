@@ -5,7 +5,9 @@ import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Purpose;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.output.FinishReason;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,15 +23,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.mockito.Mockito.timeout;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LlmGatewayBudgetTest {
@@ -40,8 +48,16 @@ class LlmGatewayBudgetTest {
     @Mock
     LlmConcurrencyGate concurrency;
 
+    private void stubReservation() {
+        when(budgetGuard.reserve(anyString(), anyLong(), anyBoolean())).thenAnswer(invocation ->
+                new LlmBudgetGuard.Reservation(invocation.getArgument(0, String.class),
+                        invocation.getArgument(1, Long.class),
+                        invocation.getArgument(2, Boolean.class), null));
+    }
+
     @Test
     void rollsBackReservedBudgetWhenConcurrencyAcquireFails() {
+        stubReservation();
         LlmGateway gateway = new LlmGateway(properties(), jdbc, budgetGuard, concurrency);
         doThrow(new IllegalStateException("full")).when(concurrency).acquire();
 
@@ -50,12 +66,16 @@ class LlmGatewayBudgetTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("full");
 
-        verify(budgetGuard).settle(eq("trace"), anyLong(), eq(0L));
+        ArgumentCaptor<LlmBudgetGuard.Reservation> reservation =
+                ArgumentCaptor.forClass(LlmBudgetGuard.Reservation.class);
+        verify(budgetGuard).settle(reservation.capture(), eq(0L));
+        assertThat(reservation.getValue().traceId()).isEqualTo("trace");
         verify(concurrency, never()).release();
     }
 
     @Test
     void cancelsProviderStreamingConnectionWhenRequestIsAborted() throws Exception {
+        stubReservation();
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         CountDownLatch connected = new CountDownLatch(1);
         CountDownLatch disconnected = new CountDownLatch(1);
@@ -74,11 +94,94 @@ class LlmGatewayBudgetTest {
             cancellation.cancel();
 
             assertThat(disconnected.await(3, TimeUnit.SECONDS)).isTrue();
-            verify(budgetGuard).settle(eq("stream-trace"), anyLong(), anyLong());
+            verify(budgetGuard).settle(any(LlmBudgetGuard.Reservation.class), anyLong());
             verify(concurrency).release();
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void settlesStreamingCostWithProviderUsageAndRequestsUsageStream() throws Exception {
+        stubReservation();
+        AtomicReference<String> requestBody = new AtomicReference<>();
+        HttpServer server = sseServer(requestBody, List.of(
+                "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"你好世界\"},\"finish_reason\":null}]}",
+                "{\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],"
+                        + "\"usage\":{\"prompt_tokens\":42,\"completion_tokens\":7}}",
+                "[DONE]"));
+        server.start();
+        try {
+            LlmGateway gateway = new LlmGateway(properties("http://127.0.0.1:" + server.getAddress().getPort() + "/v1"),
+                    jdbc, budgetGuard, concurrency);
+            AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+            CountDownLatch completed = new CountDownLatch(1);
+            gateway.chatStream(Purpose.CHAT,
+                    List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                    "stream-trace", new NoopStreamingHandler() {
+                        @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
+                            finishReason.set(response.finishReason());
+                            completed.countDown();
+                        }
+                    }, new CancellationToken());
+
+            assertThat(completed.await(5, TimeUnit.SECONDS)).isTrue();
+            // P0 回归: 流式调用的真实成本必须进入结算，而不是把预留全额释放。
+            ArgumentCaptor<LlmBudgetGuard.Reservation> reservation =
+                    ArgumentCaptor.forClass(LlmBudgetGuard.Reservation.class);
+            verify(budgetGuard, timeout(5000)).settle(reservation.capture(), eq(49L));
+            assertThat(reservation.getValue().traceId()).isEqualTo("stream-trace");
+            assertThat(reservation.getValue().reservedTokens()).isGreaterThan(49L);
+            assertThat(finishReason.get()).isEqualTo(FinishReason.STOP);
+            // 记账精度: 请求显式开启 include_usage，供应商才会在流末尾上报真实用量。
+            assertThat(requestBody.get()).contains("\"stream_options\":{\"include_usage\":true}");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void marksStreamingAnswerTruncatedWhenProviderReportsLengthCutoff() throws Exception {
+        stubReservation();
+        HttpServer server = sseServer(new AtomicReference<>(), List.of(
+                "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"部分回答\"},\"finish_reason\":\"length\"}]}",
+                "[DONE]"));
+        server.start();
+        try {
+            LlmGateway gateway = new LlmGateway(properties("http://127.0.0.1:" + server.getAddress().getPort() + "/v1"),
+                    jdbc, budgetGuard, concurrency);
+            AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+            CountDownLatch completed = new CountDownLatch(1);
+            gateway.chatStream(Purpose.CHAT,
+                    List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                    "stream-trace", new NoopStreamingHandler() {
+                        @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
+                            finishReason.set(response.finishReason());
+                            completed.countDown();
+                        }
+                    }, new CancellationToken());
+
+            assertThat(completed.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(finishReason.get()).isEqualTo(FinishReason.LENGTH);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private static HttpServer sseServer(AtomicReference<String> requestBody, List<String> events) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            try (OutputStream output = exchange.getResponseBody()) {
+                for (String event : events) {
+                    output.write(("data: " + event + "\n\n").getBytes(StandardCharsets.UTF_8));
+                    output.flush();
+                }
+            }
+        });
+        return server;
     }
 
     private static void streamUntilClientDisconnects(com.sun.net.httpserver.HttpExchange exchange,
@@ -102,7 +205,7 @@ class LlmGatewayBudgetTest {
         }
     }
 
-    private static final class NoopStreamingHandler implements dev.langchain4j.model.chat.response.StreamingChatResponseHandler {
+    private static class NoopStreamingHandler implements dev.langchain4j.model.chat.response.StreamingChatResponseHandler {
         @Override public void onPartialResponse(String token) { }
         @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) { }
         @Override public void onError(Throwable error) { }

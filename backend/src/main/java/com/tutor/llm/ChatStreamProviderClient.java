@@ -39,6 +39,10 @@ final class ChatStreamProviderClient {
     private String body(String model, List<ChatMessage> messages, int maxOutputTokens) {
         var root = mapper.createObjectNode();
         root.put("model", model); root.put("temperature", 0.3); root.put("stream", true); root.put("max_tokens", maxOutputTokens);
+        // 流式调用显式索要用量与 finish_reason：结算精度和截断可见性都依赖它们。
+        var streamOptions = mapper.createObjectNode();
+        streamOptions.put("include_usage", true);
+        root.set("stream_options", streamOptions);
         var array = mapper.createArrayNode();
         for (ChatMessage message : messages) {
             var node = mapper.createObjectNode();

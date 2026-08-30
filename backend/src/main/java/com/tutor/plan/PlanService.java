@@ -3,6 +3,7 @@ package com.tutor.plan;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
 import com.tutor.llm.JsonGenerationGateway;
+import com.tutor.llm.LlmBudgetGuard;
 import com.tutor.llm.structured.PlanOutput;
 import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
@@ -47,6 +48,7 @@ public class PlanService {
     private final JsonGenerationGateway gateway;
     private final StructuredOutputService structuredOutputService;
     private final ObjectMapper mapper = new ObjectMapper();
+    private volatile LlmBudgetGuard budgetGuard;
     private final ExecutorService generationExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final Semaphore generationSlots = new Semaphore(2);
 
@@ -72,9 +74,21 @@ public class PlanService {
     private record QueuedJob(long id, long userId, String goal, String currentSkills,
                              String checkinHistory, String traceId, UUID leaseToken) {}
 
+    /** 可选注入：计划生成 trace 归属到用户，使 PLAN 用途消耗计入用户日配额。 */
+    @Autowired(required = false)
+    void setBudgetGuard(LlmBudgetGuard budgetGuard) { this.budgetGuard = budgetGuard; }
+
     /** 快速入队，HTTP 请求不再同步等待 LLM。 */
     public PlanGenerationJob enqueueWeeklyPlan(long userId, String goal, String currentSkills,
                                                String checkinHistory, String traceId) {
+        if (budgetGuard != null && traceId != null) {
+            try {
+                budgetGuard.attributeTrace(traceId, userId);
+            } catch (RuntimeException e) {
+                // 归属失败不阻塞入队，仅降级为无用户级配额。
+                log.warn("budget attribution failed trace={} type={}", traceId, e.getClass().getSimpleName());
+            }
+        }
         long id = jdbc.queryForObject("""
                 INSERT INTO plan_generation_jobs
                     (user_id, goal, current_skills, checkin_history, trace_id)

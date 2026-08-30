@@ -50,6 +50,10 @@ public class Aggregator {
         void onToken(String token);
         void onClarify(String question);
         void onComplete(String fullText, boolean clarified);
+        /** truncated: 融合回答因输出上限被截断，调用方据此提供续写入口。 */
+        default void onComplete(String fullText, boolean clarified, boolean truncated) {
+            onComplete(fullText, clarified);
+        }
         void onError(Throwable error);
     }
 
@@ -172,6 +176,7 @@ public class Aggregator {
         @Override
         public void onCompleteResponse(ChatResponse response) {
             String text = full.toString().strip();
+            boolean truncated = response.finishReason() == dev.langchain4j.model.output.FinishReason.LENGTH;
             if (!decided) { // 极短输出, 收尾时判定
                 clarified = text.startsWith(CLARIFY_PREFIX);
                 if (!clarified) events.onToken(text);
@@ -179,7 +184,7 @@ public class Aggregator {
             if (clarified) {
                 events.onClarify(text.substring(text.indexOf(CLARIFY_PREFIX) + CLARIFY_PREFIX.length()).strip());
             }
-            events.onComplete(text, clarified);
+            events.onComplete(text, clarified, truncated);
         }
 
         @Override

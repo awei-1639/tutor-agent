@@ -49,7 +49,23 @@ public record LlmProperties(
             return mapped == null || mapped.isBlank() ? primaryModel : mapped;
         }
     }
-    public record Budget(long dailyTokenLimit, long turnTokenLimit) {}
+    public record Budget(long dailyTokenLimit, long turnTokenLimit,
+                         long userDailyTokenLimit, int backgroundSharePercent) {
+        private static final long DEFAULT_USER_DAILY_TOKEN_LIMIT = 300_000;
+        private static final int DEFAULT_BACKGROUND_SHARE_PERCENT = 20;
+
+        public Budget {
+            if (userDailyTokenLimit <= 0) userDailyTokenLimit = DEFAULT_USER_DAILY_TOKEN_LIMIT;
+            if (backgroundSharePercent <= 0 || backgroundSharePercent >= 100) {
+                backgroundSharePercent = DEFAULT_BACKGROUND_SHARE_PERCENT;
+            }
+        }
+
+        /** 向后兼容构造器：未配置用户/后台配额时取默认值。 */
+        public Budget(long dailyTokenLimit, long turnTokenLimit) {
+            this(dailyTokenLimit, turnTokenLimit, 0, 0);
+        }
+    }
     public record PurposeLimit(int inputTokens, int outputTokens) {
         public PurposeLimit {
             if (inputTokens <= 0 || outputTokens <= 0) {
@@ -108,7 +124,8 @@ public record LlmProperties(
                 throw new IllegalStateException("llm.routing." + purpose + " must be configured");
             }
         }
-        if (budget == null || budget.dailyTokenLimit() <= 0 || budget.turnTokenLimit() <= 0) {
+        if (budget == null || budget.dailyTokenLimit() <= 0 || budget.turnTokenLimit() <= 0
+                || budget.userDailyTokenLimit() <= 0 || budget.backgroundSharePercent() <= 0) {
             throw new IllegalStateException("llm budget limits must be positive");
         }
         if (tokens == null) {

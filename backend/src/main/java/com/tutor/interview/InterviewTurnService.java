@@ -1,5 +1,6 @@
 package com.tutor.interview;
 
+import com.tutor.llm.LlmBudgetGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -25,6 +26,7 @@ public class InterviewTurnService {
     private final InterviewSession interviews;
     private final Semaphore slots = new Semaphore(2);
     private final MeterRegistry metrics;
+    private volatile LlmBudgetGuard budgetGuard;
 
     InterviewTurnService(JdbcTemplate jdbc, InterviewSession interviews, MeterRegistry metrics) {
         this.jdbc = jdbc;
@@ -35,10 +37,24 @@ public class InterviewTurnService {
                 .description("Interview answer jobs awaiting an LLM worker").register(metrics);
     }
 
+    /** 可选注入：回合 trace 归属到用户，使面试评分消耗计入用户日配额。 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setBudgetGuard(LlmBudgetGuard budgetGuard) { this.budgetGuard = budgetGuard; }
+
     public record TurnJob(String id, String sessionId, String requestId, String status, int attempts,
                           String responseStatus, String responseMessage, String lastError, Instant createdAt, Instant finishedAt) {}
     private record ClaimedJob(String id, long userId, String sessionId, String answer, String requestId,
                               String traceId, int attempts, UUID leaseToken) {}
+
+    /** 归属失败不阻塞回合，仅降级为无用户级配额。 */
+    private void attributeTrace(String traceId, long userId) {
+        if (budgetGuard == null) return;
+        try {
+            budgetGuard.attributeTrace(traceId, userId);
+        } catch (RuntimeException e) {
+            log.warn("budget attribution failed trace={} type={}", traceId, e.getClass().getSimpleName());
+        }
+    }
 
     @Transactional
     public TurnJob submit(long userId, String sessionId, String answer, String requestId, String traceId) {
@@ -47,6 +63,7 @@ public class InterviewTurnService {
                 FROM interview_turn_jobs WHERE user_id=? AND session_id=? AND request_id=?
                 """, (rs, i) -> map(rs), userId, sessionId, requestId);
         if (!existing.isEmpty()) return existing.getFirst();
+        attributeTrace(traceId, userId);
 
         InterviewSession.SessionRow session = jdbc.query("""
                 SELECT s.id, s.target_role, s.topic, s.status, s.current_question_sequence, s.main_question_count,

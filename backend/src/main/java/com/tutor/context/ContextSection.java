@@ -30,4 +30,12 @@ public interface ContextSection {
     default Rendered renderWithMetadata(TurnContextView ctx, TokenBudget budget) {
         return new Rendered(render(ctx, budget), List.of());
     }
+
+    /**
+     * 把已渲染文本收缩到 maxTokens。默认按字符前缀截断；结构化分区 (如证据块)
+     * 可覆写为按自身语义单元整块驱逐，避免句中截断破坏引用完整性。
+     */
+    default String fit(String text, int maxTokens, TokenBudget budget) {
+        return budget.truncate(text, maxTokens);
+    }
 }

@@ -75,6 +75,9 @@ tutor:
       graph-alpha: ${RETRIEVAL_GRAPH_ALPHA:0.85}
       sparse-beta: ${RETRIEVAL_SPARSE_BETA:0.30}
       non-resource-dampen: ${RETRIEVAL_NON_RESOURCE_DAMPEN:0.40}
+      # 非资源型查询对资源节点的对称降权; 1.0=关闭。q003坏例(技能型查询被资源切片挤出top5)
+      # 的候选修复, 经检索评测确认收益后收紧默认值。
+      resource-dampen: ${RETRIEVAL_RESOURCE_DAMPEN:1.0}
       sparse-threshold: ${RETRIEVAL_SPARSE_THRESHOLD:0.15}
     channel-floor:
       # 在检索评测集证明保留各通道的最低候选数量能提升召回、且不降低精度前，
@@ -124,6 +127,13 @@ security:
   resume-enc-previous-key-id: ${RESUME_ENC_PREVIOUS_KEY_ID:}
 
 memory:
+  facts:
+    enabled: ${MEMORY_FACTS_ENABLED:true}
+    max-per-extraction: ${MEMORY_FACTS_MAX_PER_EXTRACTION:8}
+    max-active-per-user: ${MEMORY_FACTS_MAX_ACTIVE_PER_USER:60}
+    recall-top-k: ${MEMORY_FACTS_RECALL_TOP_K:6}
+  recall:
+    recency-decay-days: ${MEMORY_RECALL_RECENCY_DECAY_DAYS:30}
   sync:
     lease-seconds: ${MEMORY_SYNC_LEASE_SECONDS:300}
     retry-limit-per-minute: ${MEMORY_SYNC_RETRY_LIMIT_PER_MINUTE:3}
@@ -223,6 +233,8 @@ llm:
   budget:
     daily-token-limit: 2000000   # 每日限额 (网关执行, 实现设计 6.1)
     turn-token-limit: 50000      # 单轮熔断
+    user-daily-token-limit: ${LLM_USER_DAILY_TOKEN_LIMIT:300000}  # 每用户每日限额 (trace 归属后生效)
+    background-share-percent: ${LLM_BACKGROUND_SHARE_PERCENT:20}  # 后台任务 (摘要/抽取/批量嵌入) 日子预算占比
   timeout:
     router-seconds: 10
     chat-seconds: 60

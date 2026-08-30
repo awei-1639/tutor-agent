@@ -13,6 +13,15 @@ import java.util.Set;
 @Component
 public class ContextPlanner {
     static final int SYSTEM_CONTEXT_BUDGET = 2_600;
+    private static final int EVIDENCE_FLOOR = 900;
+    private static final int EVIDENCE_FLOOR_SEVERE = 450;
+    private volatile BudgetPressureView budgetPressure;
+
+    /** 可选注入预算压力视图；未注入时按正常水位分配。 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setBudgetPressure(BudgetPressureView budgetPressure) {
+        this.budgetPressure = budgetPressure;
+    }
 
     public record Allocation(String name, int originalTokens, int allocatedTokens, boolean dropped) {}
     public record Plan(String prompt, List<Allocation> allocations, Set<String> citationIds) {
@@ -62,7 +71,7 @@ public class ContextPlanner {
                 .toList();
         for (Candidate candidate : outputOrder) {
             int allocated = plannedAllocations.getOrDefault(candidate, 0);
-            String text = allocated == 0 ? "" : budget.truncate(candidate.rendered().text(), allocated);
+            String text = allocated == 0 ? "" : candidate.section().fit(candidate.rendered().text(), allocated, budget);
             prompt.append(text);
             int retainedPrefixLength = text.endsWith("…") ? text.length() - 1 : text.length();
             for (ContextSection.CitationMarker marker : candidate.rendered().citationMarkers()) {
@@ -78,10 +87,14 @@ public class ContextPlanner {
     }
 
     private int minimumAllocation(String section) {
+        // SEVERE 压力下保底减半：优先保住本轮可用性，证据完整性让位于硬上限。
+        int evidenceFloor = budgetPressure != null && budgetPressure.severePressure()
+                ? EVIDENCE_FLOOR_SEVERE : EVIDENCE_FLOOR;
         return switch (section) {
             case "rules" -> 200;
-            case "evidence" -> 900;
+            case "evidence" -> evidenceFloor;
             case "profile" -> 300;
+            case "facts" -> 120;
             case "episodes", "summary" -> 200;
             default -> 0;
         };
@@ -92,24 +105,26 @@ public class ContextPlanner {
             case "rules" -> 0;
             case "evidence" -> 1;
             case "profile" -> 2;
-            case "episodes" -> 3;
-            case "summary" -> 4;
-            default -> 5;
+            case "facts" -> 3;
+            case "episodes" -> 4;
+            case "summary" -> 5;
+            default -> 6;
         };
     }
 
     /**
-     * 物理输出顺序：按前缀稳定性排列，越稳定越靠前。规则完全静态；画像/情景/摘要按会话缓慢变化；
-     * 证据每轮随 query 变化，排到最后，使其之前的前缀在同一会话内可被 DeepSeek 自动缓存命中。
+     * 物理输出顺序：按前缀稳定性排列，越稳定越靠前。规则完全静态；画像/事实/情景/摘要按会话
+     * 缓慢变化；证据每轮随 query 变化，排到最后，使其之前的前缀在同一会话内可被 DeepSeek 自动缓存命中。
      */
     private int outputRank(String section) {
         return switch (section) {
             case "rules" -> 0;
             case "profile" -> 1;
-            case "episodes" -> 2;
-            case "summary" -> 3;
-            case "evidence" -> 4;
-            default -> 5;
+            case "facts" -> 2;
+            case "episodes" -> 3;
+            case "summary" -> 4;
+            case "evidence" -> 5;
+            default -> 6;
         };
     }
 }
