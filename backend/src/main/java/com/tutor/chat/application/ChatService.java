@@ -1,6 +1,5 @@
 package com.tutor.chat.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.context.PromptAssembler;
 import com.tutor.context.ContextPlanner;
 import com.tutor.context.ConversationContextSelector;
@@ -50,17 +49,14 @@ import org.springframework.beans.factory.annotation.Value;
 import jakarta.annotation.PreDestroy;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.time.Duration;
-import java.util.regex.Pattern;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
 
 /**
  * 决策流编排 (V3 3.2): profile → router → {direct | experts→aggregate} → 落库 → 异步画像更新。
@@ -69,7 +65,6 @@ import java.util.regex.Matcher;
 @Service
 public class ChatService {
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
-    private static final Pattern CITE = Pattern.compile("\\[S(\\d+)]");
     private static final int TOP_K = 5;
     private static final int HISTORY_TURNS = 6;
     /** 专家简报里结构化简历的字符预算，约 300 token (实现设计 3.4)。 */
@@ -104,7 +99,6 @@ public class ChatService {
     private final boolean toolLoopEnabled;
     private final ContextualQueryRewriter queryRewriter;
     private final TurnCitations citations = new TurnCitations();
-    private final ObjectMapper mapper = new ObjectMapper();
     private final ExecutorService background = Executors.newVirtualThreadPerTaskExecutor();
 
     private record CitationBundle(String json, String status, String issuesJson) {}
@@ -220,107 +214,36 @@ public class ChatService {
         String traceId = claim == null ? UUID.randomUUID().toString().replace("-", "").substring(0, 16) : claim.traceId();
         try {
             TurnContext context = loadTurnContext(conversationId, question, traceId, events, claim);
-            long userId = context.userId();
-            long memoryGeneration = context.memoryGeneration();
-            long convId = context.convId();
-            ConversationStore.ClarificationState clarificationState = context.clarificationState();
-            List<ConversationStore.Msg> recentWindow = context.recentWindow();
-            Map<String, Object> profile = context.profile();
 
-            // 统一的用户查询改写：代词消解、短追问主题补全和失败模式都在此收口。
-            events.onStage("rewriting");
-            long rewriteStart = System.currentTimeMillis();
-            ContextualQueryRewriter.RewriteResult rewritten =
-                    queryRewriter.rewrite(question, recentWindow, traceId);
-            String routingQuestion = rewritten.standaloneQuery();
-            trace.span(traceId, convId, "query_rewrite", rewriteStart,
-                    rewritten.needsClarification(), Map.of(
-                            "mode", rewritten.mode().name().toLowerCase(),
-                            "rewritten", !java.util.Objects.equals(question, routingQuestion),
-                            "reference_count", rewritten.references().size(),
-                            "needs_clarification", rewritten.needsClarification()));
+            ContextualQueryRewriter.RewriteResult rewritten = rewriteForRouting(question, context, traceId, events);
             if (rewritten.needsClarification()) {
                 String mention = rewritten.references().isEmpty()
                         ? "该表达"
                         : rewritten.references().getFirst().mention();
-                emitClarification(convId, userId, question,
+                emitClarification(context, question,
                         "你提到的“" + mention + "”可能指多个对象，请说明具体指哪个。", List.of(), "reference",
-                        traceId, memoryGeneration, events, cancellation, claim);
+                        traceId, events, cancellation, claim);
                 return;
             }
-
-            // --- router 节点 ---
-            events.onStage("routing");
-            long t0 = System.currentTimeMillis();
-            List<String> recentUser = ConversationContextSelector.routerContext(recentWindow, routingQuestion);
-            if (clarificationState.pending()) {
-                recentUser = new ArrayList<>(recentUser);
-                recentUser.add("系统提示：当前用户回复可能是在回答上一轮澄清问题，请优先结合该澄清上下文理解。");
-            }
-            IntentRouter.RouteDecision routeDecision = router.routeDecision(routingQuestion, recentUser, traceId);
-            if (routeDecision == null) {
-                throw new IllegalStateException("路由决策不能为空");
-            }
-            com.tutor.expert.RoutingPolicy.ExecutionPlan executionPlan = routingPolicy.plan(routeDecision, routingQuestion);
-            Intent intent = executionPlan.intent();
-            trace.span(traceId, convId, "router", t0, executionPlan.degraded(),
-                    routingTrace(routeDecision, executionPlan));
-            log.info("intent={} scope={} confidence={} retrievalHint={} executed={} degraded={} reasons={} trace={}",
-                    intent, routeDecision.scope(), routeDecision.confidence(), routeDecision.retrievalHint(),
-                    executionPlan.skipRetrieval() ? "none" : executionPlan.retrievalHint(),
-                    executionPlan.degraded(), executionPlan.reasonCodes(), traceId);
-
             // 代词/短追问需要带上上一轮主题用于检索和专家简报；直答路径仍保留原问题与历史消息。
-            String executionQuestion = routingQuestion;
+            String executionQuestion = rewritten.standaloneQuery();
 
-            if (routingPolicy.shouldClarify(routeDecision)) {
-                emitClarification(convId, userId, question,
-                        routingPolicy.clarificationQuestion(routeDecision),
-                        routingPolicy.clarificationOptions(routeDecision),
-                        routeDecision.intent().name().toLowerCase(),
-                        traceId, memoryGeneration, events, cancellation, claim);
+            RoutedTurn routed = planExecution(executionQuestion, context, traceId, events);
+            if (routingPolicy.shouldClarify(routed.decision())) {
+                emitClarification(context, question,
+                        routingPolicy.clarificationQuestion(routed.decision()),
+                        routingPolicy.clarificationOptions(routed.decision()),
+                        routed.decision().intent().name().toLowerCase(),
+                        traceId, events, cancellation, claim);
                 return;
             }
 
-            // --- 检索节点 (out_of_scope 跳过, 省一次embedding) ---
-            List<Evidence> evidences = List.of();
-            List<EpisodeStore.Episode> episodes = List.of();
-            if (!executionPlan.skipRetrieval()) {
-                long memoryStart = System.currentTimeMillis();
-                LongTermMemoryService.RecallResult memoryRecall = longTermMemory.recall(userId, executionQuestion, traceId);
-                episodes = memoryRecall.episodes();
-                trace.span(traceId, convId, "memory_recall", memoryStart, memoryRecall.degraded());
-                events.onStage("retrieving");
-                t0 = System.currentTimeMillis();
-                GraphExpansionPolicy graphPolicy = GraphExpansionPolicy.forFacets(
-                        executionPlan.retrievalFacets(), executionPlan.retrievalHint());
-                AgenticRetriever.RetrievalResult retrievalResult = agenticRetriever.retrieveAdaptiveResult(
-                        executionQuestion, TOP_K, traceId, executionPlan.allowMultiHopEscalation(), graphPolicy,
-                        GraphScope.forUser(userId, AuthContext.currentTenantId()));
-                if (retrievalResult == null) {
-                    throw new IllegalStateException("检索结果不能为空");
-                }
-                evidences = retrievalResult.evidences();
-                trace.span(traceId, convId, "retrieve", t0, false,
-                        retrievalTrace(executionPlan, graphPolicy, retrievalResult, evidences));
-                events.onCitations(evidences);
-            }
-
-            List<String> expertNames = ExpertRunner.expertsFor(executionPlan.intents());
+            RetrievedContext retrieved = retrieveForTurn(executionQuestion, context, routed.plan(), traceId, events);
             if (cancellation.isCancelled()) {
                 return;
             }
-            if (expertNames.isEmpty()) {
-                List<ConversationStore.Msg> history = ConversationContextSelector.select(
-                        recentWindow, executionQuestion, HISTORY_TURNS * 2);
-                directStream(convId, userId, question, profile, evidences, episodes, history, intent, traceId,
-                        memoryGeneration, events, cancellation, claim);
-                return;
-            }
-
-            // --- 专家扇出 + 仲裁节点 ---
-            runExpertsAndAggregate(expertNames, convId, userId, question, executionQuestion, profile, evidences,
-                    episodes, intent, traceId, memoryGeneration, events, cancellation, claim);
+            dispatchAnswer(question, executionQuestion, context, routed.plan(), retrieved, traceId, events,
+                    cancellation, claim);
         } catch (Exception e) {
             log.error("turn error trace={}", traceId, e);
             if (!cancellation.isCancelled()) {
@@ -334,6 +257,107 @@ public class ChatService {
                               ConversationStore.ClarificationState clarificationState,
                               List<ConversationStore.Msg> recentWindow,
                               Map<String, Object> profile) {}
+
+    /**
+     * 路由结果：原始决策与执行计划成对传递。
+     * 两者必须一起流转 —— 澄清判定只看原始决策，检索与扇出只看执行计划，
+     * 拆开会让"为什么这轮降级了"在下游丢失。
+     */
+    private record RoutedTurn(IntentRouter.RouteDecision decision,
+                              com.tutor.expert.RoutingPolicy.ExecutionPlan plan) {}
+
+    /** 检索节点产出：证据与情景记忆一起决定后续提示词，out_of_scope 时两者都为空。 */
+    private record RetrievedContext(List<Evidence> evidences, List<EpisodeStore.Episode> episodes) {}
+
+    /**
+     * 统一的用户查询改写：代词消解、短追问主题补全和失败模式都在此收口。
+     * 改写后的问题只用于路由/检索/专家简报；直答路径仍使用用户原句，避免把改写痕迹回显给用户。
+     */
+    private ContextualQueryRewriter.RewriteResult rewriteForRouting(String question, TurnContext context,
+                                                                   String traceId, TurnEvents events) {
+        events.onStage("rewriting");
+        long rewriteStart = System.currentTimeMillis();
+        ContextualQueryRewriter.RewriteResult rewritten =
+                queryRewriter.rewrite(question, context.recentWindow(), traceId);
+        trace.span(traceId, context.convId(), "query_rewrite", rewriteStart,
+                rewritten.needsClarification(), Map.of(
+                        "mode", rewritten.mode().name().toLowerCase(),
+                        "rewritten", !Objects.equals(question, rewritten.standaloneQuery()),
+                        "reference_count", rewritten.references().size(),
+                        "needs_clarification", rewritten.needsClarification()));
+        return rewritten;
+    }
+
+    /**
+     * 路由节点：把模型建议 (RouteDecision) 过一遍策略闭环得到可执行计划 (ExecutionPlan)。
+     * 待澄清状态要显式告知路由，否则用户对澄清问题的简短回答会被当成一个全新的越界问题。
+     */
+    private RoutedTurn planExecution(String executionQuestion, TurnContext context, String traceId,
+                                     TurnEvents events) {
+        events.onStage("routing");
+        long start = System.currentTimeMillis();
+        List<String> recentUser = ConversationContextSelector.routerContext(context.recentWindow(), executionQuestion);
+        if (context.clarificationState().pending()) {
+            recentUser = new ArrayList<>(recentUser);
+            recentUser.add("系统提示：当前用户回复可能是在回答上一轮澄清问题，请优先结合该澄清上下文理解。");
+        }
+        IntentRouter.RouteDecision decision = router.routeDecision(executionQuestion, recentUser, traceId);
+        if (decision == null) {
+            throw new IllegalStateException("路由决策不能为空");
+        }
+        com.tutor.expert.RoutingPolicy.ExecutionPlan plan = routingPolicy.plan(decision, executionQuestion);
+        trace.span(traceId, context.convId(), "router", start, plan.degraded(), routingTrace(decision, plan));
+        log.info("intent={} scope={} confidence={} retrievalHint={} executed={} degraded={} reasons={} trace={}",
+                plan.intent(), decision.scope(), decision.confidence(), decision.retrievalHint(),
+                plan.skipRetrieval() ? "none" : plan.retrievalHint(),
+                plan.degraded(), plan.reasonCodes(), traceId);
+        return new RoutedTurn(decision, plan);
+    }
+
+    /** 检索节点。out_of_scope 直接跳过，省掉一次 embedding 调用和一次记忆召回。 */
+    private RetrievedContext retrieveForTurn(String executionQuestion, TurnContext context,
+                                             com.tutor.expert.RoutingPolicy.ExecutionPlan plan,
+                                             String traceId, TurnEvents events) {
+        if (plan.skipRetrieval()) {
+            return new RetrievedContext(List.of(), List.of());
+        }
+        long memoryStart = System.currentTimeMillis();
+        LongTermMemoryService.RecallResult memoryRecall =
+                longTermMemory.recall(context.userId(), executionQuestion, traceId);
+        trace.span(traceId, context.convId(), "memory_recall", memoryStart, memoryRecall.degraded());
+
+        events.onStage("retrieving");
+        long start = System.currentTimeMillis();
+        GraphExpansionPolicy graphPolicy = GraphExpansionPolicy.forFacets(
+                plan.retrievalFacets(), plan.retrievalHint());
+        AgenticRetriever.RetrievalResult result = agenticRetriever.retrieveAdaptiveResult(
+                executionQuestion, TOP_K, traceId, plan.allowMultiHopEscalation(), graphPolicy,
+                GraphScope.forUser(context.userId(), AuthContext.currentTenantId()));
+        if (result == null) {
+            throw new IllegalStateException("检索结果不能为空");
+        }
+        List<Evidence> evidences = result.evidences();
+        trace.span(traceId, context.convId(), "retrieve", start, false,
+                retrievalTrace(plan, graphPolicy, result, evidences));
+        events.onCitations(evidences);
+        return new RetrievedContext(evidences, memoryRecall.episodes());
+    }
+
+    /** 生成路径分流：有专家则扇出+仲裁，否则直答流式。 */
+    private void dispatchAnswer(String question, String executionQuestion, TurnContext context,
+                                com.tutor.expert.RoutingPolicy.ExecutionPlan plan, RetrievedContext retrieved,
+                                String traceId, TurnEvents events, CancellationToken cancellation,
+                                ChatTurnService.Claim claim) {
+        List<String> expertNames = ExpertRunner.expertsFor(plan.intents());
+        if (expertNames.isEmpty()) {
+            List<ConversationStore.Msg> history = ConversationContextSelector.select(
+                    context.recentWindow(), executionQuestion, HISTORY_TURNS * 2);
+            directStream(context, question, retrieved, history, plan.intent(), traceId, events, cancellation, claim);
+            return;
+        }
+        runExpertsAndAggregate(expertNames, context, question, executionQuestion, retrieved, plan.intent(),
+                traceId, events, cancellation, claim);
+    }
 
     /**
      * 建立会话、固定身份并载入路由所需的最小上下文。
@@ -436,10 +460,11 @@ public class ChatService {
      * 澄清没有证据可引，因此引用状态固定为 unavailable；落库成功才登记待澄清状态，
      * 避免租约丢失时把会话卡在"等待澄清"。
      */
-    private void emitClarification(long convId, long userId, String question, String clarification,
+    private void emitClarification(TurnContext context, String question, String clarification,
                                    List<Map<String, String>> options, String clarificationKind,
-                                   String traceId, long memoryGeneration, TurnEvents events,
+                                   String traceId, TurnEvents events,
                                    CancellationToken cancellation, ChatTurnService.Claim claim) {
+        long convId = context.convId();
         events.onStage("clarifying");
         events.onClarify(clarification, options);
         Long messageId = persistAssistant(convId, clarification, "clarify", null, traceId,
@@ -448,34 +473,20 @@ public class ChatService {
         conversations.setClarificationPending(convId, clarificationKind,
                 java.time.Instant.now().plus(CLARIFICATION_TTL));
         events.onDone(messageId, clarification, "unavailable", List.of());
-        background.submit(() -> postTurnTasks.run(convId, userId, question, clarification, traceId, memoryGeneration));
+        background.submit(() -> postTurnTasks.run(convId, context.userId(), question, clarification, traceId,
+                context.memoryGeneration()));
     }
 
     /**
-     * 专家扇出与仲裁路径：简报只带画像、情景、结构化简历和证据，不含闲聊历史，
-     * 避免把无关对话内容放大成多个专家的输入成本。
-     * 扇出前后各检查一次取消：专家调用较慢，用户断开后不应再启动仲裁。
+     * 专家扇出与仲裁路径：扇出前后各检查一次取消：专家调用较慢，用户断开后不应再启动仲裁。
      */
-    private void runExpertsAndAggregate(List<String> expertNames, long convId, long userId, String question,
-                                        String executionQuestion, Map<String, Object> profile,
-                                        List<Evidence> evidences, List<EpisodeStore.Episode> episodes,
-                                        Intent intent, String traceId, long memoryGeneration,
-                                        TurnEvents events, CancellationToken cancellation,
+    private void runExpertsAndAggregate(List<String> expertNames, TurnContext context, String question,
+                                        String executionQuestion, RetrievedContext retrieved, Intent intent,
+                                        String traceId, TurnEvents events, CancellationToken cancellation,
                                         ChatTurnService.Claim claim) {
-        String profileText = profileSection.render(new TurnContextView(profile, List.of()), tokenBudget);
-        String episodeText = episodeSection.render(new TurnContextView(profile, List.of(), null, episodes), tokenBudget);
-        String resumeText = resumeService.latestStructuredCompact(userId, RESUME_BRIEFING_CHARS);
-        long briefingStart = System.currentTimeMillis();
-        ExpertRunner.Briefing briefing = expertRunner.buildBriefing(
-                profileText + episodeText + '\n' + resumeText, evidences, executionQuestion);
-        trace.span(traceId, convId, "expert_context", briefingStart, false, Map.of(
-                "profile_original_tokens", briefing.usage().profileOriginalTokens(),
-                "profile_allocated_tokens", briefing.usage().profileAllocatedTokens(),
-                "evidence_original_tokens", briefing.usage().evidenceOriginalTokens(),
-                "evidence_allocated_tokens", briefing.usage().evidenceAllocatedTokens(),
-                "question_tokens", briefing.usage().questionTokens(),
-                "total_budget", briefing.usage().totalBudget(),
-                "truncated", briefing.usage().truncated()));
+        long convId = context.convId();
+        String contextText = renderSharedContext(context.profile(), retrieved.episodes());
+        ExpertRunner.Briefing briefing = buildBriefing(context, retrieved, executionQuestion, contextText, traceId);
 
         for (String name : expertNames) {
             events.onStage("expert:" + name);
@@ -494,7 +505,7 @@ public class ChatService {
 
         events.onStage("aggregating");
         long aggregateStart = System.currentTimeMillis();
-        aggregator.aggregateStream(outputs, executionQuestion, profileText + episodeText, traceId,
+        aggregator.aggregateStream(outputs, executionQuestion, contextText, traceId,
                 new Aggregator.AggregateEvents() {
                     @Override public void onToken(String token) {
                         if (!cancellation.isCancelled()) events.onToken(token);
@@ -506,8 +517,8 @@ public class ChatService {
 
                     @Override public void onComplete(String fullText, boolean clarified) {
                         trace.span(traceId, convId, "aggregate", aggregateStart, clarified);
-                        completeAnswer(fullText, clarified ? "clarify" : intent.name().toLowerCase(), convId, userId,
-                                question, evidences, briefing.citationIds(), traceId, memoryGeneration,
+                        completeAnswer(fullText, clarified ? "clarify" : intent.name().toLowerCase(), context,
+                                question, retrieved.evidences(), briefing.citationIds(), traceId,
                                 events, cancellation, claim);
                     }
 
@@ -518,48 +529,48 @@ public class ChatService {
                 }, cancellation);
     }
 
-    /** 直答路径: chat/out_of_scope */
-    private void directStream(long convId, long userId, String question, Map<String, Object> profile,
-                              List<Evidence> evidences, List<EpisodeStore.Episode> episodes,
-                              List<ConversationStore.Msg> history,
-                              Intent intent, String traceId, long memoryGeneration,
-                              TurnEvents events, CancellationToken cancellation, ChatTurnService.Claim claim) {
-        List<ChatMessage> messages = new ArrayList<>();
-        String summary = conversations.summaryState(convId).summary(); // 区5: 折叠摘要 (超12轮才有)
-        long contextStart = System.currentTimeMillis();
-        final PromptAssembler.Assembled assembled = promptAssembler.assembleWithMetadata(
-                new TurnContextView(profile, evidences, summary, episodes), traceId);
-        trace.span(traceId, convId, "context", contextStart, false, Map.of(
-                "total_original_tokens", assembled.allocations().stream()
-                        .mapToInt(ContextPlanner.Allocation::originalTokens).sum(),
-                "total_allocated_tokens", assembled.allocations().stream()
-                        .mapToInt(ContextPlanner.Allocation::allocatedTokens).sum(),
-                "sections", assembled.allocations().stream().map(allocation -> Map.of(
-                        "name", allocation.name(),
-                        "original_tokens", allocation.originalTokens(),
-                        "allocated_tokens", allocation.allocatedTokens(),
-                        "dropped", allocation.dropped())).toList()));
-        messages.add(SystemMessage.from(assembled.prompt()));
-        for (ConversationStore.Msg m : history) {
-            messages.add(m.role.equals("user") ? UserMessage.from(m.content) : AiMessage.from(m.content));
-        }
-        messages.add(UserMessage.from(question));
+    /** 专家简报与仲裁共用的上下文文本：画像 + 情景记忆，两处必须一致否则仲裁会看到与专家不同的背景。 */
+    private String renderSharedContext(Map<String, Object> profile, List<EpisodeStore.Episode> episodes) {
+        return profileSection.render(new TurnContextView(profile, List.of()), tokenBudget)
+                + episodeSection.render(new TurnContextView(profile, List.of(), null, episodes), tokenBudget);
+    }
 
-        if (toolLoopEnabled && toolCallLoop != null) {
-            try {
-                ToolCallLoop.LoopResult loopResult = toolCallLoop.run(Purpose.CHAT, messages, traceId,
-                        new ToolExecutionContext(traceId, "chat", userId, null, false));
-                completeAnswer(loopResult.answer(), intent.name().toLowerCase(), convId, userId, question,
-                        evidences, assembled.citationIds(), traceId, memoryGeneration, events, cancellation, claim);
-                return;
-            } catch (RuntimeException error) {
-                log.warn("tool loop failed, falling back to streaming direct answer trace={} type={}",
-                        traceId, error.getClass().getSimpleName());
-            }
+    /**
+     * 简报只带画像、情景、结构化简历和证据，不含闲聊历史，
+     * 避免把无关对话内容放大成多个专家的输入成本。
+     */
+    private ExpertRunner.Briefing buildBriefing(TurnContext context, RetrievedContext retrieved,
+                                                String executionQuestion, String contextText, String traceId) {
+        String resumeText = resumeService.latestStructuredCompact(context.userId(), RESUME_BRIEFING_CHARS);
+        long start = System.currentTimeMillis();
+        ExpertRunner.Briefing briefing = expertRunner.buildBriefing(
+                contextText + '\n' + resumeText, retrieved.evidences(), executionQuestion);
+        trace.span(traceId, context.convId(), "expert_context", start, false, Map.of(
+                "profile_original_tokens", briefing.usage().profileOriginalTokens(),
+                "profile_allocated_tokens", briefing.usage().profileAllocatedTokens(),
+                "evidence_original_tokens", briefing.usage().evidenceOriginalTokens(),
+                "evidence_allocated_tokens", briefing.usage().evidenceAllocatedTokens(),
+                "question_tokens", briefing.usage().questionTokens(),
+                "total_budget", briefing.usage().totalBudget(),
+                "truncated", briefing.usage().truncated()));
+        return briefing;
+    }
+
+    /** 直答路径: chat/out_of_scope */
+    private void directStream(TurnContext context, String question, RetrievedContext retrieved,
+                              List<ConversationStore.Msg> history, Intent intent, String traceId,
+                              TurnEvents events, CancellationToken cancellation, ChatTurnService.Claim claim) {
+        PromptAssembler.Assembled assembled = assembleDirectPrompt(context, retrieved, traceId);
+        List<ChatMessage> messages = directMessages(assembled, history, question);
+        String intentName = intent.name().toLowerCase();
+
+        if (toolLoopEnabled && toolCallLoop != null
+                && streamViaToolLoop(context, question, retrieved, messages, assembled, intentName, traceId,
+                        events, cancellation, claim)) {
+            return;
         }
 
         StringBuilder full = new StringBuilder();
-        List<Evidence> finalEvidences = evidences;
         gateway.chatStream(Purpose.CHAT, messages, traceId, new StreamingChatResponseHandler() {
             @Override public void onPartialResponse(String token) {
                 full.append(token);
@@ -567,8 +578,8 @@ public class ChatService {
             }
 
             @Override public void onCompleteResponse(ChatResponse response) {
-                completeAnswer(full.toString(), intent.name().toLowerCase(), convId, userId, question,
-                        finalEvidences, assembled.citationIds(), traceId, memoryGeneration, events, cancellation, claim);
+                completeAnswer(full.toString(), intentName, context, question, retrieved.evidences(),
+                        assembled.citationIds(), traceId, events, cancellation, claim);
             }
 
             @Override public void onError(Throwable error) {
@@ -579,20 +590,75 @@ public class ChatService {
     }
 
     /**
+     * 工具循环分支。返回 true 表示这一轮已由工具循环完成回答，调用方不得再走流式，
+     * 否则同一轮会产出两份回答；工具循环失败时返回 false 退回流式兜底。
+     */
+    private boolean streamViaToolLoop(TurnContext context, String question, RetrievedContext retrieved,
+                                      List<ChatMessage> messages, PromptAssembler.Assembled assembled,
+                                      String intentName, String traceId, TurnEvents events,
+                                      CancellationToken cancellation, ChatTurnService.Claim claim) {
+        try {
+            ToolCallLoop.LoopResult loopResult = toolCallLoop.run(Purpose.CHAT, messages, traceId,
+                    new ToolExecutionContext(traceId, "chat", context.userId(), null, false));
+            completeAnswer(loopResult.answer(), intentName, context, question, retrieved.evidences(),
+                    assembled.citationIds(), traceId, events, cancellation, claim);
+            return true;
+        } catch (RuntimeException error) {
+            log.warn("tool loop failed, falling back to streaming direct answer trace={} type={}",
+                    traceId, error.getClass().getSimpleName());
+            return false;
+        }
+    }
+
+    /** 直答提示词组装，并把各区段的预算分配写入 turn_traces 以便排查上下文被裁掉的情况。 */
+    private PromptAssembler.Assembled assembleDirectPrompt(TurnContext context, RetrievedContext retrieved,
+                                                           String traceId) {
+        String summary = conversations.summaryState(context.convId()).summary(); // 区5: 折叠摘要 (超12轮才有)
+        long start = System.currentTimeMillis();
+        PromptAssembler.Assembled assembled = promptAssembler.assembleWithMetadata(
+                new TurnContextView(context.profile(), retrieved.evidences(), summary, retrieved.episodes()), traceId);
+        trace.span(traceId, context.convId(), "context", start, false, Map.of(
+                "total_original_tokens", assembled.allocations().stream()
+                        .mapToInt(ContextPlanner.Allocation::originalTokens).sum(),
+                "total_allocated_tokens", assembled.allocations().stream()
+                        .mapToInt(ContextPlanner.Allocation::allocatedTokens).sum(),
+                "sections", assembled.allocations().stream().map(allocation -> Map.of(
+                        "name", allocation.name(),
+                        "original_tokens", allocation.originalTokens(),
+                        "allocated_tokens", allocation.allocatedTokens(),
+                        "dropped", allocation.dropped())).toList()));
+        return assembled;
+    }
+
+    /** 直答消息序列：系统提示词 + 筛选后的历史 + 用户原句（不是改写后的问题）。 */
+    private List<ChatMessage> directMessages(PromptAssembler.Assembled assembled,
+                                             List<ConversationStore.Msg> history, String question) {
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(SystemMessage.from(assembled.prompt()));
+        for (ConversationStore.Msg m : history) {
+            messages.add(m.role.equals("user") ? UserMessage.from(m.content) : AiMessage.from(m.content));
+        }
+        messages.add(UserMessage.from(question));
+        return messages;
+    }
+
+    /**
      * 一轮回答的统一收口：引用映射 → 落库 → done 事件 → 异步后置任务。
      * 直答、工具循环与专家仲裁三条路径共用，避免其中一条漏掉画像更新或引用校验。
      * 落库返回 null 表示租约丢失或用户已取消，此时不得对外发出 done。
      */
-    private void completeAnswer(String text, String intent, long convId, long userId, String question,
+    private void completeAnswer(String text, String intent, TurnContext context, String question,
                                 List<Evidence> evidences, Set<String> citationIds, String traceId,
-                                long memoryGeneration, TurnEvents events, CancellationToken cancellation,
+                                TurnEvents events, CancellationToken cancellation,
                                 ChatTurnService.Claim claim) {
+        long convId = context.convId();
         CitationBundle bundle = citationsFor(text, evidences, citationIds);
         Long messageId = persistAssistant(convId, text, intent, bundle.json(), traceId,
                 text.length() / 2, bundle.status(), bundle.issuesJson(), claim, cancellation);
         if (messageId == null) return;
         events.onDone(messageId, text, bundle.status(), parseCitationIssues(bundle.issuesJson()));
-        background.submit(() -> postTurnTasks.run(convId, userId, question, text, traceId, memoryGeneration));
+        background.submit(() -> postTurnTasks.run(convId, context.userId(), question, text, traceId,
+                context.memoryGeneration()));
         background.submit(() -> verifyCitations(messageId, text,
                 evidenceForCitations(evidences, citationIds), traceId));
     }
