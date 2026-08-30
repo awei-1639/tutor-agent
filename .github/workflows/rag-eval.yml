@@ -1,10 +1,18 @@
 name: RAG Eval (report-only)
 
 # 报告式检索评测：把 Golden Set 评测接进 CI，但当前不阻断构建。
-# 原因：run_eval.mjs 的 --ci 阈值是硬编码的，而当前真实指标 (路由/facet) 低于阈值，
-# 且 embedding 存在 ~1e-3 抖动 (见 scripts/check-embedding-determinism.mjs)。
-# 直接阻断会立刻红或被噪声误触发。先报告、上传 artifact，待用一次真实全量跑校准阈值后，
-# 再把 run_eval.mjs 换成 --ci 翻成阻断式门禁。
+#
+# 现状 (2026-08-30 更新)：路由指标已达标，不再是阻断的障碍——
+#   Accuracy 96.7% (阈值 85%)、Macro-F1 0.966 (阈值 0.80)、领域内误判越界 0.0%。
+#   此前记录的 76.7% 是失真值：/internal/route 曾把 traceId 写死成 "eval"，
+#   token 预算越界后路由静默降级 (见 docs/badcases.md Badcase 06)。
+#
+# 仍然不阻断的原因只剩两条：
+#   1. facet 指标未达标：Exact-Match 66.7% (阈值 85%)、Macro-F1 0.754 (阈值 0.80)。
+#      意图判对但 retrieval_facets 判错，是当前唯一的真实质量缺口。
+#   2. embedding 存在 ~1e-3 抖动 (见 scripts/check-embedding-determinism.mjs)，
+#      阈值贴边时可能被噪声误触发。
+# 待 facet 修好、并用一次干净的全量跑标定阈值后，把 run_eval.mjs 换成 --ci 翻成阻断式门禁。
 #
 # 需要仓库 secret: SILICONFLOW_API_KEY (embedding), DEEPSEEK_API_KEY (router)。
 # 未配置时本 job 会跳过 (见下方 guard step)，不会让 PR 变红。

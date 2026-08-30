@@ -31,3 +31,6 @@ results/
 # IDE / 系统
 .DS_Store
 Thumbs.db
+
+# 个人学习资料 (含其他项目的方案 docx 与嵌套的 .claude 本地设置, 不属于本仓库)
+docs/项目学习/
