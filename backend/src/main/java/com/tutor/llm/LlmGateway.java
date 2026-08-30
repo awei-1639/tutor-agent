@@ -714,7 +714,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         return (long) Math.ceil(raw * reserveCalibration);
     }
 
-    private List<ChatMessage> boundedMessages(Purpose purpose, List<ChatMessage> messages) {
+    List<ChatMessage> boundedMessages(Purpose purpose, List<ChatMessage> messages) {
         if (messages == null || messages.isEmpty()) return List.of();
         List<ChatMessage> safe = messages.stream().filter(Objects::nonNull).toList();
         int max = inputLimit(purpose);
@@ -727,8 +727,11 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         // PromptAssembler 已执行全局系统上下文规划；应保留其结果，而不能仅因证据
         // 出现在提示词后部就悄然丢弃。
         int systemBudget = hasSystem ? Math.min(tokenBudget.count(messageText(safe.getFirst())), Math.max(1, max * 2 / 5)) : 0;
+        // 末条消息按"实际需要"分配 (份额只作为防超长粘贴的上限)：短提问不再预支
+        // 整个份额，剩余预算全部让给历史消息，避免历史被 "…" 腰斩而预算空转。
         int finalBudget = hasSystem && lastIndex == 0 ? 0
-                : Math.max(1, (int) Math.round(max * finalMessageShare(purpose)));
+                : Math.min(tokenBudget.count(messageText(safe.getLast())),
+                        Math.max(1, (int) Math.round(max * finalMessageShare(purpose))));
         finalBudget = Math.min(finalBudget, Math.max(1, max - systemBudget));
         int remaining = Math.max(0, max - systemBudget - finalBudget);
         List<ChatMessage> middle = new ArrayList<>();
