@@ -397,6 +397,8 @@ public class FusedRetriever {
      */
     /** 找资源类查询: 非资源节点的扩展贡献打折, 防止扩展出的技能/岗位节点挤掉并列gold资源 */
     static final double NON_RESOURCE_DAMPEN = 0.4;
+    /** 非资源型查询对资源节点的对称降权; 1.0=不启用, 生产值经离线评测批准后写入 RetrievalProfile 默认。 */
+    static final double RESOURCE_DAMPEN = 1.0D;
 
     static boolean isResourceSeeking(String query) {
         return ResourceQueryClassifier.classify(query).seeking();
@@ -440,8 +442,20 @@ public class FusedRetriever {
                                     boolean resourceSeeking,
                                     GraphExpansionPolicy policy,
                                     Set<String> resourceNodeIds) {
+        return fuse(vectorRanking, sparseRanking, neighbors, expandSources, resourceSeeking,
+                policy, resourceNodeIds, RESOURCE_DAMPEN);
+    }
+
+    static Map<String, Double> fuse(List<String> vectorRanking,
+                                    List<String> sparseRanking,
+                                    List<GraphStore.Neighbor> neighbors,
+                                    List<String> expandSources,
+                                    boolean resourceSeeking,
+                                    GraphExpansionPolicy policy,
+                                    Set<String> resourceNodeIds,
+                                    double resourceDampen) {
         return RrfFusionPolicy.fuse(vectorRanking, sparseRanking, neighbors, expandSources, resourceSeeking,
-                policy, resourceNodeIds, RRF_K, ALPHA, BETA, NON_RESOURCE_DAMPEN);
+                policy, resourceNodeIds, RRF_K, ALPHA, BETA, NON_RESOURCE_DAMPEN, resourceDampen);
     }
 
     private Map<String, Double> fuseWithProfile(List<String> vectorRanking,
@@ -453,7 +467,7 @@ public class FusedRetriever {
                                                  Set<String> resourceNodeIds) {
         return RrfFusionPolicy.fuse(vectorRanking, sparseRanking, neighbors, expandSources, resourceSeeking,
                 policy, resourceNodeIds, profile.rrfK(), profile.graphAlpha(), profile.sparseBeta(),
-                profile.nonResourceDampen());
+                profile.nonResourceDampen(), profile.resourceDampen());
     }
 
     /** 稀疏通道权重 (Phase 2 V4 2.1): pg_trgm 兜底专有名词漏召, 不应主导排序。0.3 ≈ 图扩展(0.85)的 1/3,

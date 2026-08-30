@@ -20,6 +20,7 @@ public record RetrievalProfile(
         double graphAlpha,
         double sparseBeta,
         double nonResourceDampen,
+        double resourceDampen,
         double sparseThreshold) {
 
     public RetrievalProfile(
@@ -35,6 +36,7 @@ public record RetrievalProfile(
             @Value("${tutor.retrieval.profile.graph-alpha:0.85}") double graphAlpha,
             @Value("${tutor.retrieval.profile.sparse-beta:0.30}") double sparseBeta,
             @Value("${tutor.retrieval.profile.non-resource-dampen:0.40}") double nonResourceDampen,
+            @Value("${tutor.retrieval.profile.resource-dampen:1.0}") double resourceDampen,
             @Value("${tutor.retrieval.profile.sparse-threshold:0.15}") double sparseThreshold) {
         version = version == null || version.isBlank() ? "2026-08-baseline" : version.trim();
         bounded(vectorTopN, 1, 100, "vector-top-n");
@@ -48,6 +50,7 @@ public record RetrievalProfile(
         probability(graphAlpha, "graph-alpha", false);
         probability(sparseBeta, "sparse-beta", false);
         probability(nonResourceDampen, "non-resource-dampen", false);
+        probability(resourceDampen, "resource-dampen", false);
         probability(sparseThreshold, "sparse-threshold", true);
         this.version = version;
         this.vectorTopN = vectorTopN;
@@ -61,6 +64,7 @@ public record RetrievalProfile(
         this.graphAlpha = graphAlpha;
         this.sparseBeta = sparseBeta;
         this.nonResourceDampen = nonResourceDampen;
+        this.resourceDampen = resourceDampen;
         this.sparseThreshold = sparseThreshold;
     }
 

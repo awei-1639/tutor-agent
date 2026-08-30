@@ -97,6 +97,41 @@ class FusedRetrieverTest {
     }
 
     @Test
+    void resourceDampenLiftsSkillNodeAboveResourceHitForNonSeekingQuery() {
+        // q003坏例: 非资源型查询下 res: 切片凭稠密第1名压过技能节点; 对称降权后技能节点反超
+        Map<String, Double> undampened = FusedRetriever.fuse(
+                List.of("res:linux-basics", "skill:linux-command-line"), List.of(), List.of(),
+                List.of("res:linux-basics", "skill:linux-command-line"), false, policy());
+        assertThat(undampened.get("res:linux-basics")).isGreaterThan(undampened.get("skill:linux-command-line"));
+
+        Map<String, Double> dampened = FusedRetriever.fuse(
+                List.of("res:linux-basics", "skill:linux-command-line"), List.of(), List.of(),
+                List.of("res:linux-basics", "skill:linux-command-line"), false, policy(),
+                Set.of(), 0.5D);
+        assertThat(dampened.get("skill:linux-command-line")).isGreaterThan(dampened.get("res:linux-basics"));
+        assertThat(dampened.get("res:linux-basics"))
+                .isEqualTo(FusedRetriever.fuse(List.of("res:linux-basics"), List.of(), List.of(),
+                        List.of("res:linux-basics"), false, policy(), Set.of(), 0.5D).get("res:linux-basics"));
+    }
+
+    @Test
+    void resourceDampenDoesNotAffectResourceSeekingQueries() {
+        // 资源型查询走既有 dampen 方向, 对称降权不参与
+        Map<String, Double> score = FusedRetriever.fuse(
+                List.of("res:a", "skill:b"), List.of(), List.of(),
+                List.of("res:a", "skill:b"), true, policy(), Set.of(), 0.5D);
+        assertThat(score.get("res:a")).isGreaterThan(score.get("skill:b"));
+    }
+
+    @Test
+    void resourceDampenDefaultKeepsCurrentRanking() {
+        Map<String, Double> score = FusedRetriever.fuse(
+                List.of("res:a", "skill:b"), List.of(), List.of(),
+                List.of("res:a", "skill:b"), false, policy(), Set.of(), 1.0D);
+        assertThat(score.get("res:a")).isGreaterThan(score.get("skill:b"));
+    }
+
+    @Test
     void optionalChannelFloorKeepsOneCandidatePerAvailableChannel() {
         List<com.tutor.contract.Evidence> ranked = List.of(
                 new com.tutor.contract.Evidence("dense", "skill", "d", .9D, null, null, null, null),
