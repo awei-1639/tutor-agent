@@ -2,20 +2,22 @@ package com.tutor.memory.application;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.tutor.memory.BigramSimilarity;
 import com.tutor.memory.external.Mem0CircuitBreaker;
 import com.tutor.memory.external.Mem0Client;
 import com.tutor.memory.local.EpisodeRecall;
 import com.tutor.memory.local.EpisodeStore;
+import com.tutor.memory.local.FactStore;
 import com.tutor.memory.policy.MemoryConsentService;
 import com.tutor.memory.external.MemorySyncOutbox;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.HashSet;
-import java.util.Set;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -26,6 +28,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class LongTermMemoryService {
     private static final Logger log = LoggerFactory.getLogger(LongTermMemoryService.class);
     private static final int MAX_RECALL = 5;
+    private static final double RECENCY_WEIGHT = 0.15D;
+    private static final double NEAR_DUPLICATE_THRESHOLD = 0.88D;
 
     private final EpisodeRecall localRecall;
     private final Mem0Client mem0;
@@ -33,16 +37,22 @@ public class LongTermMemoryService {
     private final Mem0CircuitBreaker breaker;
     private final TransactionTemplate transactions;
     private final MemorySyncOutbox outbox;
+    private final FactStore factStore;
+    private final double recencyDecayDays;
 
     public LongTermMemoryService(EpisodeRecall localRecall, Mem0Client mem0,
                                  MemoryConsentService consent, Mem0CircuitBreaker breaker,
-                                 TransactionTemplate transactions, MemorySyncOutbox outbox) {
+                                 TransactionTemplate transactions, MemorySyncOutbox outbox,
+                                 FactStore factStore,
+                                 @Value("${memory.recall.recency-decay-days:30}") double recencyDecayDays) {
         this.localRecall = localRecall;
         this.mem0 = mem0;
         this.consent = consent;
         this.breaker = breaker;
         this.transactions = transactions;
         this.outbox = outbox;
+        this.factStore = factStore;
+        this.recencyDecayDays = Math.max(1D, recencyDecayDays);
     }
 
     public record RecallResult(List<EpisodeStore.Episode> episodes, boolean degraded) {}
@@ -117,17 +127,19 @@ public class LongTermMemoryService {
         transactions.executeWithoutResult(status -> {
             consent.invalidateMemoryGeneration(userId);
             localRecall.deleteByUser(userId);
+            factStore.deleteByUser(userId);
             consent.setEnabled(userId, false);
             if (remoteDeletionRequired) outbox.enqueueDeleteUser(userId);
         });
         return new ForgetResult(remoteDeletionRequired);
     }
 
-    /** 删除单条本地记忆，并为已知的 Mem0 副本登记精确删除事件。 */
+    /** 删除单条本地记忆及其派生事实，并为已知的 Mem0 副本登记精确删除事件。 */
     public boolean forgetOne(long userId, long memoryId) {
         Boolean deleted = transactions.execute(status -> {
             var remoteId = localRecall.remoteMemoryIdById(memoryId, userId);
             if (!localRecall.deleteByIdForUser(memoryId, userId)) return false;
+            factStore.deleteBySourceEpisodeId(userId, memoryId);
             if (mem0.enabled()) {
                 // UUID 尚未通过远程召回落库时也要登记事件，由 worker 做受限发现，避免删除窗口丢失。
                 outbox.enqueueDeleteMemory(userId, memoryId, remoteId.orElse(null));
@@ -145,22 +157,33 @@ public class LongTermMemoryService {
         });
     }
 
-    private static List<EpisodeStore.Episode> merge(List<EpisodeStore.Episode> local,
+    private List<EpisodeStore.Episode> merge(List<EpisodeStore.Episode> local,
                                                      List<EpisodeStore.Episode> remote) {
         LinkedHashMap<String, EpisodeStore.Episode> unique = new LinkedHashMap<>();
         add(unique, local);
         add(unique, remote);
         return unique.values().stream()
-                .sorted(Comparator.comparingDouble(LongTermMemoryService::rankScore).reversed())
+                .sorted(Comparator.comparingDouble(this::rankScore).reversed())
                 .limit(MAX_RECALL)
                 .toList();
     }
 
-    private static double rankScore(EpisodeStore.Episode episode) {
+    /**
+     * 排序 = 相关度 + recency 衰减 + 未决事项加权。
+     * recency 用指数衰减 exp(-ageDays/τ)：近期记忆更能代表用户当前状态，
+     * 且无法从语义相似度推断"新旧事实谁生效"。
+     */
+    private double rankScore(EpisodeStore.Episode episode) {
         double relevance = Double.isFinite(episode.relevance())
                 ? Math.clamp(episode.relevance(), 0D, 1D) : 0D;
         double unresolvedBonus = episode.openItems() == null || episode.openItems().isEmpty() ? 0D : 0.05D;
-        return relevance + unresolvedBonus;
+        return relevance + RECENCY_WEIGHT * recencyFactor(episode.createdAt()) + unresolvedBonus;
+    }
+
+    private double recencyFactor(Instant createdAt) {
+        if (createdAt == null) return 1.0D;
+        long ageDays = Math.max(0L, Duration.between(createdAt, Instant.now()).toDays());
+        return Math.exp(-(double) ageDays / recencyDecayDays);
     }
 
     private static void add(LinkedHashMap<String, EpisodeStore.Episode> target,
@@ -168,34 +191,11 @@ public class LongTermMemoryService {
         if (episodes == null) return;
         for (EpisodeStore.Episode episode : episodes) {
             if (episode == null || episode.summary() == null || episode.summary().isBlank()) continue;
-            String key = canonical(episode.summary());
-            if (target.keySet().stream().noneMatch(existing -> nearDuplicate(existing, key))) {
+            String key = BigramSimilarity.canonical(episode.summary());
+            if (target.keySet().stream().noneMatch(existing ->
+                    BigramSimilarity.similarity(existing, key) >= NEAR_DUPLICATE_THRESHOLD)) {
                 target.putIfAbsent(key, episode);
             }
         }
-    }
-
-    private static String canonical(String value) {
-        return value.toLowerCase(Locale.ROOT)
-                .replaceAll("[\\p{Punct}\\p{IsPunctuation}\\s]+", "");
-    }
-
-    /** 成本低且确定性的近重复防护；绝不调用 embedding 服务。 */
-    private static boolean nearDuplicate(String left, String right) {
-        if (left.equals(right)) return true;
-        if (left.length() < 20 || right.length() < 20) return false;
-        Set<String> a = bigrams(left);
-        Set<String> b = bigrams(right);
-        Set<String> intersection = new HashSet<>(a);
-        intersection.retainAll(b);
-        Set<String> union = new HashSet<>(a);
-        union.addAll(b);
-        return !union.isEmpty() && (double) intersection.size() / union.size() >= 0.88;
-    }
-
-    private static Set<String> bigrams(String text) {
-        Set<String> result = new HashSet<>();
-        for (int i = 0; i + 1 < text.length(); i++) result.add(text.substring(i, i + 2));
-        return result;
     }
 }

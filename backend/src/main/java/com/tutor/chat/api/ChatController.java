@@ -73,8 +73,18 @@ public class ChatController {
         AtomicLong tokenSequence = new AtomicLong();
         ChatService.TurnEvents callbacks = new ChatService.TurnEvents() {
                     @Override public void onMeta(long conversationId, String traceId) {
-                        send(emitter, "meta", Map.of("conversation_id", conversationId, "trace_id", traceId,
-                                "turn_id", turn == null ? "" : turn.id()), cancellation);
+                        onMeta(conversationId, traceId, null);
+                    }
+
+                    @Override public void onMeta(long conversationId, String traceId, Integer quotaRemainingPercent) {
+                        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+                        payload.put("conversation_id", conversationId);
+                        payload.put("trace_id", traceId);
+                        payload.put("turn_id", turn == null ? "" : turn.id());
+                        if (quotaRemainingPercent != null) {
+                            payload.put("quota_remaining_percent", quotaRemainingPercent);
+                        }
+                        send(emitter, "meta", payload, cancellation);
                     }
 
                     @Override public void onStage(String phase) {
@@ -110,6 +120,11 @@ public class ChatController {
                         }
                     }
 
+                    @Override public void onMemories(List<ChatService.MemoryRef> memories) {
+                        if (memories == null || memories.isEmpty()) return;
+                        send(emitter, "memories", Map.of("items", memories), cancellation);
+                    }
+
                     @Override public void onToken(String token) {
                         send(emitter, "token", Map.of("text", token, "seq", tokenSequence.getAndIncrement()), cancellation);
                     }
@@ -121,14 +136,26 @@ public class ChatController {
 
                     @Override public void onDone(long messageId, String fullText, String citationStatus,
                                                   List<String> citationIssues) {
-                        send(emitter, "done", Map.of("message_id", messageId,
-                                "citation_status", citationStatus == null ? "unavailable" : citationStatus,
-                                "citation_issues", citationIssues == null ? List.of() : citationIssues), cancellation);
+                        onDone(messageId, fullText, citationStatus, citationIssues, false);
+                    }
+
+                    @Override public void onDone(long messageId, String fullText, String citationStatus,
+                                                  List<String> citationIssues, boolean truncated) {
+                        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+                        payload.put("message_id", messageId);
+                        payload.put("citation_status", citationStatus == null ? "unavailable" : citationStatus);
+                        payload.put("citation_issues", citationIssues == null ? List.of() : citationIssues);
+                        payload.put("truncated", truncated);
+                        send(emitter, "done", payload, cancellation);
                         emitter.complete();
                     }
 
                     @Override public void onError(String message) {
-                        send(emitter, "error", Map.of("code", "TURN_FAILED", "message", message), cancellation);
+                        onError("TURN_FAILED", message);
+                    }
+
+                    @Override public void onError(String code, String message) {
+                        send(emitter, "error", Map.of("code", code, "message", message), cancellation);
                         emitter.complete();
                     }
         };

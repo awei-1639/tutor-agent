@@ -169,6 +169,14 @@ export const api = {
   deleteMemory: (id: number) => request<void>(`/memories/${id}`, { method: 'DELETE' }),
   clearMemories: () => request<MemoryClearResult>('/memories', { method: 'DELETE' }),
   getRemoteMemoryDeletion: () => request<RemoteMemoryDeletionStatus>('/memories/remote-deletion'),
+  listFacts: (limit = 100) => request<UserFact[]>(`/memories/facts?limit=${limit}`),
+  deleteFact: (id: number) => request<void>(`/memories/facts/${id}`, { method: 'DELETE' }),
+  getOpenItems: (limit = 3) => request<string[]>(`/memories/open-items?limit=${limit}`),
+  getMemoryConsent: () => request<MemoryConsent>('/memory/consent'),
+  updateMemoryConsent: (enabled: boolean) =>
+    request<MemoryConsent>('/memory/consent', { method: 'PUT', body: JSON.stringify({ enabled }) }),
+  retryRemoteDeletion: () =>
+    request<RemoteMemoryDeletionStatus>('/memories/remote-deletion/retry', { method: 'POST' }),
   // 简历
   uploadResume: async (file: File) => {
     const form = new FormData();
@@ -396,6 +404,25 @@ export interface ProfileObject {
   confirmed?: boolean;
   field?: string;
   [key: string]: ProfileValue | undefined;
+}
+
+export interface UserFact {
+  id: number;
+  factText: string;
+  category: string;
+  confidence: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemoryRef {
+  kind: 'fact' | 'episode';
+  id: number;
+  text: string;
+}
+
+export interface MemoryConsent {
+  enabled: boolean;
 }
 
 export interface ManagedMemory {
@@ -767,20 +794,21 @@ export interface EvalDiagnosis {
 
 /**
  * SSE 流式 chat: 回调按事件类型分发
- * events: meta/citation/stage/token/done/error/clarify
+ * events: meta/citation/memories/stage/token/done/error/clarify
  * isActive: 可选回调, 每读一行检查; 返回 false 立即中断 (应对重复流竞争)
  * token 事件带 seq；同一连接内按序缓冲，并忽略已处理序号，避免重放或并发推送造成错序、重复拼接。
  */
 export function streamChat(
   body: { conversationId?: number | null; message: string; requestId?: string },
   handlers: {
-    onMeta?: (e: { conversation_id: number; trace_id: string; turn_id?: string }) => void;
+    onMeta?: (e: { conversation_id: number; trace_id: string; turn_id?: string; quota_remaining_percent?: number }) => void;
     onStage?: (e: { phase: string; expert?: string; status?: string; detail?: string }) => void;
     onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string }) => void;
+    onMemories?: (e: { items: MemoryRef[] }) => void;
     onToken?: (text: string, seq?: number) => void;
     onClarify?: (event: { question: string; options?: Array<{ id: string; label: string }> }) => void;
-    onDone?: (e: { message_id: number; trace_id?: string; citation_status?: string; citation_issues?: string[] }) => void;
-    onError?: (msg: string) => void;
+    onDone?: (e: { message_id: number; trace_id?: string; citation_status?: string; citation_issues?: string[]; truncated?: boolean }) => void;
+    onError?: (msg: string, code?: string) => void;
     isActive?: () => boolean;
   }
 ) {
@@ -825,6 +853,7 @@ export function streamChat(
           if ('conversation_id' in evt) handlers.onMeta?.(evt);
           else if ('phase' in evt) handlers.onStage?.(evt);
           else if ('sid' in evt) handlers.onCitation?.(evt);
+          else if ('items' in evt) handlers.onMemories?.(evt);
           else if (typeof evt.text === 'string') {
             if (typeof evt.seq === 'number') {
               if (evt.seq < nextTokenSequence) continue;
@@ -839,7 +868,7 @@ export function streamChat(
           }
           else if ('question' in evt) handlers.onClarify?.(evt);
           else if ('message_id' in evt) handlers.onDone?.(evt);
-          else if ('message' in evt) handlers.onError?.(evt.message);
+          else if ('message' in evt) handlers.onError?.(evt.message, typeof evt.code === 'string' ? evt.code : undefined);
         } catch {
           // 忽略非 JSON 行
         }

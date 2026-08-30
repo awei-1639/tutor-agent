@@ -3,6 +3,8 @@ package com.tutor.chat.internal;
 import com.tutor.expert.IntentRouter;
 import com.tutor.expert.RoutingPolicy;
 import com.tutor.contract.Intent;
+import com.tutor.memory.application.FactRecallService;
+import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.tool.ToolExecutor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +40,10 @@ class InternalControllerRouteTraceTest {
         when(policy.plan(any(), anyString())).thenReturn(chatPlan());
         MDC.put("traceId", "trace-per-request");
 
-        new InternalController(router, policy, mock(ToolExecutor.class))
+        new InternalController(router, policy, mock(ToolExecutor.class),
+                mock(LongTermMemoryService.class), mock(FactRecallService.class),
+                mock(com.tutor.memory.local.EpisodeStore.class), mock(com.tutor.memory.local.FactStore.class),
+                mock(com.tutor.llm.EmbeddingGateway.class), mock(org.springframework.jdbc.core.JdbcTemplate.class))
                 .route(new InternalController.RouteRequest("什么是 RAG"));
 
         verify(router).routeDecision(eq("什么是 RAG"), any(), eq("trace-per-request"));

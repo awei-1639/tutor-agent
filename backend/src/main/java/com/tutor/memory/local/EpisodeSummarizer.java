@@ -49,12 +49,13 @@ public class EpisodeSummarizer {
     private final int minNewMessages;
     private final ObjectMapper mapper = new ObjectMapper();
     private final StructuredOutputService structuredOutputService;
+    private final FactExtractionService factExtraction;
 
     public EpisodeSummarizer(JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
                              EpisodeStore store, ConversationStore conversations,
                              EpisodeCommitter committer, MemoryAdmissionPolicy admission) {
         this(jsonGateway, embeddingGateway, store, conversations, committer, admission,
-                DEFAULT_MIN_NEW_MESSAGES, new StructuredOutputService(jsonGateway, null));
+                DEFAULT_MIN_NEW_MESSAGES, new StructuredOutputService(jsonGateway, null), null);
     }
 
     public EpisodeSummarizer(JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
@@ -62,7 +63,7 @@ public class EpisodeSummarizer {
                              EpisodeCommitter committer, MemoryAdmissionPolicy admission,
                              @Value("${memory.episode.min-new-messages:12}") int minNewMessages) {
         this(jsonGateway, embeddingGateway, store, conversations, committer, admission,
-                minNewMessages, new StructuredOutputService(jsonGateway, null));
+                minNewMessages, new StructuredOutputService(jsonGateway, null), null);
     }
 
     @Autowired
@@ -70,7 +71,8 @@ public class EpisodeSummarizer {
                              EpisodeStore store, ConversationStore conversations,
                              EpisodeCommitter committer, MemoryAdmissionPolicy admission,
                              @Value("${memory.episode.min-new-messages:12}") int minNewMessages,
-                             StructuredOutputService structuredOutputService) {
+                             StructuredOutputService structuredOutputService,
+                             FactExtractionService factExtraction) {
         this.jsonGateway = jsonGateway;
         this.embeddingGateway = embeddingGateway;
         this.store = store;
@@ -79,6 +81,7 @@ public class EpisodeSummarizer {
         this.admission = admission;
         this.minNewMessages = Math.max(2, minNewMessages);
         this.structuredOutputService = structuredOutputService;
+        this.factExtraction = factExtraction;
     }
 
     /**
@@ -135,13 +138,15 @@ public class EpisodeSummarizer {
 
             // 计算 embedding (summary 文本)
             float[] emb = embeddingGateway.embed("情景摘要: " + summary, traceId);
-            boolean committed = expectedGeneration == Long.MIN_VALUE
-                    ? committer.commit(userId, conversationId, watermark, msgs.getFirst().id, msgs.getLast().id,
-                    summary, topics, open, emb)
-                    : committer.commit(userId, conversationId, watermark, msgs.getFirst().id, msgs.getLast().id,
-                    summary, topics, open, emb, expectedGeneration);
-            if (committed) {
+            long episodeId = committer.commitReturningId(userId, conversationId, watermark,
+                    msgs.getFirst().id, msgs.getLast().id, summary, topics, open, emb, expectedGeneration);
+            if (episodeId > 0) {
                 log.info("episode 入库 conv={} topics={} trace={}", conversationId, topics.size(), traceId);
+                if (factExtraction != null) {
+                    // 复用同一批已脱敏的源窗口文本；失败只记日志，不影响 Episode。
+                    factExtraction.extractFromWindow(userId, episodeId, expectedGeneration,
+                            safeConversation, traceId);
+                }
             }
         } catch (Exception e) {
             log.error("episode 生成失败(不影响对话) conv={}: {}", conversationId, e.getMessage());

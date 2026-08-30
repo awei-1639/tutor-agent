@@ -220,7 +220,8 @@ class ChatServiceTurnPathsTest {
         doAnswer(invocation -> {
             StreamingChatResponseHandler handler = invocation.getArgument(3);
             handler.onPartialResponse(answer);
-            handler.onCompleteResponse(null);
+            handler.onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse.builder()
+                    .aiMessage(dev.langchain4j.data.message.AiMessage.from(answer)).build());
             return null;
         }).when(fixture.gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
     }

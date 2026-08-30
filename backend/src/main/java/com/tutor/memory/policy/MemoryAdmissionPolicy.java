@@ -10,6 +10,7 @@ import java.util.Locale;
 @Component
 public class MemoryAdmissionPolicy {
     private static final int MAX_SUMMARY_CHARS = 600;
+    private static final int MAX_FACT_CHARS = 120;
     private static final List<String> INSTRUCTION_MARKERS = List.of(
             "ignore previous", "ignore all", "system prompt", "developer message",
             "忽略之前", "忽略上述", "系统提示", "开发者消息", "你现在是");
@@ -28,6 +29,14 @@ public class MemoryAdmissionPolicy {
         String normalized = summary.toLowerCase(Locale.ROOT);
         return INSTRUCTION_MARKERS.stream().noneMatch(normalized::contains)
                 && PiiMasker.mask(summary).mapping().isEmpty();
+    }
+
+    /** 事实比摘要更小更持久，准入边界相应更紧：更短、零 PII 残留、无指令标记。 */
+    public boolean acceptsFact(String factText) {
+        if (factText == null || factText.isBlank() || factText.length() > MAX_FACT_CHARS) return false;
+        String normalized = factText.toLowerCase(Locale.ROOT);
+        return INSTRUCTION_MARKERS.stream().noneMatch(normalized::contains)
+                && PiiMasker.mask(factText).mapping().isEmpty();
     }
 
     private boolean safeList(List<String> values, int maxItems, int maxChars) {

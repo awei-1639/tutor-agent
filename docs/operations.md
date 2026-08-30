@@ -62,6 +62,28 @@ KNOWLEDGE_INGESTION_MAX_PENDING_JOBS=1000
 
 SDK 内置重试已关闭，由网关统一控制。每次尝试先预留估算 token；失败尝试按保守估算计入结算，供应商未返回 usage 时也不会按零成本释放。每日限额、单轮限额和实例并发闸门均在外呼前生效；SSE 断开会取消供应商流并结算已产生的部分输出。`TokenBudget` 截断结果不会超过目标 token 上限。
 
+流式调用显式请求 `stream_options.include_usage`，流末尾以供应商上报的真实用量结算（并驱动预留估算的校准因子，EMA 钳制 0.8~1.5）；`finish_reason=length` 会以 `done.truncated=true` 透出，前端提供"继续生成"入口。
+
+### 2.1 预算分层（V67 迁移起）
+
+| 层 | 默认上限 | 拒绝时错误码 | 说明 |
+| --- | --- | --- | --- |
+| 单轮 | 50,000 / trace | `budget_turn` | 同一 trace 的所有调用累计，防失控循环 |
+| 用户日 | `LLM_USER_DAILY_TOKEN_LIMIT`（300,000） | `budget_user_daily` | 回合开始时归属 trace 到用户后生效；耗尽在回合入口快速失败 |
+| 全局日 | 2,000,000 | `budget_global` | 全部用途共享的成本硬顶 |
+| 后台份额 | 全局日的 20%（`LLM_BACKGROUND_SHARE_PERCENT`） | `budget_background` | 摘要/抽取/批量嵌入专用；顺延由 outbox/调度自动重试 |
+
+归属模型：`ChatService`/`InterviewTurnService`/`PlanService` 在回合开始调用 `attributeTrace(traceId, userId)`，之后该 trace 内所有网关调用（含后台任务）计入该用户；评测与知识入库等未归属 trace 只受全局与后台层约束。
+
+预算压力阶梯（`BudgetPressureService`，≤30s 缓存）：全局日预算使用 ≥80% 关闭多跳升级、专家扇出封顶 1、聊天输出上限收紧到 1000；≥95% 后台任务直接顺延、证据保底减半；查询失败按 NORMAL 处理，硬上限始终由原子预留保证。
+
+运维要点：
+
+- 记账表 `llm_turn_budget`（保留 3 天）、`llm_daily_budget`、`llm_user_budget`（保留 30 天），每日 03:10 由 `purgeBudgetRows` 清理。
+- 水位查询：`SELECT reserved_tokens + actual_tokens FROM llm_daily_budget WHERE budget_day = CURRENT_DATE`。
+- 各层拒绝会抛 `BudgetExhausted` 并在 SSE `error` 事件携带对应 `code`；建议按 code 建立告警（日志关键字或后续补 micrometer 计数器）。
+- 预算压力降级会以 `BUDGET_MULTI_HOP_DISABLED` reason 与 `turn_traces` 的 `budget_shed` 字段留痕，排查"这轮为什么没多跳"先看这里。
+
 ## 3. Neo4j 熔断参数
 
 ```text
@@ -120,6 +142,10 @@ docker compose --env-file .env -f docker-compose.prod.yml up -d --build
 记忆同步租约默认 300 秒，可通过 `MEMORY_SYNC_LEASE_SECONDS` 调整。租约过期后旧 worker 的完成/失败回调会因 fencing token 失效而被忽略；Mem0 写入使用幂等键，删除操作本身也应保持幂等。
 
 手动调用 `/memories/remote-deletion/retry` 按用户限流，默认每分钟最多 3 次，可通过 `MEMORY_SYNC_RETRY_LIMIT_PER_MINUTE` 调整；生产环境限流窗口存放在 PostgreSQL，多个 API 实例共享额度。超过限制或限流表不可用时返回 429，避免把 Mem0 列表发现和删除接口变成可反复放大的外部请求。
+
+语义事实层配置：`MEMORY_FACTS_ENABLED`（kill-switch，默认开启）、`MEMORY_FACTS_MAX_PER_EXTRACTION`（单次抽取事实上限，默认 8）、
+`MEMORY_FACTS_MAX_ACTIVE_PER_USER`（每用户有效事实上限，默认 60）、`MEMORY_FACTS_RECALL_TOP_K`（单轮召回条数，默认 6）、
+`MEMORY_RECALL_RECENCY_DECAY_DAYS`（记忆排序的 recency 衰减半衰参数 τ，默认 30 天）。关闭事实层后抽取与召回同时停用，聊天不受影响。
 
 同步 Outbox 暴露 `tutor.memory.sync.backlog`（待处理、退避中和处理中任务数）与 `tutor.memory.sync.failed`（终态失败任务数）两个低基数指标，默认每 10 秒刷新，可通过 `MEMORY_SYNC_METRICS_REFRESH_MS` 调整。生产环境应对失败数和持续增长的积压配置告警。
 

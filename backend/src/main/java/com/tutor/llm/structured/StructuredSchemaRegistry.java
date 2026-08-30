@@ -310,6 +310,29 @@ public final class StructuredSchemaRegistry {
                       }
                     }
                     """
+            )),
+            Map.entry(StructuredTask.FACT_EXTRACT, definition(
+                    "fact-extract-v1",
+                    FactExtractOutput.class,
+                    """
+                    {
+                      "$schema":"https://json-schema.org/draft/2020-12/schema",
+                      "$id":"https://tutor.local/schema/fact-extract-v1",
+                      "type":"object","additionalProperties":false,
+                      "required":["facts"],
+                      "properties":{
+                        "facts":{"type":"array","maxItems":8,"items":{
+                          "type":"object","additionalProperties":false,
+                          "required":["text","category"],
+                          "properties":{
+                            "text":{"type":"string","minLength":4,"maxLength":120},
+                            "category":{"type":"string","enum":["goal","preference","skill","constraint","background"]},
+                            "confidence":{"type":"number","minimum":0,"maximum":1}
+                          }
+                        }}
+                      }
+                    }
+                    """
             ))
     );
 

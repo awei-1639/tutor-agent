@@ -47,16 +47,22 @@ public class EpisodeStore {
 
     public record Episode(long id, long userId, Long conversationId,
                           String summary, List<String> topics, List<String> openItems,
-                          double relevance, String remoteMemoryId) {
+                          double relevance, String remoteMemoryId, Instant createdAt) {
         public Episode(long id, long userId, Long conversationId,
                        String summary, List<String> topics, List<String> openItems) {
-            this(id, userId, conversationId, summary, topics, openItems, 0D, null);
+            this(id, userId, conversationId, summary, topics, openItems, 0D, null, null);
         }
 
         public Episode(long id, long userId, Long conversationId,
                        String summary, List<String> topics, List<String> openItems,
                        double relevance) {
-            this(id, userId, conversationId, summary, topics, openItems, relevance, null);
+            this(id, userId, conversationId, summary, topics, openItems, relevance, null, null);
+        }
+
+        public Episode(long id, long userId, Long conversationId,
+                       String summary, List<String> topics, List<String> openItems,
+                       double relevance, String remoteMemoryId) {
+            this(id, userId, conversationId, summary, topics, openItems, relevance, remoteMemoryId, null);
         }
     }
 
@@ -138,7 +144,7 @@ public class EpisodeStore {
         String vec = com.tutor.retrieval.vector.VectorStore.toVectorLiteral(queryVec);
         String summary = summaryColumn();
         String sql = "SELECT id, user_id, conversation_id, " + summary + ", topics, open_items, " +
-                "1 - (embedding <=> ?::vector) AS relevance, remote_memory_id " +
+                "1 - (embedding <=> ?::vector) AS relevance, remote_memory_id, created_at " +
                 "FROM episodes WHERE user_id = ? AND status='active' AND embedding IS NOT NULL " +
                 "AND (expires_at IS NULL OR expires_at > now()) " +
                 "AND 1 - (embedding <=> ?::vector) >= ? " +
@@ -150,7 +156,7 @@ public class EpisodeStore {
 
     /** 按用户取最近 N 条 (无向量检索时降级) */
     public List<Episode> recentByUser(long userId, int limit) {
-        String sql = "SELECT id, user_id, conversation_id, " + summaryColumn() + ", topics, open_items, remote_memory_id " +
+        String sql = "SELECT id, user_id, conversation_id, " + summaryColumn() + ", topics, open_items, remote_memory_id, created_at " +
                 "FROM episodes WHERE user_id = ? AND status='active' " +
                 "AND (expires_at IS NULL OR expires_at > now()) ORDER BY created_at DESC LIMIT ?";
         return encKey.isBlank()
@@ -160,6 +166,24 @@ public class EpisodeStore {
 
     public void deleteByUser(long userId) {
         jdbc.update("DELETE FROM episodes WHERE user_id=?", userId);
+    }
+
+    /** 用户最近有效记忆中的未决事项（按记忆新旧去重取前 N），用于新会话开场主动提醒。 */
+    public List<String> openItemsByUser(long userId, int limit) {
+        List<String> rows = jdbc.query("""
+                SELECT open_items FROM episodes
+                WHERE user_id = ? AND status='active' AND (expires_at IS NULL OR expires_at > now())
+                ORDER BY created_at DESC LIMIT 20
+                """, (rs, i) -> rs.getString(1), userId);
+        List<String> result = new ArrayList<>();
+        for (String row : rows) {
+            for (String item : parsePgTextArray(row)) {
+                String value = item.trim();
+                if (!value.isEmpty() && !result.contains(value)) result.add(value);
+                if (result.size() >= limit) return result;
+            }
+        }
+        return result;
     }
 
     public List<ManagedEpisode> activeByUser(long userId, int limit) {
@@ -267,14 +291,18 @@ public class EpisodeStore {
         return new Episode(rs.getLong(1), rs.getLong(2),
                 rs.getObject(3) == null ? null : rs.getLong(3), rs.getString(4),
                 parsePgTextArray(rs.getString(5)), parsePgTextArray(rs.getString(6)), rs.getDouble(7),
-                rs.getString(8));
+                rs.getString(8), toInstant(rs.getTimestamp(9)));
     }
 
     private Episode mapRecentEpisode(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new Episode(rs.getLong(1), rs.getLong(2),
                 rs.getObject(3) == null ? null : rs.getLong(3), rs.getString(4),
                 parsePgTextArray(rs.getString(5)), parsePgTextArray(rs.getString(6)), 0D,
-                rs.getString(7));
+                rs.getString(7), toInstant(rs.getTimestamp(8)));
+    }
+
+    private static Instant toInstant(java.sql.Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant();
     }
 
     private static String toPgTextArrayLiteral(List<String> items) {

@@ -5,6 +5,7 @@ import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.memory.external.MemorySyncOutbox;
 import com.tutor.memory.local.ConversationStore;
+import com.tutor.memory.local.FactStore;
 import com.tutor.profile.ProfileService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,22 +33,43 @@ public class MemoryController {
     private final MemorySyncOutbox outbox;
     private final ProfileService profiles;
     private final ConversationStore conversations;
+    private final FactStore facts;
     private final MemoryDeletionRateLimiter deletionRateLimiter;
 
     public MemoryController(EpisodeStore episodes, LongTermMemoryService memory, MemorySyncOutbox outbox,
-                            ProfileService profiles, ConversationStore conversations,
+                            ProfileService profiles, ConversationStore conversations, FactStore facts,
                             MemoryDeletionRateLimiter deletionRateLimiter) {
         this.episodes = episodes;
         this.memory = memory;
         this.outbox = outbox;
         this.profiles = profiles;
         this.conversations = conversations;
+        this.facts = facts;
         this.deletionRateLimiter = deletionRateLimiter;
     }
 
     @GetMapping
     public List<EpisodeStore.ManagedEpisode> list(@RequestParam(defaultValue = "50") int limit) {
         return episodes.activeByUser(currentUserId(), Math.clamp(limit, 1, 100));
+    }
+
+    /** 新会话开场主动提醒：最近未完成事项。仅读取，不改变任何记忆状态。 */
+    @GetMapping("/open-items")
+    public List<String> openItems(@RequestParam(defaultValue = "3") int limit) {
+        return episodes.openItemsByUser(currentUserId(), Math.clamp(limit, 1, 10));
+    }
+
+    /** 用户长期事实清单；与 Episode 清单分列，删除语义各自独立。 */
+    @GetMapping("/facts")
+    public List<FactStore.UserFact> listFacts(@RequestParam(defaultValue = "100") int limit) {
+        return facts.activeByUser(currentUserId(), Math.clamp(limit, 1, 200));
+    }
+
+    @DeleteMapping("/facts/{id}")
+    public void deleteFact(@PathVariable long id) {
+        if (!facts.deleteByIdForUser(id, currentUserId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "事实不存在");
+        }
     }
 
     @DeleteMapping("/{id}")

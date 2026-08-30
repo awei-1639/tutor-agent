@@ -14,5 +14,6 @@ public enum StructuredTask {
     PLAN,
     CITATION_GUARD,
     SUMMARY_FOLDER,
-    EPISODE_SUMMARY
+    EPISODE_SUMMARY,
+    FACT_EXTRACT
 }

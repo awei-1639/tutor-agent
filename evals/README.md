@@ -6,7 +6,9 @@
 
 - `rag_testset.json`：带 Gold 节点的 RAG 回归集；
 - `router_testset.json`：意图路由标注集；
+- `memory_testset.json`：记忆召回评测集（事实命中/superseded 泄漏/时序正确性/无关注入）；
 - `run_eval.mjs`：比较四条真实检索管线；
+- `run_memory_eval.mjs`：记忆召回评测（打 `/internal/memory-recall`，种子经 `/internal/memory-seed` 重建，embedding 走真实网关）；
 - `run_citation_eval.mjs`：辅助引用忠实度评估；
 - `run_interview_score_eval.mjs`：重放脱敏的模型—人工评分记录并执行双人标注门禁；
 - `results/`：运行产生的 JSON 结果，默认不应提交。
@@ -19,6 +21,13 @@
 node evals/run_eval.mjs --smoke
 node evals/run_eval.mjs
 node evals/run_eval.mjs --ci
+```
+
+记忆评测（需要后端启动且配置了 embedding 供应商；`superseded_leak_rate` 阈值为 0，失效事实回流视为正确性缺陷）：
+
+```powershell
+node evals/run_memory_eval.mjs --smoke
+node evals/run_memory_eval.mjs --ci
 ```
 
 路由评测结果会保留逐条 `calibration_samples`，可用真实标注结果拟合越界校准模型：

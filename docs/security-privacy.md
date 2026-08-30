@@ -43,6 +43,16 @@ Mem0 默认关闭。启用时必须由用户开启外部记忆授权，只写入
 
 会话原文和滚动摘要从 V48 起使用 `RESUME_ENC_KEY` 通过 PostgreSQL `pgcrypto` 加密保存；可查询的文本列只保留脱敏兼容副本。旧数据由应用启动后的分批回填任务逐步加密，生产环境缺少该密钥时拒绝启动。Episode 额外记录 `RESUME_ENC_KEY_ID`；轮换期间配置 `RESUME_ENC_PREVIOUS_KEY` 和 `RESUME_ENC_PREVIOUS_KEY_ID`，Episode 先兼容读取旧版本，再由后台逐步重加密。当前轮换回填只覆盖 Episode；简历原文、PII 映射和会话消息/摘要仍需独立的全量轮换方案，不能直接删除旧密钥。确认所有相关数据回填完成后才能移除旧密钥。
 
+## 5.1 语义事实层（user_facts）边界
+
+- 事实是 Episode 的再加工产物，但拥有独立的准入边界：抽取输入先过 `PiiMasker`，落库前 `MemoryAdmissionPolicy.acceptsFact`
+  再拒绝残留 PII、注入式指令与超长文本；LLM 抽取只发生在脱敏之后；
+- 静态加密与 episodes 同一套 pgcrypto 双列模式（`fact_text` 脱敏投影 + `fact_encrypted` 密文 + 密钥版本号），
+  密钥轮换沿用 `security.resume-enc-previous-key` 机制；
+- 事实只存本地 PostgreSQL，不写入 Mem0；用户可在 `/memories` 页面单独删除每条事实，删除与 Episode/画像/会话删除语义分离；
+- 冲突消解是确定性规则（同类目 + bigram 阈值），不做 LLM 判定，保证可审计、可复现；
+- 代际 fencing：`user_facts.memory_generation` 与 `users.memory_generation` 联动，清除记忆后，在途抽取任务既无法写入也无法软失效。
+
 ## 6. OSS 文档边界
 
 知识库原文件应放在私有 Bucket。AccessKey 只由后端读取，前端不应获得永久访问凭证。

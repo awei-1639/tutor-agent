@@ -17,6 +17,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -53,6 +55,19 @@ class EpisodeStoreTest {
         assertThat(out).hasSize(1);
         assertThat(out.get(0).topics()).containsExactly("NLP", "RAG");
         assertThat(out.get(0).openItems()).containsExactly("完成微调实验");
+    }
+
+    @Test
+    @DisplayName("openItemsByUser: 展平去重并限量")
+    void openItemsFlattensDedupesAndLimits() {
+        when(jdbc.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<String>>any(), eq(1L)))
+                .thenReturn(List.of("{继续Redis面试题,制定项目计划}", "{制定项目计划,复习多线程}"));
+
+        List<String> items = store.openItemsByUser(1L, 3);
+
+        assertThat(items).containsExactly("继续Redis面试题", "制定项目计划", "复习多线程");
+        verify(jdbc).query(contains("status='active'"),
+                org.mockito.ArgumentMatchers.<RowMapper<String>>any(), eq(1L));
     }
 
     @Test

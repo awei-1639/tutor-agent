@@ -91,6 +91,6 @@ class MemoryControllerTest {
     private MemoryController controller(EpisodeStore store, LongTermMemoryService memory, MemorySyncOutbox outbox) {
         MemoryDeletionRateLimiter limiter = mock(MemoryDeletionRateLimiter.class);
         when(limiter.tryAcquire(anyLong())).thenReturn(true);
-        return new MemoryController(store, memory, outbox, mock(ProfileService.class), mock(ConversationStore.class), limiter);
+        return new MemoryController(store, memory, outbox, mock(ProfileService.class), mock(ConversationStore.class), mock(com.tutor.memory.local.FactStore.class), limiter);
     }
 }

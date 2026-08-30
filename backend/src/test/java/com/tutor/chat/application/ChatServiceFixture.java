@@ -64,6 +64,8 @@ final class ChatServiceFixture {
     final EpisodeSummarizer episodeSummarizer = mock(EpisodeSummarizer.class);
     final LongTermMemoryService longTermMemory = mock(LongTermMemoryService.class);
     final EpisodeSection episodeSection = mock(EpisodeSection.class);
+    final com.tutor.memory.application.FactRecallService factRecall = mock(com.tutor.memory.application.FactRecallService.class);
+    final com.tutor.context.sections.FactsSection factsSection = mock(com.tutor.context.sections.FactsSection.class);
     final CitationGuard citationGuard = mock(CitationGuard.class);
     final MemoryConsentService memoryConsent = mock(MemoryConsentService.class);
     final CitationVerificationService citationVerification;
@@ -81,16 +83,16 @@ final class ChatServiceFixture {
     ChatService build() {
         return new ChatService(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
-                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, citationVerification,
-                postTurnTasks, memoryConsent);
+                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, factRecall, factsSection,
+                citationVerification, postTurnTasks, memoryConsent);
     }
 
     /** 启用受控工具循环的构造器；toolLoopEnabled=false 时与 {@link #build()} 行为一致。 */
     ChatService buildWithToolLoop(com.tutor.tool.ToolCallLoop toolCallLoop, boolean toolLoopEnabled) {
         return new ChatService(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
-                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, citationVerification,
-                postTurnTasks, memoryConsent, null, null, toolCallLoop, toolLoopEnabled);
+                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, factRecall, factsSection,
+                citationVerification, postTurnTasks, memoryConsent, null, null, toolCallLoop, toolLoopEnabled);
     }
 
     private void stubConversationDefaults() {
@@ -118,6 +120,8 @@ final class ChatServiceFixture {
     private void stubRetrievalDefaults() {
         when(longTermMemory.recall(anyLong(), anyString(), anyString()))
                 .thenReturn(new LongTermMemoryService.RecallResult(List.of(), false));
+        when(factRecall.recall(anyLong(), anyString(), anyString())).thenReturn(List.of());
+        when(factsSection.render(any(), any())).thenReturn("");
         when(agenticRetriever.retrievalProfileVersion()).thenReturn("test-profile");
         stubRetrieval(List.of());
     }

@@ -73,8 +73,10 @@ class ChatServiceTest {
                 longTermMemory, memoryConsent);
         ChatService service = new ChatService(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
-                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, citationVerification, postTurnTasks,
-                memoryConsent);
+                summaryFolder, episodeSummarizer, longTermMemory, episodeSection,
+                mock(com.tutor.memory.application.FactRecallService.class),
+                mock(com.tutor.context.sections.FactsSection.class),
+                citationVerification, postTurnTasks, memoryConsent);
 
         AuthContext.set(42L);
         when(conversations.ensureConversation(isNull(), eq(42L))).thenReturn(9L);
@@ -90,7 +92,8 @@ class ChatServiceTest {
                 .thenReturn(new CitationGuard.GuardResult(0, 0, List.of(), 1.0, "not_applicable"));
         doAnswer(invocation -> {
             invocation.<dev.langchain4j.model.chat.response.StreamingChatResponseHandler>getArgument(3)
-                    .onCompleteResponse(null);
+                    .onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse.builder()
+                            .aiMessage(dev.langchain4j.data.message.AiMessage.from("hello")).build());
             return null;
         }).when(gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
 

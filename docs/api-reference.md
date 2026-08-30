@@ -57,13 +57,17 @@
 | GET | `/interview/{sessionId}/report` | 查询当前用户的面试复盘报告 |
 | GET | `/notifications` | 查询通知 |
 | POST | `/notifications/read` | 标记通知已读 |
-| GET | `/memory/consent` | 查看外部记忆授权 |
+| GET | `/memory/consent` | 查看云端记忆授权状态 |
+| PUT | `/memory/consent` | 开启或关闭云端记忆授权；关闭会立即删除全部本地跨会话记忆与长期事实 |
 | DELETE | `/memory/consent` | 关闭授权并删除记忆 |
 | GET | `/memories` | 查看本地跨会话记忆 |
 | DELETE | `/memories/{id}` | 删除单条跨会话记忆；已关联或后续发现的 Mem0 副本异步删除 |
 | DELETE | `/memories` | 清除所有跨会话记忆；云端删除异步处理 |
 | DELETE | `/memories/profile` | 仅清除用户画像及画像事件 |
 | DELETE | `/memories/conversations/{id}` | 删除指定会话及其原文消息/摘要 |
+| GET | `/memories/facts` | 查看长期事实清单（从对话中提炼的稳定目标/偏好/技能等） |
+| GET | `/memories/open-items` | 查询最近的未完成事项（新会话开场主动提醒，limit 1-10 默认 3） |
+| DELETE | `/memories/facts/{id}` | 删除单条长期事实；与记忆/画像删除语义分离 |
 | GET | `/memories/remote-deletion` | 查看当前用户最近一次云端记忆删除（整用户或单条）状态 |
 | GET | `/memories/{id}/remote-deletion` | 查看指定跨会话记忆的云端删除状态 |
 | POST | `/memories/remote-deletion/retry` | 重新排队当前用户耗尽自动重试次数的云端同步 |
@@ -83,13 +87,14 @@
 
 | 事件 | 主要字段 | 前端用途 |
 | --- | --- | --- |
-| `meta` | `conversation_id`, `trace_id`, `turn_id` | 建立本轮上下文；回合状态持久化，SSE 断开不等于任务被删除 |
+| `meta` | `conversation_id`, `trace_id`, `turn_id`, `quota_remaining_percent?` | 建立本轮上下文；回合状态持久化，SSE 断开不等于任务被删除；剩余额度百分比 (0-100) 供额度提示条，无归属时缺省 |
 | `stage` | `phase`, `expert?`, `status?`, `detail?` | 展示路由、检索和专家状态；专家状态为 `success`、`timeout`、`failed`、`cancelled` 或 `rejected` |
 | `clarify` | `question` | 需要澄清时暂停 |
 | `citation` | `sid`, `node_id`, `text`, `source_url`, `source_status`, `evidence_hash`, `graph_path` | 证据卡片；`managed` 表示平台固化且哈希一致，外部来源默认 `unverified`，哈希异常为 `integrity_mismatch`；请求链路不会主动抓取 URL |
+| `memories` | `items` | 本轮召回的跨会话记忆 (episode/fact)，展示记忆来源卡片 |
 | `token` | `text`, `seq` | 顺序拼接流式回答 |
-| `done` | `message_id`, `citation_status`, `citation_issues` | 完成本轮；引用校验可能先为 `pending`，历史消息会返回异步完成后的状态 |
-| `error` | `code`, `message` | 展示用户友好错误 |
+| `done` | `message_id`, `citation_status`, `citation_issues`, `truncated?` | 完成本轮；引用校验可能先为 `pending`，历史消息会返回异步完成后的状态；`truncated=true` 表示回答因输出上限被截断，前端提供"继续生成"入口 |
+| `error` | `code`, `message` | 展示用户友好错误；`code` 为稳定机器码：`budget_turn`/`budget_user_daily`/`budget_global`/`budget_background`（预算分层拒绝）、`llm_busy`（并发繁忙）、`TURN_FAILED`（其他失败） |
 
 ## 5. 管理端
 

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "created_at": "2026-08-30",
+  "note": "记忆召回评测集。每个 scenario 播种一个测试用户 (通过 /internal/memory-seed, embedding 走真实网关)；cases 引用 scenario key。gold/banned 一律按精确文本匹配（id 由播种动态生成）。标注依据：fact_stability 验证语义事实层排序；fact_contradiction 验证 superseded 软失效绝不回流（泄漏率阈值 0）；episode_recency 验证 recency 衰减让新经历排在旧经历前；episode_hit 验证情景召回；no_match 验证无关查询不硬凑记忆。",
+  "scenarios": {
+    "seed_backend": {
+      "facts": [
+        { "text": "用户的目标岗位是后端开发工程师", "category": "goal", "confidence": 0.9 },
+        { "text": "用户的目标岗位是前端开发工程师", "category": "goal", "confidence": 0.6, "status": "superseded" },
+        { "text": "用户偏好中文讲解并配合可运行的代码示例", "category": "preference", "confidence": 0.8 },
+        { "text": "用户每周只能投入十小时左右的学习时间", "category": "constraint", "confidence": 0.8 },
+        { "text": "用户已经掌握Java集合与多线程的基础用法", "category": "skill", "confidence": 0.7 },
+        { "text": "用户是计算机专业的应届毕业生", "category": "background", "confidence": 0.7 }
+      ],
+      "episodes": [
+        { "summary": "第一次讨论了Redis缓存的面试基础题与适用场景", "topics": ["Redis", "面试"], "age_days": 45 },
+        { "summary": "深入讨论了Redis缓存穿透雪崩与数据一致性的面试要点", "topics": ["Redis", "面试"], "age_days": 7 },
+        { "summary": "一起制定了Spring Boot实战项目的两周开发计划", "topics": ["Spring Boot", "项目"], "age_days": 2 }
+      ]
+    }
+  },
+  "cases": [
+    { "id": "m001", "type": "fact_stability", "scenario": "seed_backend", "top_k": 3,
+      "query": "我秋招应该投什么方向的岗位？",
+      "gold_fact": "用户的目标岗位是后端开发工程师" },
+    { "id": "m002", "type": "fact_stability", "scenario": "seed_backend", "top_k": 3,
+      "query": "我每周大概能安排多少学习时间？",
+      "gold_fact": "用户每周只能投入十小时左右的学习时间" },
+    { "id": "m003", "type": "fact_stability", "scenario": "seed_backend", "top_k": 3,
+      "query": "讲东西的时候用中文，最好配上能跑的代码示例",
+      "gold_fact": "用户偏好中文讲解并配合可运行的代码示例" },
+    { "id": "m004", "type": "fact_stability", "scenario": "seed_backend", "top_k": 3,
+      "query": "我现在的Java基础处于什么水平，可以直接刷面试题吗",
+      "gold_fact": "用户已经掌握Java集合与多线程的基础用法" },
+    { "id": "m005", "type": "fact_contradiction", "scenario": "seed_backend", "top_k": 3,
+      "query": "我的目标岗位到底是什么来着？",
+      "gold_fact": "用户的目标岗位是后端开发工程师",
+      "banned_fact": "用户的目标岗位是前端开发工程师" },
+    { "id": "m006", "type": "fact_contradiction", "scenario": "seed_backend", "top_k": 3,
+      "query": "帮我分析下前端和后端哪个更适合我",
+      "gold_fact": "用户的目标岗位是后端开发工程师",
+      "banned_fact": "用户的目标岗位是前端开发工程师" },
+    { "id": "m007", "type": "episode_hit", "scenario": "seed_backend", "top_k": 5,
+      "query": "项目实战计划接下来该怎么推进？",
+      "gold_episode": "一起制定了Spring Boot实战项目的两周开发计划" },
+    { "id": "m008", "type": "episode_recency", "scenario": "seed_backend", "top_k": 5,
+      "query": "Redis缓存在面试里有哪些考点？",
+      "gold_episode": "深入讨论了Redis缓存穿透雪崩与数据一致性的面试要点",
+      "older_episode": "第一次讨论了Redis缓存的面试基础题与适用场景" },
+    { "id": "m009", "type": "episode_hit", "scenario": "seed_backend", "top_k": 5,
+      "query": "缓存穿透和雪崩我还没完全弄明白",
+      "gold_episode": "深入讨论了Redis缓存穿透雪崩与数据一致性的面试要点" },
+    { "id": "m010", "type": "no_match", "scenario": "seed_backend", "top_k": 5,
+      "query": "今天附近有什么好吃的餐厅推荐吗" },
+    { "id": "m011", "type": "no_match", "scenario": "seed_backend", "top_k": 5,
+      "query": "帮我写一首关于秋天的短诗" }
+  ]
+}

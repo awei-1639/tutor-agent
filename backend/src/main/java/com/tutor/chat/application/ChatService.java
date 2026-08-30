@@ -22,12 +22,18 @@ import com.tutor.expert.Aggregator;
 import com.tutor.expert.ExpertRunner;
 import com.tutor.expert.IntentRouter;
 import com.tutor.guard.CitationSourcePolicy;
+import com.tutor.llm.BudgetExhausted;
+import com.tutor.llm.BudgetPressureService;
+import com.tutor.llm.LlmBudgetGuard;
+import com.tutor.llm.LlmBusyException;
 import com.tutor.llm.StreamingGenerationGateway;
 import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.memory.application.FactRecallService;
 import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.local.EpisodeSummarizer;
+import com.tutor.memory.local.FactStore;
 import com.tutor.memory.local.SummaryFolder;
 import com.tutor.memory.policy.MemoryConsentService;
 import com.tutor.profile.ProfileService;
@@ -41,6 +47,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.FinishReason;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -91,6 +98,8 @@ public class ChatService {
     private final EpisodeSummarizer episodeSummarizer;
     private final LongTermMemoryService longTermMemory;
     private final com.tutor.context.sections.EpisodeSection episodeSection;
+    private final FactRecallService factRecall;
+    private final com.tutor.context.sections.FactsSection factsSection;
     private final CitationVerificationService citationVerification;
     private final PostTurnTaskService postTurnTasks;
     private final MemoryConsentService memoryConsent;
@@ -98,6 +107,8 @@ public class ChatService {
     private final ToolCallLoop toolCallLoop;
     private final boolean toolLoopEnabled;
     private final ContextualQueryRewriter queryRewriter;
+    private volatile LlmBudgetGuard budgetGuard;
+    private volatile BudgetPressureService budgetPressure;
     private final TurnCitations citations = new TurnCitations();
     private final ExecutorService background = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -114,12 +125,15 @@ public class ChatService {
                        EpisodeSummarizer episodeSummarizer,
                        LongTermMemoryService longTermMemory,
                        com.tutor.context.sections.EpisodeSection episodeSection,
+                       FactRecallService factRecall,
+                       com.tutor.context.sections.FactsSection factsSection,
                        CitationVerificationService citationVerification,
                        PostTurnTaskService postTurnTasks,
                        MemoryConsentService memoryConsent) {
         this(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget, gateway, conversations,
                 profileService, router, routingPolicy, expertRunner, aggregator, trace, resumeService, summaryFolder,
-                episodeSummarizer, longTermMemory, episodeSection, citationVerification, postTurnTasks, memoryConsent,
+                episodeSummarizer, longTermMemory, episodeSection, factRecall, factsSection,
+                citationVerification, postTurnTasks, memoryConsent,
                 null, null, null, false);
     }
 
@@ -135,6 +149,8 @@ public class ChatService {
                        EpisodeSummarizer episodeSummarizer,
                        LongTermMemoryService longTermMemory,
                        com.tutor.context.sections.EpisodeSection episodeSection,
+                       FactRecallService factRecall,
+                       com.tutor.context.sections.FactsSection factsSection,
                        CitationVerificationService citationVerification,
                        PostTurnTaskService postTurnTasks,
                        MemoryConsentService memoryConsent,
@@ -160,6 +176,8 @@ public class ChatService {
         this.episodeSummarizer = episodeSummarizer;
         this.longTermMemory = longTermMemory;
         this.episodeSection = episodeSection;
+        this.factRecall = factRecall;
+        this.factsSection = factsSection;
         this.citationVerification = citationVerification;
         this.postTurnTasks = postTurnTasks;
         this.memoryConsent = memoryConsent;
@@ -177,13 +195,26 @@ public class ChatService {
         ExecutorLifecycle.shutdown(background, "chat-background", log);
     }
 
+    /** 可选注入：预算归属/快速失败与压力降级；未注入时退化为原有行为 (便于测试构造)。 */
+    @Autowired(required = false)
+    void setBudgetGuard(LlmBudgetGuard budgetGuard) { this.budgetGuard = budgetGuard; }
+
+    @Autowired(required = false)
+    void setBudgetPressure(BudgetPressureService budgetPressure) { this.budgetPressure = budgetPressure; }
+
     public interface TurnEvents {
         void onMeta(long conversationId, String traceId);
+        /** quotaRemainingPercent: 用户当日剩余配额 (0-100)，无法归属时为 null。 */
+        default void onMeta(long conversationId, String traceId, Integer quotaRemainingPercent) {
+            onMeta(conversationId, traceId);
+        }
         void onStage(String phase);
         default void onExpertDone(String expert, String status, String detail) {
             onStage("expert_done:" + expert + ":" + status);
         }
         void onCitations(List<Evidence> evidences);
+        /** 本轮召回并进入提示词的跨会话记忆（事实+情景）；默认空实现兼容既有实现方。 */
+        default void onMemories(List<MemoryRef> memories) {}
         void onToken(String token);
         void onClarify(String question);
         default void onClarify(String question, List<Map<String, String>> options) {
@@ -193,7 +224,14 @@ public class ChatService {
         default void onDone(long messageId, String fullText, String citationStatus, List<String> citationIssues) {
             onDone(messageId, fullText);
         }
+        /** truncated: 回答因输出上限被截断 (供应商 finish_reason=length 或本地硬顶)，前端据此提供续写入口。 */
+        default void onDone(long messageId, String fullText, String citationStatus,
+                            List<String> citationIssues, boolean truncated) {
+            onDone(messageId, fullText, citationStatus, citationIssues);
+        }
         void onError(String message);
+        /** code 为稳定机器码 (budget_*、llm_busy、TURN_FAILED)，message 已是面向用户的文案。 */
+        default void onError(String code, String message) { onError(message); }
     }
 
     public void turn(Long conversationId, String question, TurnEvents events) {
@@ -247,7 +285,15 @@ public class ChatService {
         } catch (Exception e) {
             log.error("turn error trace={}", traceId, e);
             if (!cancellation.isCancelled()) {
-                events.onError(e instanceof IllegalStateException ? e.getMessage() : "服务异常, 请稍后重试");
+                // 预算与繁忙是可预期的用户可见状态，携带稳定机器码与友好文案；
+                // 其余一律收敛为通用失败，内部不变量消息不再透传给用户。
+                if (e instanceof BudgetExhausted exhausted) {
+                    events.onError(exhausted.code(), exhausted.userMessage());
+                } else if (e instanceof LlmBusyException busy) {
+                    events.onError("llm_busy", busy.getMessage());
+                } else {
+                    events.onError("TURN_FAILED", "服务异常, 请稍后重试");
+                }
             }
         }
     }
@@ -267,7 +313,11 @@ public class ChatService {
                               com.tutor.expert.RoutingPolicy.ExecutionPlan plan) {}
 
     /** 检索节点产出：证据与情景记忆一起决定后续提示词，out_of_scope 时两者都为空。 */
-    private record RetrievedContext(List<Evidence> evidences, List<EpisodeStore.Episode> episodes) {}
+    private record RetrievedContext(List<Evidence> evidences, List<EpisodeStore.Episode> episodes,
+                                    List<FactStore.UserFact> facts) {}
+
+    /** 本轮实际进入提示词的记忆引用，用于前端"参考记忆"透出。 */
+    public record MemoryRef(String kind, long id, String text) {}
 
     /**
      * 统一的用户查询改写：代词消解、短追问主题补全和失败模式都在此收口。
@@ -305,7 +355,8 @@ public class ChatService {
         if (decision == null) {
             throw new IllegalStateException("路由决策不能为空");
         }
-        com.tutor.expert.RoutingPolicy.ExecutionPlan plan = routingPolicy.plan(decision, executionQuestion);
+        com.tutor.expert.RoutingPolicy.ExecutionPlan plan = applyBudgetShedding(
+                routingPolicy.plan(decision, executionQuestion));
         trace.span(traceId, context.convId(), "router", start, plan.degraded(), routingTrace(decision, plan));
         log.info("intent={} scope={} confidence={} retrievalHint={} executed={} degraded={} reasons={} trace={}",
                 plan.intent(), decision.scope(), decision.confidence(), decision.retrievalHint(),
@@ -314,17 +365,51 @@ public class ChatService {
         return new RoutedTurn(decision, plan);
     }
 
+    /**
+     * 预算压力降级：ELEVATED 起砍质量特性 (多跳升级) 而不是砍可用性。
+     * 降级必须以 degraded=true + BUDGET_* reason 留痕，否则"这轮为什么没多跳"无从排查。
+     */
+    private com.tutor.expert.RoutingPolicy.ExecutionPlan applyBudgetShedding(
+            com.tutor.expert.RoutingPolicy.ExecutionPlan plan) {
+        if (budgetPressure == null
+                || budgetPressure.level() == BudgetPressureService.Level.NORMAL) {
+            return plan;
+        }
+        boolean multiHop = plan.allowMultiHopEscalation() && budgetPressure.multiHopAllowed();
+        List<String> reasons = new ArrayList<>(plan.reasonCodes());
+        if (multiHop != plan.allowMultiHopEscalation()) {
+            reasons.add("BUDGET_MULTI_HOP_DISABLED");
+        }
+        return new com.tutor.expert.RoutingPolicy.ExecutionPlan(plan.intent(), plan.intents(),
+                plan.retrievalFacets(), plan.retrievalHint(), multiHop, plan.skipRetrieval(),
+                true, List.copyOf(reasons));
+    }
+
     /** 检索节点。out_of_scope 直接跳过，省掉一次 embedding 调用和一次记忆召回。 */
     private RetrievedContext retrieveForTurn(String executionQuestion, TurnContext context,
                                              com.tutor.expert.RoutingPolicy.ExecutionPlan plan,
                                              String traceId, TurnEvents events) {
         if (plan.skipRetrieval()) {
-            return new RetrievedContext(List.of(), List.of());
+            return new RetrievedContext(List.of(), List.of(), List.of());
         }
         long memoryStart = System.currentTimeMillis();
         LongTermMemoryService.RecallResult memoryRecall =
                 longTermMemory.recall(context.userId(), executionQuestion, traceId);
         trace.span(traceId, context.convId(), "memory_recall", memoryStart, memoryRecall.degraded());
+
+        long factStart = System.currentTimeMillis();
+        List<FactStore.UserFact> facts = factRecall.recall(context.userId(), executionQuestion, traceId);
+        trace.span(traceId, context.convId(), "facts_recall", factStart, false,
+                Map.of("fact_count", facts.size()));
+
+        List<MemoryRef> memoryRefs = new ArrayList<>();
+        for (EpisodeStore.Episode episode : memoryRecall.episodes()) {
+            memoryRefs.add(new MemoryRef("episode", episode.id(), episode.summary()));
+        }
+        for (FactStore.UserFact fact : facts) {
+            memoryRefs.add(new MemoryRef("fact", fact.id(), fact.factText()));
+        }
+        events.onMemories(memoryRefs);
 
         events.onStage("retrieving");
         long start = System.currentTimeMillis();
@@ -340,7 +425,7 @@ public class ChatService {
         trace.span(traceId, context.convId(), "retrieve", start, false,
                 retrievalTrace(plan, graphPolicy, result, evidences));
         events.onCitations(evidences);
-        return new RetrievedContext(evidences, memoryRecall.episodes());
+        return new RetrievedContext(evidences, memoryRecall.episodes(), facts);
     }
 
     /** 生成路径分流：有专家则扇出+仲裁，否则直答流式。 */
@@ -349,6 +434,15 @@ public class ChatService {
                                 String traceId, TurnEvents events, CancellationToken cancellation,
                                 ChatTurnService.Claim claim) {
         List<String> expertNames = ExpertRunner.expertsFor(plan.intents());
+        // ELEVATED 压力下扇出封顶 1 个：保留最强的单专家视角，省掉其余扇出与仲裁成本。
+        if (expertNames.size() > 1 && budgetPressure != null) {
+            int cap = budgetPressure.maxExperts();
+            if (expertNames.size() > cap) {
+                log.info("expert fan-out capped by budget pressure {} -> {} trace={}",
+                        expertNames.size(), cap, traceId);
+                expertNames = expertNames.subList(0, cap);
+            }
+        }
         if (expertNames.isEmpty()) {
             List<ConversationStore.Msg> history = ConversationContextSelector.select(
                     context.recentWindow(), executionQuestion, HISTORY_TURNS * 2);
@@ -368,9 +462,12 @@ public class ChatService {
     private TurnContext loadTurnContext(Long conversationId, String question, String traceId,
                                         TurnEvents events, ChatTurnService.Claim claim) {
         long userId = claim == null ? currentUserId() : claim.userId();
+        // 归属与快速失败必须发生在任何副作用 (建会话、写用户消息) 之前：
+        // 配额耗尽时用户得到明确提示，而不是留下一条永远没有回复的消息。
+        Integer quotaRemainingPercent = attributeAndCheckQuota(traceId, userId);
         long memoryGeneration = memoryConsent.currentGeneration(userId);
         long convId = claim == null ? conversations.ensureConversation(conversationId, userId) : claim.conversationId();
-        events.onMeta(convId, traceId);
+        events.onMeta(convId, traceId, quotaRemainingPercent);
 
         ConversationStore.ClarificationState clarificationState = conversations.clarificationState(convId);
         if (clarificationState == null) {
@@ -396,6 +493,27 @@ public class ChatService {
     }
 
     /**
+     * 把本回合 trace 归属到用户并快速失败检查用户日配额；返回剩余配额百分比供前端展示。
+     * 归属失败 (如瞬时数据库抖动) 只降级为无用户级配额，不阻塞回合；配额耗尽则明确抛出。
+     */
+    private Integer attributeAndCheckQuota(String traceId, long userId) {
+        if (budgetGuard == null) return null;
+        try {
+            budgetGuard.attributeTrace(traceId, userId);
+            int percent = budgetGuard.userDailyRemainingPercent(userId);
+            if (percent <= 0) {
+                throw new BudgetExhausted(BudgetExhausted.Kind.USER_DAILY, "用户每日 token 限额已用尽");
+            }
+            return percent;
+        } catch (BudgetExhausted e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.warn("budget attribution failed trace={} type={}", traceId, e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /**
      * 路由节点的观测快照。原始决策与执行计划都要留痕：两者不一致时说明策略做了降级或收窄，
      * 只记其中一个无法解释"为什么这轮没扇出专家"。
      */
@@ -417,6 +535,7 @@ public class ChatService {
                 Map.entry("retrieval_facets", plan.retrievalFacets().stream()
                         .map(Enum::name).map(String::toLowerCase).toList()),
                 Map.entry("degraded", plan.degraded()),
+                Map.entry("budget_shed", plan.reasonCodes().stream().anyMatch(code -> code.startsWith("BUDGET_"))),
                 Map.entry("reason_codes", plan.reasonCodes()));
     }
 
@@ -485,7 +604,7 @@ public class ChatService {
                                         String traceId, TurnEvents events, CancellationToken cancellation,
                                         ChatTurnService.Claim claim) {
         long convId = context.convId();
-        String contextText = renderSharedContext(context.profile(), retrieved.episodes());
+        String contextText = renderSharedContext(context.profile(), retrieved.episodes(), retrieved.facts());
         ExpertRunner.Briefing briefing = buildBriefing(context, retrieved, executionQuestion, contextText, traceId);
 
         for (String name : expertNames) {
@@ -516,10 +635,14 @@ public class ChatService {
                     }
 
                     @Override public void onComplete(String fullText, boolean clarified) {
+                        onComplete(fullText, clarified, false);
+                    }
+
+                    @Override public void onComplete(String fullText, boolean clarified, boolean truncated) {
                         trace.span(traceId, convId, "aggregate", aggregateStart, clarified);
                         completeAnswer(fullText, clarified ? "clarify" : intent.name().toLowerCase(), context,
                                 question, retrieved.evidences(), briefing.citationIds(), traceId,
-                                events, cancellation, claim);
+                                events, cancellation, claim, truncated);
                     }
 
                     @Override public void onError(Throwable error) {
@@ -529,9 +652,11 @@ public class ChatService {
                 }, cancellation);
     }
 
-    /** 专家简报与仲裁共用的上下文文本：画像 + 情景记忆，两处必须一致否则仲裁会看到与专家不同的背景。 */
-    private String renderSharedContext(Map<String, Object> profile, List<EpisodeStore.Episode> episodes) {
+    /** 专家简报与仲裁共用的上下文文本：画像 + 长期事实 + 情景记忆，两处必须一致否则仲裁会看到与专家不同的背景。 */
+    private String renderSharedContext(Map<String, Object> profile, List<EpisodeStore.Episode> episodes,
+                                       List<FactStore.UserFact> facts) {
         return profileSection.render(new TurnContextView(profile, List.of()), tokenBudget)
+                + factsSection.render(new TurnContextView(profile, List.of(), null, List.of(), facts), tokenBudget)
                 + episodeSection.render(new TurnContextView(profile, List.of(), null, episodes), tokenBudget);
     }
 
@@ -578,8 +703,9 @@ public class ChatService {
             }
 
             @Override public void onCompleteResponse(ChatResponse response) {
+                boolean truncated = response.finishReason() == FinishReason.LENGTH;
                 completeAnswer(full.toString(), intentName, context, question, retrieved.evidences(),
-                        assembled.citationIds(), traceId, events, cancellation, claim);
+                        assembled.citationIds(), traceId, events, cancellation, claim, truncated);
             }
 
             @Override public void onError(Throwable error) {
@@ -601,7 +727,7 @@ public class ChatService {
             ToolCallLoop.LoopResult loopResult = toolCallLoop.run(Purpose.CHAT, messages, traceId,
                     new ToolExecutionContext(traceId, "chat", context.userId(), null, false));
             completeAnswer(loopResult.answer(), intentName, context, question, retrieved.evidences(),
-                    assembled.citationIds(), traceId, events, cancellation, claim);
+                    assembled.citationIds(), traceId, events, cancellation, claim, false);
             return true;
         } catch (RuntimeException error) {
             log.warn("tool loop failed, falling back to streaming direct answer trace={} type={}",
@@ -616,7 +742,8 @@ public class ChatService {
         String summary = conversations.summaryState(context.convId()).summary(); // 区5: 折叠摘要 (超12轮才有)
         long start = System.currentTimeMillis();
         PromptAssembler.Assembled assembled = promptAssembler.assembleWithMetadata(
-                new TurnContextView(context.profile(), retrieved.evidences(), summary, retrieved.episodes()), traceId);
+                new TurnContextView(context.profile(), retrieved.evidences(), summary,
+                        retrieved.episodes(), retrieved.facts()), traceId);
         trace.span(traceId, context.convId(), "context", start, false, Map.of(
                 "total_original_tokens", assembled.allocations().stream()
                         .mapToInt(ContextPlanner.Allocation::originalTokens).sum(),
@@ -650,13 +777,13 @@ public class ChatService {
     private void completeAnswer(String text, String intent, TurnContext context, String question,
                                 List<Evidence> evidences, Set<String> citationIds, String traceId,
                                 TurnEvents events, CancellationToken cancellation,
-                                ChatTurnService.Claim claim) {
+                                ChatTurnService.Claim claim, boolean truncated) {
         long convId = context.convId();
         CitationBundle bundle = citationsFor(text, evidences, citationIds);
         Long messageId = persistAssistant(convId, text, intent, bundle.json(), traceId,
                 text.length() / 2, bundle.status(), bundle.issuesJson(), claim, cancellation);
         if (messageId == null) return;
-        events.onDone(messageId, text, bundle.status(), parseCitationIssues(bundle.issuesJson()));
+        events.onDone(messageId, text, bundle.status(), parseCitationIssues(bundle.issuesJson()), truncated);
         background.submit(() -> postTurnTasks.run(convId, context.userId(), question, text, traceId,
                 context.memoryGeneration()));
         background.submit(() -> verifyCitations(messageId, text,

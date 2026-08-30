@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, streamChat, type ConversationSummary } from '../lib/api';
+import { api, streamChat, type ConversationSummary, type MemoryRef } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 
 interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; }
 interface DisplayCitation extends Citation { key: string; }
-interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; clarifyOptions?: Array<{ id: string; label: string }>; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; }
+interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; memories?: MemoryRef[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; clarifyOptions?: Array<{ id: string; label: string }>; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; truncated?: boolean; }
 type Conv = ConversationSummary;
 
 function safeSourceUrl(value?: string): string | null {
@@ -163,12 +163,24 @@ export default function ChatPage() {
   const [feedbackTarget, setFeedbackTarget] = useState<number | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // 今日剩余额度百分比 (meta 事件携带)；<=20% 时展示提示条，用完时提示恢复时间。
+  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+  // 主动记忆：新会话开场透出上次未完成事项；进入具体会话后不再打扰。
+  const [openItems, setOpenItems] = useState<string[]>([]);
+  const [openItemsDismissed, setOpenItemsDismissed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const turnIdRef = useRef<string | null>(null);
   const activeStreamId = useRef<string | null>(null);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }); }, [messages, stage]);
+
+  useEffect(() => {
+    if (convId != null) { setOpenItems([]); return; }
+    let cancelled = false;
+    api.getOpenItems().then(items => { if (!cancelled) setOpenItems(items); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [convId]);
 
   useEffect(() => { api.listConversations().then(setConvs).catch(() => {}); }, [convId]);
 
@@ -191,12 +203,13 @@ export default function ChatPage() {
     setPanelOpen(false); setPinnedKey(null);
   }
 
-  function send() {
-    const text = input.trim();
+  function send(override?: string) {
+    const text = (override ?? input).trim();
     if (!text || streaming) return;
     setInput('');
     const userMsg: Msg = { role: 'user', content: text };
     const assistantPlaceholder: Msg & { citations?: Citation[]; tokens?: string; clarify?: string } = { role: 'assistant', content: '', tokens: '' };
+    let memoriesBuffer: MemoryRef[] = [];
     setMessages(m => [...m, userMsg, assistantPlaceholder]);
     setStreaming(true);
     setStage('routing');
@@ -215,6 +228,7 @@ export default function ChatPage() {
           assistantPlaceholder.trace_id = e.trace_id;
           turnIdRef.current = e.turn_id ?? null;
           setConvId(e.conversation_id);
+          if (typeof e.quota_remaining_percent === 'number') setQuotaRemaining(e.quota_remaining_percent);
         },
         onStage: e => setStage(e.expert && e.status ? `${e.phase}:${e.expert}:${e.status}` : e.phase),
         onToken: t => {
@@ -238,6 +252,18 @@ export default function ChatPage() {
             const last = copy[copy.length - 1];
             if (last && last.role === 'assistant' && !last.locked) {
               last.citations = assistantPlaceholder.citations;
+            }
+            return copy;
+          });
+        },
+        onMemories: e => {
+          if (activeStreamId.current !== myStreamId) return;
+          memoriesBuffer = [...memoriesBuffer, ...(e.items ?? [])];
+          setMessages(m => {
+            const copy = [...m];
+            const last = copy[copy.length - 1];
+            if (last && last.role === 'assistant' && !last.locked) {
+              last.memories = memoriesBuffer;
             }
             return copy;
           });
@@ -270,6 +296,7 @@ export default function ChatPage() {
               last.trace_id = e.trace_id ?? assistantPlaceholder.trace_id;
               last.citationStatus = assistantPlaceholder.citationStatus;
               last.citationIssues = assistantPlaceholder.citationIssues;
+              last.truncated = e.truncated ?? false;
             }
             return copy;
           });
@@ -404,6 +431,29 @@ export default function ChatPage() {
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-7 py-7">
           <div className="max-w-3xl mx-auto space-y-4">
+            {quotaRemaining !== null && quotaRemaining <= 20 && (
+              <div className={`rounded-xl border px-4 py-2 text-sm ${quotaRemaining === 0 ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                {quotaRemaining === 0
+                  ? '你今天的 AI 额度已用完，明天 0 点自动恢复。'
+                  : `今日 AI 额度剩余 ${quotaRemaining}%，请合理安排提问。`}
+              </div>
+            )}
+            {convId == null && !openItemsDismissed && openItems.length > 0 && (
+              <div className="mx-auto max-w-3xl mb-4 rounded-2xl border border-accent-100 bg-accent-50/60 px-4 py-3.5" role="status">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs font-medium text-accent-700">🧠 上次还有这些没完成</div>
+                  <button onClick={() => setOpenItemsDismissed(true)} className="text-xs text-ink-400 hover:text-ink-600" aria-label="关闭提醒">✕</button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {openItems.map(item => (
+                    <button key={item} onClick={() => setInput(`我们继续上次的话题：${item}`)}
+                      className="rounded-full bg-white border border-accent-200 px-3 py-1.5 text-xs text-ink-700 hover:border-accent-400 hover:text-accent-700 transition">
+                      {item} ↗
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {messages.length === 0 && (
             <div className="text-center mt-24 space-y-6 text-ink-500">
                 <div className="mx-auto h-16 w-16 rounded-2xl bg-[#211950] text-white text-2xl font-semibold shadow-[0_16px_34px_rgba(45,32,113,.25)] flex items-center justify-center">T</div>
@@ -440,6 +490,15 @@ export default function ChatPage() {
                       ) : null}
                     </div>
                   )}
+                  {m.role === 'assistant' && m.truncated && !streaming && (
+                    <div className="mt-2">
+                      <button onClick={() => send('继续')}
+                        className="px-3 py-1.5 rounded-lg border border-accent-200 bg-accent-50 text-accent-700 text-xs hover:bg-accent-100 transition">
+                        回答较长已被截断，点击继续生成 →
+                      </button>
+                    </div>
+                  )}
+                  {m.role === 'assistant' && m.memories && m.memories.length > 0 && <MemoryChips memories={m.memories} />}
                   {m.role === 'assistant' && m.citationStatus && m.citationStatus !== 'not_applicable' && (
                     <div className={`mt-2 text-[11px] ${m.citationStatus === 'verified' ? 'text-emerald-600' : m.citationStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'}`}>
                       引用状态：{{ pending: '校验中', verified: '已验证', unsupported: '存在未充分支持的陈述', invalid_reference: '包含无效引用编号', unavailable: '校验服务暂不可用' }[m.citationStatus] ?? m.citationStatus}
@@ -482,7 +541,7 @@ export default function ChatPage() {
             {streaming ? (
               <button onClick={stop} className="px-5 py-3.5 bg-ink-200 hover:bg-ink-300 text-ink-700 rounded-xl font-medium transition">停止</button>
             ) : (
-              <button onClick={send} disabled={!input.trim()} className="px-5 py-3.5 bg-[#3155d9] hover:bg-[#2747c2] disabled:bg-ink-200 text-white rounded-sm font-medium transition">发送</button>
+              <button onClick={() => send()} disabled={!input.trim()} className="px-5 py-3.5 bg-[#3155d9] hover:bg-[#2747c2] disabled:bg-ink-200 text-white rounded-sm font-medium transition">发送</button>
             )}
           </div>
         </div>
@@ -492,6 +551,32 @@ export default function ChatPage() {
 
       {/* 右侧参考材料面板 (Qwen 风格: 列表 + 详情) */}
       {panelOpen && <ReferencePanel citations={allCitations} pinnedKey={pinnedKey} onPin={setPinnedKey} onClose={() => setPanelOpen(false)} />}
+    </div>
+  );
+}
+
+function MemoryChips({ memories }: { memories: MemoryRef[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2">
+      <button onClick={() => setOpen(o => !o)}
+        className="text-[11px] text-ink-500 hover:text-accent-600 inline-flex items-center gap-1 transition">
+        <span aria-hidden>🧠</span>本次回答参考了 {memories.length} 条跨会话记忆{open ? '' : ' ▾'}
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1" role="list" aria-label="参考记忆">
+          {memories.map(r => (
+            <div key={`${r.kind}-${r.id}`} role="listitem"
+              className="text-[11px] text-ink-600 bg-[#f8f7f3] border border-ink-100 rounded px-2 py-1 flex items-start gap-1.5">
+              <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[10px] ${r.kind === 'fact' ? 'bg-accent-50 text-accent-700' : 'bg-ink-100 text-ink-600'}`}>
+                {r.kind === 'fact' ? '长期事实' : '过往经历'}
+              </span>
+              <span className="break-words">{r.text}</span>
+            </div>
+          ))}
+          <div className="text-[10px] text-ink-400">可在「跨会话记忆」页面删除对应记录。</div>
+        </div>
+      )}
     </div>
   );
 }

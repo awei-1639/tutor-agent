@@ -38,7 +38,7 @@ class LongTermMemoryServiceTest {
                 new EpisodeStore.Episode(0, 7, null, "学习 RAG", List.of(), List.of()),
                 new EpisodeStore.Episode(0, 7, null, "准备面试", List.of(), List.of())));
 
-        LongTermMemoryService service = new LongTermMemoryService(local, mem0, consent, breaker, transactions, outbox);
+        LongTermMemoryService service = new LongTermMemoryService(local, mem0, consent, breaker, transactions, outbox, mock(com.tutor.memory.local.FactStore.class), 30);
         LongTermMemoryService.RecallResult result = service.recall(7L, "query", "trace");
 
         assertThat(result.degraded()).isFalse();
@@ -63,7 +63,7 @@ class LongTermMemoryServiceTest {
                 new EpisodeStore.Episode(0, 7, null, "远程高相关记忆", List.of(), List.of(), 0.90D)));
 
         LongTermMemoryService.RecallResult result = new LongTermMemoryService(
-                local, mem0, consent, breaker, transactionTemplate(), outbox)
+                local, mem0, consent, breaker, transactionTemplate(), outbox, mock(com.tutor.memory.local.FactStore.class), 30)
                 .recall(7L, "query", "trace");
 
         assertThat(result.episodes()).extracting(EpisodeStore.Episode::summary)
@@ -87,7 +87,7 @@ class LongTermMemoryServiceTest {
                 new EpisodeStore.Episode(42L, 7L, null, "已删除的旧记忆", List.of(), List.of(), 0.99D)));
 
         LongTermMemoryService.RecallResult result = new LongTermMemoryService(
-                local, mem0, consent, breaker, transactionTemplate(), outbox)
+                local, mem0, consent, breaker, transactionTemplate(), outbox, mock(com.tutor.memory.local.FactStore.class), 30)
                 .recall(7L, "query", "trace");
 
         assertThat(result.episodes()).isEmpty();
@@ -109,7 +109,7 @@ class LongTermMemoryServiceTest {
         when(outbox.remoteReadAllowed(7L)).thenReturn(false);
 
         LongTermMemoryService.RecallResult result = new LongTermMemoryService(
-                local, mem0, consent, breaker, transactionTemplate(), outbox)
+                local, mem0, consent, breaker, transactionTemplate(), outbox, mock(com.tutor.memory.local.FactStore.class), 30)
                 .recall(7L, "query", "trace");
 
         assertThat(result.episodes()).isEqualTo(localEpisodes);
@@ -134,7 +134,7 @@ class LongTermMemoryServiceTest {
         when(breaker.allowRequest()).thenReturn(true);
         when(mem0.search(7L, "query", "trace")).thenThrow(new IllegalStateException("timeout"));
 
-        LongTermMemoryService.RecallResult result = new LongTermMemoryService(local, mem0, consent, breaker, transactions, outbox)
+        LongTermMemoryService.RecallResult result = new LongTermMemoryService(local, mem0, consent, breaker, transactions, outbox, mock(com.tutor.memory.local.FactStore.class), 30)
                 .recall(7L, "query", "trace");
 
         assertThat(result.degraded()).isTrue();
@@ -152,7 +152,7 @@ class LongTermMemoryServiceTest {
         when(mem0.enabled()).thenReturn(false);
 
         LongTermMemoryService.RecallResult result = new LongTermMemoryService(
-                local, mem0, consent, breaker, transactionTemplate(), outbox)
+                local, mem0, consent, breaker, transactionTemplate(), outbox, mock(com.tutor.memory.local.FactStore.class), 30)
                 .recall(7L, "query", "trace");
 
         assertThat(result.episodes()).isEmpty();
@@ -175,7 +175,7 @@ class LongTermMemoryServiceTest {
         when(consent.enabledFor(7L)).thenThrow(new IllegalStateException("consent store unavailable"));
 
         LongTermMemoryService.RecallResult result = new LongTermMemoryService(
-                local, mem0, consent, breaker, transactionTemplate(), outbox)
+                local, mem0, consent, breaker, transactionTemplate(), outbox, mock(com.tutor.memory.local.FactStore.class), 30)
                 .recall(7L, "query", "trace");
 
         assertThat(result.episodes()).isEqualTo(localEpisodes);
@@ -195,7 +195,7 @@ class LongTermMemoryServiceTest {
         when(outbox.remoteReadAllowed(7L)).thenReturn(true);
         when(consent.enabledFor(7L)).thenReturn(true);
         when(breaker.allowRequest()).thenReturn(true);
-        new LongTermMemoryService(local, mem0, consent, breaker, transactions, outbox).remember(7L, "question", "answer", "trace");
+        new LongTermMemoryService(local, mem0, consent, breaker, transactions, outbox, mock(com.tutor.memory.local.FactStore.class), 30).remember(7L, "question", "answer", "trace");
 
         verifyNoInteractions(mem0);
     }
@@ -217,7 +217,7 @@ class LongTermMemoryServiceTest {
         when(local.deleteByIdForUser(42L, 7L)).thenReturn(true);
 
         LongTermMemoryService service = new LongTermMemoryService(
-                local, mem0, consent, breaker, transactions, outbox);
+                local, mem0, consent, breaker, transactions, outbox, mock(com.tutor.memory.local.FactStore.class), 30);
 
         assertThat(service.forgetOne(7L, 42L)).isTrue();
         verify(outbox).enqueueDeleteMemory(7L, 42L, null);
