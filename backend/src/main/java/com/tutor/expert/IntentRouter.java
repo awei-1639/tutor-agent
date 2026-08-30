@@ -38,7 +38,10 @@ public class IntentRouter {
             - mixed: 同时涉及上述两类及以上的综合请求；此时 intents 必须列出具体子意图，不要填 mixed
             - chat: 与学习求职相关的一般咨询问答 (概念解释、岗位信息查询等)
             - out_of_scope: 与AI学习/求职完全无关的请求
-            - retrieval_facets 只可包含 career、learning、resource：career 用于岗位/投递/简历匹配，learning 用于学习前置与路径，resource 用于找课程/资料/题库。
+            - retrieval_facets 只可包含 career、learning、resource：career 用于岗位要求/投递/简历匹配，learning 用于学习前置与路径（技能先后依赖），resource 用于找课程/资料/题库。
+            - 叠加 facet 必须带来新的图关系，否则只给一个：learning 已含资源扩展，叠加 resource 仅当问题主体就是资料本身；career+learning 仅当同时要求「岗位需要什么」与「技能怎么排先后」。
+            - 纯概念解释（什么是X、X与Y的区别）和沟通话术（如何回答/如何表达）不依赖图关系，输出 []。
+            - 模拟面试/笔试出题按知识点覆盖处理：给 learning 不给 career，岗位名词只是语境；问岗位要求/匹配度才给 career。
             - in_scope 请求必须输出 retrieval_facets（没有图检索语义时输出 []）；out_of_scope 必须输出 []。
             scope 表示是否属于产品领域；retrieval_hint 只是检索建议，不是最终执行决定。
             confidence 表示“当前意图标签正确”的自评概率，不是答案质量或经过校准的准确率。
