@@ -231,7 +231,9 @@ llm:
   tokens:
     router:
       input-tokens: 1200
-      output-tokens: 96
+      # 96 会截断输出: JSON 骨架 (枚举字段 + 引号) 已占约 70 token，剩下不够写完
+      # reason_codes 里的中文理由，JSON 在第 288 列断在字符串中间 (见 Badcase 07)。
+      output-tokens: 160
     chat:
       input-tokens: 8000
       output-tokens: 1600

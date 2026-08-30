@@ -177,11 +177,11 @@ Neo4j 是检索链中的增强路径，不应成为所有问题的单点故障�
 
 3/30 仍误判（planning→chat ×2、mixed→chat ×1），是另一个原因：
 路由 JSON 在 288 列附近被截断（`Unexpected end-of-input: was expecting closing
-quote`），`structured_output_events` 里今天 19 条 `invalid`。这些样本的
+quote`），`structured_output_events` 里 19 条 `invalid`。这些样本的
 `reason_codes` 是中文自然语言，加上 `llm.tokens.router.output-tokens: 96` 的上限
-容易溢出。见 Badcase 07。
+容易溢出。见 Badcase 07（已修复：上调到 160 后 Accuracy 96.7%、invalid 归零）。
 
-## Badcase 07：路由 JSON 被 output-tokens 上限截断
+## Badcase 07：路由 JSON 被 output-tokens 上限截断（已修复）
 
 ### 现象
 
@@ -199,27 +199,39 @@ at ... column: 283~295`。首次尝试与修复重试（attempt 1、2）同样�
 单独用 curl 打 `/internal/route` 时这两条能正确返回 `intent=planning`
 `confidence=0.85`，说明不是稳定复现的语义错误，而是长度边界上的抖动。
 
-### 判断（假设）
+### 根因
 
-`llm.tokens.router.output-tokens: 96` 对当前 schema 太紧。RouterOutput 除了枚举
-字段还要输出中文 `reason_codes`，一条中文理由就要十几个 token，两条理由 + 其余
-字段就会逼近 96。截断点稳定落在 283~295 列，与"输出预算耗尽"而非"模型写错"一致。
+`llm.tokens.router.output-tokens: 96` 对当前 schema 太紧。按截断点第 288 列估算：
+JSON 骨架（枚举字段名 + 引号，纯 ASCII）已占约 70 token，留给 `reason_codes`
+中文理由的只剩约 26 token，而一条中文理由就要十几个 token。截断点稳定落在
+283~295 列，与"输出预算耗尽"而非"模型写错"一致——模型写到一半没配额了，
+JSON 断在字符串中间。
 
-### 操作
+### 处理
 
-1. 查证：`SELECT validation_status, count(*) FROM structured_output_events
-   WHERE task='router' GROUP BY 1;` 看 invalid 占比是否与失败样本数吻合。
-2. 上调 `output-tokens`（96 → 160 左右）后重跑 30 条，看 invalid 是否归零、
-   Accuracy 是否补上这 3 条。
-3. 另一个方向：让 `reason_codes` 输出枚举 code 而不是中文自然语言句子，
-   从源头压缩输出长度。这更根治，但要同步改 prompt、schema 和 trace 消费方。
-4. 无论走哪条，都要确认领域内误判越界仍为 0.0%。
+`output-tokens: 96 → 160`（`application.yml:234`）。2026-08-30 重跑 30 条：
 
-### 通过标准
+| 指标 | 96 | 160 | 阈值 |
+| --- | --- | --- | --- |
+| Accuracy | 93.3% | **96.7%** | 85% |
+| Macro-F1 | 0.935 | **0.966** | 0.80 |
+| schema invalid | 19 | **0** | — |
+| degraded (confidence=0) | 3 | **0** | — |
+| 领域内误判越界 | 0.0% | 0.0% | ≤5% |
 
-- `structured_output_events` 中 router 的 `invalid` 归零或降到个位数占比。
-- 30 条路由集 Accuracy ≥ 85%、Macro-F1 ≥ 0.80，且这 3 条具名样本判对。
-- 评测报告中新增"路由降级率"指标，使同类静默降级下次能被直接看见。
+本卡片列出的 3 条具名样本全部判对。剩 1 条误判 mixed→planning（confidence 0.85，
+非降级）：「帮我全面评估下现在离拿到算法offer还差什么」，属于真实的标签边界分歧，
+不是工程缺陷——该问题确实同时涉及 planning 与 mixed，需要先确认标注口径。
+
+更根治的方向仍然存在：让 `reason_codes` 输出枚举 code 而非中文自然语言句子，
+从源头压缩输出长度，也让 trace 更容易聚合。这需要同步改 prompt、schema 和
+trace 消费方，未在本次处理范围内。
+
+### 教训
+
+结构化输出的 `output-tokens` 上限是**正确性约束，不只是成本约束**。schema 越严格
+（必填字段越多、枚举名越长），骨架占用的固定开销就越大，留给可变内容的余量越小。
+调这个值之前应当按 schema 骨架长度估算下界，而不是凭"路由是个小任务"的直觉设定。
 
 ## 如何提交一个好问题
 
