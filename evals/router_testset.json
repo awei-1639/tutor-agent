@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "note": "意图路由标注语料, 人工标注 (30条, 每类5条)",
+  "version": 2,
+  "note": "意图路由标注语料, 人工标注 (30条, 每类5条)。facet 标签遵循 docs/facet-annotation-criteria.md；v2 变更见 docs/badcases.md Badcase 09。",
   "cases": [
     { "q": "帮我看看简历里的项目经历怎么写更亮眼", "intent": "resume", "retrieval_facets": ["career"] },
     { "q": "我的简历投大模型岗位老是没回音，是不是内容有问题", "intent": "resume", "retrieval_facets": ["career"] },
@@ -10,7 +10,7 @@
     { "q": "给我出10道NLP算法工程师的笔试题", "intent": "interview", "retrieval_facets": ["learning"] },
     { "q": "明天要面试了，帮我模拟一下大模型岗的面试", "intent": "interview", "retrieval_facets": ["learning"] },
     { "q": "Transformer相关的高频面试题有哪些", "intent": "interview", "retrieval_facets": ["learning"] },
-    { "q": "面试官问我为什么转行，该怎么回答比较好", "intent": "interview", "retrieval_facets": ["learning"] },
+    { "q": "面试官问我为什么转行，该怎么回答比较好", "intent": "interview", "retrieval_facets": [] },
     { "q": "帮我准备一下算法岗的系统设计面试", "intent": "interview", "retrieval_facets": ["learning"] },
     { "q": "帮我制定一个三个月转行AI的学习计划", "intent": "planning", "retrieval_facets": ["learning"] },
     { "q": "每天只有2小时，怎么安排学习大模型开发", "intent": "planning", "retrieval_facets": ["learning"] },

@@ -50,6 +50,7 @@
 | 本地启动与复现 | [本地开发](local-development.md) |
 | 关键工程取舍 | [设计决策](decisions.md) |
 | 真实 RAG 测评 | [评测手册](evaluation.md) |
+| 检索 Facet 标注口径 | [facet 标注口径](facet-annotation-criteria.md) |
 | 运行、健康检查与降级 | [运维手册](operations.md) |
 | HTTP、SSE 与接口契约 | [API 参考](api-reference.md) |
 | 安全、隐私与密钥边界 | [安全与隐私](security-privacy.md) |

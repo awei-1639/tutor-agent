@@ -122,6 +122,8 @@ router_facet_macro_f1 >= 0.80
 in_scope_to_out_of_scope <= 0.05
 ```
 
+facet 标签的判定口径见[facet 标注口径](facet-annotation-criteria.md)；修改 facet 标注必须说明改了哪几条及理由，否则指标变化无法区分「模型变好」和「标签变宽松」。截至 2026-08-30，路由 Accuracy 与 Macro-F1 已达标（96.7% / 0.966），facet 两项仍未达标（66.7% / 0.754），分析见 [Badcase 09](badcases.md)。
+
 完整 Golden Set 通过质量门禁后才标记为 `releaseEligible=true`。抽样运行只能用于诊断，状态会是 `sample_only`，不能作为发布证明。
 
 Hit 指标同时输出 Wilson 95% 置信区间，避免把小样本的偶然波动当成真实提升。
