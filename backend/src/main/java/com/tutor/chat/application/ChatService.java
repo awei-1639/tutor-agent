@@ -500,11 +500,7 @@ public class ChatService {
         if (budgetGuard == null) return null;
         try {
             budgetGuard.attributeTrace(traceId, userId);
-            int percent = budgetGuard.userDailyRemainingPercent(userId);
-            if (percent <= 0) {
-                throw new BudgetExhausted(BudgetExhausted.Kind.USER_DAILY, "用户每日 token 限额已用尽");
-            }
-            return percent;
+            return budgetGuard.requireUserDailyAllowance(userId);
         } catch (BudgetExhausted e) {
             throw e;
         } catch (RuntimeException e) {

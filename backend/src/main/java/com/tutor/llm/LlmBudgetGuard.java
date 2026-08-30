@@ -25,6 +25,7 @@ public class LlmBudgetGuard {
     private final JdbcTemplate jdbc;
     private final LlmProperties props;
     private volatile BudgetPressureService pressure;
+    private volatile LlmBudgetMetrics metrics;
 
     public LlmBudgetGuard(JdbcTemplate jdbc, LlmProperties props) {
         this.jdbc = jdbc;
@@ -35,6 +36,20 @@ public class LlmBudgetGuard {
     @Autowired(required = false)
     void setBudgetPressure(BudgetPressureService pressure) {
         this.pressure = pressure;
+    }
+
+    /** 拒绝指标可选注入；未注入时只抛异常不计数。 */
+    @Autowired(required = false)
+    void setLlmBudgetMetrics(LlmBudgetMetrics metrics) {
+        this.metrics = metrics;
+    }
+
+    /** 统一抛出口：所有层的预算拒绝都计入 tutor.llm.budget.rejected{kind}。 */
+    private BudgetExhausted reject(BudgetExhausted.Kind kind, String message) {
+        if (metrics != null) {
+            metrics.countRejected(kind);
+        }
+        return new BudgetExhausted(kind, message);
     }
 
     /** 一次预留的完整信息；settle 需要它来回滚预留并把实际用量记账到对应层。 */
@@ -48,6 +63,15 @@ public class LlmBudgetGuard {
                 VALUES (?, ?)
                 ON CONFLICT (trace_id) DO NOTHING
                 """, traceId, userId);
+    }
+
+    /** 回合入口的快速失败：剩余配额 ≤0 抛 USER_DAILY（计入拒绝指标），否则返回剩余百分比。 */
+    public int requireUserDailyAllowance(long userId) {
+        int percent = userDailyRemainingPercent(userId);
+        if (percent <= 0) {
+            throw reject(BudgetExhausted.Kind.USER_DAILY, "用户每日 token 限额已用尽");
+        }
+        return percent;
     }
 
     /** 用户当日剩余配额百分比 (0-100)；无行视为全额。供回合开始的快速失败与前端额度展示。 */
@@ -66,7 +90,7 @@ public class LlmBudgetGuard {
         long amount = Math.max(1, estimatedTokens);
         // SEVERE 压力下后台任务直接顺延，不做任何预留，也不产生预留churn。
         if (background && pressure != null && !pressure.backgroundAllowed()) {
-            throw new BudgetExhausted(BudgetExhausted.Kind.BACKGROUND_DEFERRED, "预算压力过高，后台任务顺延");
+            throw reject(BudgetExhausted.Kind.BACKGROUND_DEFERRED, "预算压力过高，后台任务顺延");
         }
         reserveTurn(traceId, amount);
         Long userId = attributedUser(traceId);
@@ -142,7 +166,7 @@ public class LlmBudgetGuard {
                     RETURNING reserved_tokens
                     """, Long.class, traceId, amount, props.budget().turnTokenLimit());
         } catch (EmptyResultDataAccessException e) {
-            throw new BudgetExhausted(BudgetExhausted.Kind.TURN, "本轮 token 预算已用尽");
+            throw reject(BudgetExhausted.Kind.TURN, "本轮 token 预算已用尽");
         }
     }
 
@@ -168,7 +192,7 @@ public class LlmBudgetGuard {
                     RETURNING reserved_tokens
                     """, Long.class, userId, amount, props.budget().userDailyTokenLimit());
         } catch (EmptyResultDataAccessException e) {
-            throw new BudgetExhausted(BudgetExhausted.Kind.USER_DAILY, "用户每日 token 限额已用尽");
+            throw reject(BudgetExhausted.Kind.USER_DAILY, "用户每日 token 限额已用尽");
         }
     }
 
@@ -190,7 +214,7 @@ public class LlmBudgetGuard {
                     RETURNING background_reserved_tokens
                     """, Long.class, amount, share);
         } catch (EmptyResultDataAccessException e) {
-            throw new BudgetExhausted(BudgetExhausted.Kind.BACKGROUND_DEFERRED, "后台 token 预算已用尽，任务顺延");
+            throw reject(BudgetExhausted.Kind.BACKGROUND_DEFERRED, "后台 token 预算已用尽，任务顺延");
         }
     }
 
@@ -206,7 +230,7 @@ public class LlmBudgetGuard {
                     RETURNING reserved_tokens
                     """, Long.class, amount, props.budget().dailyTokenLimit());
         } catch (EmptyResultDataAccessException e) {
-            throw new BudgetExhausted(BudgetExhausted.Kind.GLOBAL, "每日 token 限额已用尽");
+            throw reject(BudgetExhausted.Kind.GLOBAL, "每日 token 限额已用尽");
         }
     }
 

@@ -101,6 +101,72 @@ class LlmBudgetGuardTest {
         verify(jdbc).update(contains("UPDATE llm_user_budget"), eq(500L), eq(320L), eq(7L));
     }
 
+    @Test
+    void countsBudgetRejectionsByKind() {
+        io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        LlmBudgetGuard guard = new LlmBudgetGuard(jdbc, properties());
+        guard.setLlmBudgetMetrics(new LlmBudgetMetrics(registry));
+        // 单轮预留条件即不满足 → TURN，前台与后台各拒绝一次。
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class)))
+                .thenThrow(new EmptyResultDataAccessException(1));
+
+        assertThatThrownBy(() -> guard.reserve("trace", 50, false))
+                .isInstanceOf(BudgetExhausted.class);
+        assertThatThrownBy(() -> guard.reserve("trace", 50, true))
+                .isInstanceOf(BudgetExhausted.class);
+
+        assertThat(registry.counter("tutor.llm.budget.rejected", "kind", "turn").count()).isEqualTo(2.0);
+    }
+
+    @Test
+    void countsBackgroundDeferralAndUserDailyRejections() {
+        io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        LlmBudgetGuard guard = new LlmBudgetGuard(jdbc, properties());
+        guard.setLlmBudgetMetrics(new LlmBudgetMetrics(registry));
+        BudgetPressureService pressure = org.mockito.Mockito.mock(BudgetPressureService.class);
+        org.mockito.Mockito.when(pressure.backgroundAllowed()).thenReturn(false);
+        guard.setBudgetPressure(pressure);
+
+        assertThatThrownBy(() -> guard.reserve("trace", 50, true))
+                .isInstanceOf(BudgetExhausted.class);
+        assertThat(registry.counter("tutor.llm.budget.rejected", "kind", "background_deferred").count())
+                .isEqualTo(1.0);
+
+        // 归属用户后用户层配额条件不满足 → USER_DAILY 计数。
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class)))
+                .thenReturn(1L)
+                .thenReturn(7L)
+                .thenThrow(new EmptyResultDataAccessException(1));
+        assertThatThrownBy(() -> guard.reserve("trace", 50, false))
+                .isInstanceOf(BudgetExhausted.class);
+        assertThat(registry.counter("tutor.llm.budget.rejected", "kind", "user_daily").count())
+                .isEqualTo(1.0);
+    }
+
+    @Test
+    void requireUserDailyAllowanceReturnsPercentOrThrowsCounted() {
+        io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        LlmBudgetGuard guard = new LlmBudgetGuard(jdbc, properties());
+        guard.setLlmBudgetMetrics(new LlmBudgetMetrics(registry));
+        // 剩余 90,000 / 默认 300,000 = 30% → 放行并返回百分比。
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class)))
+                .thenReturn(90_000L);
+        assertThat(guard.requireUserDailyAllowance(7L)).isEqualTo(30);
+
+        // 剩余 0 → USER_DAILY，计入拒绝指标。
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class)))
+                .thenReturn(0L);
+        assertThatThrownBy(() -> guard.requireUserDailyAllowance(7L))
+                .isInstanceOf(BudgetExhausted.class)
+                .satisfies(error -> assertThat(((BudgetExhausted) error).kind())
+                        .isEqualTo(BudgetExhausted.Kind.USER_DAILY));
+        assertThat(registry.counter("tutor.llm.budget.rejected", "kind", "user_daily").count())
+                .isEqualTo(1.0);
+    }
+
     private static LlmProperties properties() {
         return new LlmProperties(
                 new LlmProperties.Endpoint("deepseek-key", "https://api.deepseek.com"),

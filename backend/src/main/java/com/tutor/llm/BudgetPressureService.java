@@ -2,6 +2,8 @@ package com.tutor.llm;
 
 import com.tutor.config.LlmProperties;
 import com.tutor.context.BudgetPressureView;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,9 +31,13 @@ public class BudgetPressureService implements BudgetPressureView {
     private volatile Snapshot cached;
     private volatile long refreshedAt;
 
-    public BudgetPressureService(JdbcTemplate jdbc, LlmProperties props) {
+    public BudgetPressureService(JdbcTemplate jdbc, LlmProperties props, MeterRegistry registry) {
         this.jdbc = jdbc;
         this.props = props;
+        // 水位仪表读缓存快照 (<=30s 陈旧)，抓取成本低；告警阈值见 operations.md 预算分层。
+        Gauge.builder("tutor.llm.budget.daily.used.percent", this, service -> service.snapshot().usedPercent)
+                .description("Global daily llm budget usage percent")
+                .register(registry);
     }
 
     public Snapshot snapshot() {

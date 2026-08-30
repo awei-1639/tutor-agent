@@ -19,13 +19,15 @@ import static org.mockito.Mockito.when;
 class BudgetPressureServiceTest {
     @Mock
     JdbcTemplate jdbc;
+    private final io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
 
     @Test
     void assumesNormalWhenSnapshotUnavailable() {
         when(jdbc.queryForObject(anyString(), eq(Long.class)))
                 .thenThrow(new EmptyResultDataAccessException(1));
 
-        BudgetPressureService service = new BudgetPressureService(jdbc, properties());
+        BudgetPressureService service = new BudgetPressureService(jdbc, properties(), registry);
 
         assertThat(service.level()).isEqualTo(BudgetPressureService.Level.NORMAL);
         assertThat(service.multiHopAllowed()).isTrue();
@@ -36,7 +38,7 @@ class BudgetPressureServiceTest {
     void elevatesAtEightyPercentAndShedsQualityFeatures() {
         when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(1_600_000L);
 
-        BudgetPressureService service = new BudgetPressureService(jdbc, properties());
+        BudgetPressureService service = new BudgetPressureService(jdbc, properties(), registry);
 
         assertThat(service.level()).isEqualTo(BudgetPressureService.Level.ELEVATED);
         assertThat(service.multiHopAllowed()).isFalse();
@@ -44,13 +46,14 @@ class BudgetPressureServiceTest {
         assertThat(service.chatOutputCap(1_600)).isEqualTo(1_000);
         // ELEVATED 只是收紧前台质量特性，后台仍允许运行。
         assertThat(service.backgroundAllowed()).isTrue();
+        assertThat(registry.get("tutor.llm.budget.daily.used.percent").gauge().value()).isEqualTo(80.0);
     }
 
     @Test
     void defersBackgroundAtSeverePressure() {
         when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(1_950_000L);
 
-        BudgetPressureService service = new BudgetPressureService(jdbc, properties());
+        BudgetPressureService service = new BudgetPressureService(jdbc, properties(), registry);
 
         assertThat(service.level()).isEqualTo(BudgetPressureService.Level.SEVERE);
         assertThat(service.backgroundAllowed()).isFalse();
@@ -61,7 +64,7 @@ class BudgetPressureServiceTest {
     void exhaustsAtFullDailyBudget() {
         when(jdbc.queryForObject(anyString(), eq(Long.class))).thenReturn(2_500_000L);
 
-        BudgetPressureService service = new BudgetPressureService(jdbc, properties());
+        BudgetPressureService service = new BudgetPressureService(jdbc, properties(), registry);
 
         assertThat(service.level()).isEqualTo(BudgetPressureService.Level.EXHAUSTED);
         assertThat(service.backgroundAllowed()).isFalse();
