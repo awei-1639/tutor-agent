@@ -81,7 +81,7 @@ SDK 内置重试已关闭，由网关统一控制。每次尝试先预留估算 
 
 - 记账表 `llm_turn_budget`（保留 3 天）、`llm_daily_budget`、`llm_user_budget`（保留 30 天），每日 03:10 由 `purgeBudgetRows` 清理。
 - 水位查询：`SELECT reserved_tokens + actual_tokens FROM llm_daily_budget WHERE budget_day = CURRENT_DATE`。
-- 各层拒绝会抛 `BudgetExhausted` 并在 SSE `error` 事件携带对应 `code`；建议按 code 建立告警（日志关键字或后续补 micrometer 计数器）。
+- 各层拒绝会抛 `BudgetExhausted` 并在 SSE `error` 事件携带对应 `code`；同时计入指标 `tutor.llm.budget.rejected{kind=turn|user_daily|global|background_deferred}`，水位仪表为 `tutor.llm.budget.daily.used.percent`，按 kind 建阈值告警即可覆盖各层拒绝。
 - 预算压力降级会以 `BUDGET_MULTI_HOP_DISABLED` reason 与 `turn_traces` 的 `budget_shed` 字段留痕，排查"这轮为什么没多跳"先看这里。
 
 ## 3. Neo4j 熔断参数
