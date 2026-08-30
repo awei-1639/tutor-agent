@@ -24,15 +24,33 @@ const testset = JSON.parse(readFileSync(new URL('./rag_testset.json', import.met
 const routerSet = JSON.parse(readFileSync(new URL('./router_testset.json', import.meta.url), 'utf8'));
 if (SMOKE) testset.cases = testset.cases.slice(0, 10);
 
+// 瞬时故障重试：全量跑到第四个模式 (agentic) 时，它的第一条请求挂满 90 秒超时，
+// 整个进程随之崩掉且不产出结果文件——而单独用全新 JVM 跑同一批 280 条 agentic
+// 是 0 失败 (P50 4.1s / P95 5.6s)，所以是前 840 次请求留下的累积状态，不是这条 case 的问题。
+// 累积状态的具体成因尚未定位 (见 docs/badcases.md Badcase 08)；此处先让评测能扛过
+// 单次瞬时故障，不再把一次失败放大成"整轮无结果"。
+// 4xx 是确定性错误 (请求本身不对) 立即抛出，只对 5xx 和超时做有限退避重试。
+const RETRY_DELAYS_MS = [2_000, 8_000];
+
 async function post(path, body) {
-  const res = await fetch(BASE + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(90_000),
-  });
-  if (!res.ok) throw new Error(`${path} HTTP ${res.status}`);
-  return res.json();
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(BASE + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(90_000),
+      });
+      if (!res.ok) throw new Error(`${path} HTTP ${res.status}`);
+      return res.json();
+    } catch (error) {
+      const clientError = /HTTP 4\d\d$/.test(error.message);
+      if (clientError || attempt >= RETRY_DELAYS_MS.length) throw error;
+      const delay = RETRY_DELAYS_MS[attempt];
+      console.warn(`\n${path} 第 ${attempt + 1} 次失败 (${error.name}: ${error.message})，${delay}ms 后重试`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
 }
 
 function normalizedFacets(value) {

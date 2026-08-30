@@ -233,6 +233,139 @@ trace 消费方，未在本次处理范围内。
 （必填字段越多、枚举名越长），骨架占用的固定开销就越大，留给可变内容的余量越小。
 调这个值之前应当按 schema 骨架长度估算下界，而不是凭"路由是个小任务"的直觉设定。
 
+## Badcase 08：全量评测跑到第四个模式时整轮崩掉
+
+### 现象
+
+`bash scripts/eval-local.sh --retrieval`（280 条 × 4 模式）在 vector_only、fused、
+fused_rerank 三个模式各 280 条全部跑完之后，`agentic` 的**第一条**请求挂满 90 秒
+超时，Node 进程抛 `DOMException [TimeoutError]` 退出，整轮不产出结果文件：
+
+```
+DOMException [TimeoutError]: The operation was aborted due to timeout
+    at async post (evals/run_eval.mjs:28:15)
+    at async evalMode (evals/run_eval.mjs:58:15)
+```
+
+`eval-local.sh` 随后打印「本次未产出新的检索结果文件，跳过基线对比」并以 exit 0
+结束——**失败被吞掉，脚本看起来是成功的**。
+
+### 判断（已排除的可能）
+
+不是 agentic 这一模式本身慢，也不是那条 case 有问题。用**全新 JVM** 单独跑同一批
+280 条 agentic：
+
+```
+完成 280 条, 失败 0 条
+P50=4105ms  P95=5605ms  max=8497ms
+前 50 条 P50=4471ms   后 50 条 P50=4747ms
+```
+
+90 秒超时有 10 倍余量；前后半段 P50 只差 276ms，**没有随运行时间劣化**，所以也
+不是连接池或 executor 泄漏。最慢的一条恰好是 #1（8497ms，JVM 未预热）。
+
+结论：是前三个模式累计 840 次请求之后留下的某种累积状态，只在模式切换的瞬间
+影响到第一条请求。具体成因尚未定位——`LlmConcurrencyGate` 只有 16 个许可且
+`tryAcquire` 仅等 5 秒，是一个候选解释，但未经证实。
+
+### 操作
+
+已做：给 `evals/run_eval.mjs` 的 `post()` 加有限退避重试（2s、8s），4xx 立即抛出
+不重试，只对 5xx 与超时重试。这让评测不再把一次瞬时故障放大成「整轮无结果」，
+但**不是根因修复**。
+
+待做：
+1. 定位累积状态的真实来源。在 `LlmConcurrencyGate.acquire()` 失败时记录当前
+   in-flight 许可数，或在 `evalMode` 之间打一次 `/actuator` 快照。
+2. `eval-local.sh` 在评测脚本非零退出时应当自己也非零退出，而不是打一行提示后
+   exit 0。当前行为会让 CI 把失败当成功。
+
+### 通过标准
+
+- 全量 4 模式能连续跑完并产出结果文件。
+- 重试被触发时在日志中可见（已实现：打印第几次失败与退避时长），便于区分
+  「一次瞬时抖动」与「稳定失败被重试掩盖」。
+
+## Badcase 09：facet 指标不达标，且改 prompt 让它更糟
+
+### 现象
+
+30 条路由集上 facet Exact-Match 66.7%（阈值 85%）、Macro-F1 0.754（阈值 0.80）。
+这是 Badcase 06/07 修完后**唯一剩下的真实质量缺口**，也是 `rag-eval.yml`
+仍为 report-only 的唯一原因。
+
+10 条判错全部落在「intent 判对、facet 判错」这一格：
+
+```
+intent 对 + facet 对    19
+intent 对 + facet 错    10
+intent 错 + facet 对     1
+intent 错 + facet 错     0
+```
+
+错误方向以「多给」为主：多给 7 条、少给 2 条、换掉 1 条。
+
+`RoutingPolicy.plan()` 对 facet 是原样透传
+（`trustedInScope ? decision.retrievalFacets() : List.of()`，`RoutingPolicy.java:138`），
+**没有任何映射逻辑**，所以不存在「策略层算错」这种可改的代码路径——分歧全部
+在模型输出与人工标注之间。
+
+### 判断
+
+标注口径此前从未成文：`router_testset.json` 的 note 只有一句
+「意图路由标注语料, 人工标注 (30条, 每类5条)」，`docs/` 里搜不到 facet 判定标准。
+而 `docs/evaluation.md` 已经按这套未文档化的标注设了 85%/0.80 的发布门禁。
+
+分歧样本大多是真正可争的边界，而非模型犯蠢：
+
+- 「明天要面试大模型岗，帮我模拟一下」→ 标注 `learning`，模型给 `career,learning`
+- 「西瓜书适合入门看吗」→ 标注 `resource`，模型给 `learning,resource`
+- 「什么是检索增强生成」→ 标注 `[]`，模型给 `learning`
+
+### 操作与结果
+
+**第一步：先写口径，不动代码。** 新增 `docs/facet-annotation-criteria.md`，把口径
+锚定在 `GraphExpansionPolicy.forFacets` 的机械行为上（career→`REQUIRES`/`LEADS_TO`
+出边，learning→`PREREQUISITE`/`TEACHES` 入边，resource→`TEACHES` 入边），
+而不是凭「话题像什么」。其中一条关键推论：**`learning` 已包含 `TEACHES`**
+（权重 0.90），所以 `learning`+`resource` 并列只是把权重提到 1.0，不是新增召回
+通道——这类叠加应当避免。
+
+**第二步：按口径逐条复核 10 条分歧。** 结果是 **9 条标注正确、只有 1 条该改**：
+「面试官问我为什么转行，该怎么回答比较好」原标 `learning`，但这是沟通话术，
+图谱里没有任何关系能支撑它，应为 `[]`。测试集升到 v2，只改这一条。
+
+**第三步（失败的尝试）：把口径写进 router prompt。** 把上述规则（含机械含义、
+不要为沾边叠加、期限词不算 career 等）扩写进 `IntentRouter.SYS` 后重测：
+
+| 指标 | 原 prompt | 扩写 prompt 后 |
+| --- | --- | --- |
+| facet Exact-Match | 20/30 | **10/30** |
+| intent 判对 | 29/30 | **22/30** |
+
+**两项都大幅变差，已完整回滚。** 更长更细的 facet 指令不仅没提升 facet，还把
+intent 判断带偏了（planning→chat、mixed→planning 等新错误），并出现原先没有的
+`career,learning,resource` 三连叠加。推测是指令过长挤占了注意力，且新引入的
+`output-tokens` 压力（Badcase 07）也可能参与其中。
+
+### 当前状态与遗留
+
+- 口径已成文（`docs/facet-annotation-criteria.md`），标注 v2 只改 1 条。
+- facet 指标仍不达标，**代码与 prompt 均未改动**。
+- `rag-eval.yml` 保持 report-only，理由已更正为「facet 未达标 + embedding 抖动」。
+
+下一步的候选，按我判断的优先级：
+1. **扩充标注集**。30 条里 facet 组合分布极不均衡（`resource` 只有 1 条），
+   Macro-F1 对小类极其敏感，单条判错就掉一大截。先把每种 facet 组合补到 5 条
+   以上，再看指标是否仍不达标——现在的 0.754 有多少是样本量噪声还说不清。
+2. **考虑 few-shot 而非长指令**。第三步证明加长自然语言规则会反噬；给 3~5 个
+   带标注的示例可能比讲道理有效。
+3. **重新审视阈值本身**。85% Exact-Match 要求 30 条里最多错 4 条，而边界样本
+   本身就有真实歧义。若口径成文后人工复标仍与模型稳定分歧，该调的可能是阈值。
+
+不要在这三步之前改 prompt 去迎合 30 条标注——那是朝测试集过拟合，第三步已经
+演示了它的代价。
+
 ## 如何提交一个好问题
 
 不要只发“启动不了”“结果不对”。至少附上：
