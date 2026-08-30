@@ -64,7 +64,11 @@ public class InternalController {
 
     @PostMapping("/route")
     public Map<String, Object> route(@Valid @RequestBody RouteRequest req) {
-        IntentRouter.RouteDecision decision = router.routeDecision(req.question(), List.of(), "eval");
+        // 必须用本次请求的 traceId，不能用固定字面量：llm_turn_budget 以 trace_id 为主键且
+        // 没有 TTL，固定 key 会把所有历史评测的用量累加到同一行，越过 turn-token-limit 后
+        // 每次路由都因"本轮 token 预算已用尽"降级成 CHAT+confidence=0，评测指标随之失真。
+        String traceId = MDC.get("traceId");
+        IntentRouter.RouteDecision decision = router.routeDecision(req.question(), List.of(), traceId);
         RoutingPolicy.ExecutionPlan plan = routingPolicy.plan(decision, req.question());
         return Map.ofEntries(
                 Map.entry("intent", decision.intent().name().toLowerCase()),

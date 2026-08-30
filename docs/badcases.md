@@ -118,7 +118,7 @@ Neo4j 是检索链中的增强路径，不应成为所有问题的单点故障�
 
 报告中明确区分“单元/契约测试通过”和“真实依赖集成测试通过”。
 
-## Badcase 06：out_of_scope 越界问题被判成 chat
+## Badcase 06：out_of_scope 越界问题被判成 chat（已定位并修复）
 
 ### 现象
 
@@ -133,33 +133,93 @@ Neo4j 是检索链中的增强路径，不应成为所有问题的单点故障�
 
 同轮 out_of_scope 行仅 5 条，全部误判为 chat（混淆矩阵 out_of_scope→chat=5）。
 
+### 最初的假设（已被证伪）
+
+原判断是「越界判定与闲聊语义接近 + `ROUTING_OUT_OF_SCOPE_THRESHOLD` 默认 0.92 偏高」，
+属于模型能力/阈值问题。这个假设是错的：阈值和 prompt 都没问题，模型本身能正确
+输出 `scope=out_of_scope`。
+
+### 真实根因
+
+`/internal/route` 把 traceId 写死成字面量 `"eval"`
+（`InternalController.java:67`，2026-08-29 已修复）。`llm_turn_budget` 以 `trace_id`
+为主键、只有 `created_at` 没有 TTL，于是**所有历史评测的 token 用量都累加到
+`trace_id='eval'` 这一行**。该行涨到 48864，越过 `turn-token-limit: 50000` 后，
+`LlmBudgetGuard.reserveTurn` 每次都抛「本轮 token 预算已用尽」，
+`IntentRouter` 捕获后返回 `RouteDecision.degraded("ROUTER_UNAVAILABLE")` ——
+即 `intent=CHAT, confidence=0`。
+
+于是评测里每一条路由都变成 chat，不只是 out_of_scope 那 5 条。这个失败是静默的：
+后端只打一行 `structured output provider failure type=IllegalStateException` WARN，
+评测脚本照常输出指标，看起来像"模型判错"。
+
+2026-08-29 重跑 30 条路由集验证：
+
+| 指标 | 修复前 | 修复后 | 阈值 |
+| --- | --- | --- | --- |
+| Accuracy | 16.7% | 93.3% | 85% |
+| Macro-F1 | 0.048 | 0.935 | 0.80 |
+| out_of_scope 召回 | 0/5 | **5/5** | — |
+| 领域内误判越界 | 0.0% | 0.0% | ≤5% |
+| 预测标签种类 | 只有 chat | 6 类齐全 | — |
+
+修复前 30 条的 confidence 全是 0；修复后为 0.7/0.85/0.95/0.98/0.99。
+
+### 教训
+
+1. **共享可变配额的 key 不能用固定字面量。** 任何以 trace/session 为主键、又没有
+   TTL 的计数表，写死 key 等于把一个全局单调递增计数器伪装成单轮配额。
+2. **降级路径必须在指标里可见。** `degraded=true` 和 `confidence=0` 当时就在
+   `/internal/route` 的响应里，但评测脚本只统计 intent 是否相等，没有把
+   degraded 比例作为独立指标输出。降级率应当是评测报告的一等指标。
+
+### 遗留
+
+3/30 仍误判（planning→chat ×2、mixed→chat ×1），是另一个原因：
+路由 JSON 在 288 列附近被截断（`Unexpected end-of-input: was expecting closing
+quote`），`structured_output_events` 里今天 19 条 `invalid`。这些样本的
+`reason_codes` 是中文自然语言，加上 `llm.tokens.router.output-tokens: 96` 的上限
+容易溢出。见 Badcase 07。
+
+## Badcase 07：路由 JSON 被 output-tokens 上限截断
+
+### 现象
+
+`structured_output_events` 中 `task='router' AND validation_status='invalid'`，
+错误恒为 `Unexpected end-of-input: was expecting closing quote for a string value
+at ... column: 283~295`。首次尝试与修复重试（attempt 1、2）同样失败，
+最终落到 `ROUTER_INVALID_JSON` 降级。
+
+2026-08-29 30 条路由集里命中 3 条，全部是需要输出较长 `reason_codes` 的样本：
+
+- 「每天只有2小时，怎么安排学习大模型开发」→ 期望 planning，实际 chat
+- 「下个月开始准备秋招，学习节奏怎么定」→ 期望 planning，实际 chat
+- 「帮我全面评估下现在离拿到算法offer还差什么」→ 期望 mixed，实际 chat
+
+单独用 curl 打 `/internal/route` 时这两条能正确返回 `intent=planning`
+`confidence=0.85`，说明不是稳定复现的语义错误，而是长度边界上的抖动。
+
 ### 判断（假设）
 
-越界判定与普通闲聊在语义上接近，路由模型倾向把二者都归为 `chat`。out-of-scope
-阈值（`ROUTING_OUT_OF_SCOPE_THRESHOLD` 默认 0.92）偏高，只有高置信度越界才会跳过
-检索并触发拒答，边界样本因此漏判。这是既有模型/阈值行为，与 failover、限流、
-prompt 分区顺序等近期改动无关（这些改动未触及 router）。
-
-误判的实际影响有限：落进 `chat` 后仍受系统规则「与学习/求职无关时礼貌说明职责范围」
-约束，不会真的去写文案或查天气；但它绕过了越界快路径，浪费一次检索、且拒答不如
-显式 out_of_scope 干脆。
+`llm.tokens.router.output-tokens: 96` 对当前 schema 太紧。RouterOutput 除了枚举
+字段还要输出中文 `reason_codes`，一条中文理由就要十几个 token，两条理由 + 其余
+字段就会逼近 96。截断点稳定落在 283~295 列，与"输出预算耗尽"而非"模型写错"一致。
 
 ### 操作
 
-1. 用 `bash scripts/eval-local.sh --retrieval --smoke` 复现，看路由混淆矩阵
-   out_of_scope 行。
-2. 判断是阈值问题还是标注/模型能力问题：调低 `ROUTING_OUT_OF_SCOPE_THRESHOLD`
-   观察是否召回越界，同时盯住「领域内误判越界」不能升高（当前 0.0%）。
-3. 若阈值调整无法兼顾，考虑用路由校准模型（`ROUTING_CALIBRATION_ENABLED`）在
-   标注集上重新拟合越界边界，而不是手调阈值。
-4. 任何改动都要跑完整 30 条路由集（非 smoke），记录 Accuracy / Macro-F1 /
-   领域内误判越界 / out_of_scope 召回的前后对比。
+1. 查证：`SELECT validation_status, count(*) FROM structured_output_events
+   WHERE task='router' GROUP BY 1;` 看 invalid 占比是否与失败样本数吻合。
+2. 上调 `output-tokens`（96 → 160 左右）后重跑 30 条，看 invalid 是否归零、
+   Accuracy 是否补上这 3 条。
+3. 另一个方向：让 `reason_codes` 输出枚举 code 而不是中文自然语言句子，
+   从源头压缩输出长度。这更根治，但要同步改 prompt、schema 和 trace 消费方。
+4. 无论走哪条，都要确认领域内误判越界仍为 0.0%。
 
 ### 通过标准
 
-- out_of_scope 召回明显提升，且「领域内问题被误判为越界」不上升（这是更危险的
-  方向：会让正常学习/求职问题被拒答）。
-- 改动对应本卡片列出的具体样本，不能只看总体 Accuracy 回升。
+- `structured_output_events` 中 router 的 `invalid` 归零或降到个位数占比。
+- 30 条路由集 Accuracy ≥ 85%、Macro-F1 ≥ 0.80，且这 3 条具名样本判对。
+- 评测报告中新增"路由降级率"指标，使同类静默降级下次能被直接看见。
 
 ## 如何提交一个好问题
 
