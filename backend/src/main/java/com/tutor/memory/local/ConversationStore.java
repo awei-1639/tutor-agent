@@ -97,7 +97,7 @@ public class ConversationStore {
             return jdbc.queryForObject("""
                     INSERT INTO messages (conversation_id, role, content, content_encrypted, intent, citations, trace_id, token_count,
                                           citation_status, citation_issues, chat_turn_id)
-                    VALUES (?,?,?,pgp_sym_encrypt(?,?),?,?,?,?,?,?::jsonb,?::uuid) RETURNING id
+                    VALUES (?,?,?,pgp_sym_encrypt(?,?),?,?::jsonb,?,?,?,?::jsonb,?::uuid) RETURNING id
                     """, Long.class, conversationId, role, masked, content, encKey, intent, citationsJson,
                     traceId, tokenCount, citationStatus, citationIssuesJson == null ? "[]" : citationIssuesJson, chatTurnId);
         }
