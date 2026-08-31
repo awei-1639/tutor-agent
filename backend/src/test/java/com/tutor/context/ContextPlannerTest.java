@@ -74,6 +74,23 @@ class ContextPlannerTest {
         assertThat(prompt.indexOf("SUMMARY")).isLessThan(prompt.indexOf("EVIDENCE"));
     }
 
+    @Test
+    void keepsTurnMetaWhenEvidenceWouldOtherwiseConsumeTheWholeBudget() {
+        TokenBudget budget = new TokenBudget();
+        ContextSection rules = section("rules", 300, "RULE ".repeat(100));
+        ContextSection evidence = section("evidence", 2_500, "EVIDENCE ".repeat(2_000));
+        ContextSection meta = section("meta", 64, "\n当前日期: 2026-08-31\n");
+
+        ContextPlanner.Plan plan = new ContextPlanner().plan(List.of(evidence, meta, rules),
+                new TurnContextView(Map.of(), List.<Evidence>of()), budget);
+
+        // meta 承载当前日期，没有保底时会被大证据挤成 0，恰好在上下文最满的回合丢掉时间基准。
+        assertThat(plan.allocations().stream()
+                .filter(allocation -> allocation.name().equals("meta"))
+                .findFirst().orElseThrow().allocatedTokens()).isGreaterThan(0);
+        assertThat(plan.prompt()).contains("当前日期");
+    }
+
     private ContextSection section(String name, int max, String text) {
         return new ContextSection() {
             @Override public String name() { return name; }

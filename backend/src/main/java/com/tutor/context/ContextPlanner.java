@@ -96,6 +96,9 @@ public class ContextPlanner {
             case "profile" -> 300;
             case "facts" -> 120;
             case "episodes", "summary" -> 200;
+            // meta 很小但不可裁：它承载当前日期，缺失会让涉及周期/截止时间的回答失去基准。
+            // 没有保底时它排在最后、被大证据挤成 0，恰好在上下文最满的回合丢掉日期。
+            case "meta" -> 64;
             default -> 0;
         };
     }
