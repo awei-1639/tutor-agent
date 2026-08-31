@@ -54,6 +54,12 @@ public record LlmProperties(
         private static final long DEFAULT_USER_DAILY_TOKEN_LIMIT = 300_000;
         private static final int DEFAULT_BACKGROUND_SHARE_PERCENT = 20;
 
+        /**
+         * 必须显式标记规范构造器：本记录还有一个 2 参便捷构造器，多构造器且无标记时
+         * Spring Boot 无法选择绑定目标，会把整个 llm.budget 静默绑成 null，
+         * 直到第一次 LLM 调用在 LlmBudgetGuard 里 NPE。
+         */
+        @ConstructorBinding
         public Budget {
             if (userDailyTokenLimit <= 0) userDailyTokenLimit = DEFAULT_USER_DAILY_TOKEN_LIMIT;
             if (backgroundSharePercent <= 0 || backgroundSharePercent >= 100) {
