@@ -390,6 +390,9 @@ public class ChatService {
                                              com.tutor.expert.RoutingPolicy.ExecutionPlan plan,
                                              String traceId, TurnEvents events) {
         if (plan.skipRetrieval()) {
+            // Badcase 06 教训: 跳过/降级路径必须在 trace 里可见, 否则指标失真是静默的
+            trace.span(traceId, context.convId(), "retrieve", System.currentTimeMillis(), false,
+                    Map.of("skipped", true, "intent", plan.intent().name()));
             return new RetrievedContext(List.of(), List.of(), List.of());
         }
         long memoryStart = System.currentTimeMillis();

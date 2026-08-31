@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -45,6 +46,9 @@ class ChatServiceTurnPathsTest {
         verify(fixture.agenticRetriever, never())
                 .retrieveAdaptiveResult(anyString(), anyInt(), anyString(), any(Boolean.class), any(), any());
         verify(fixture.longTermMemory, never()).recall(anyLong(), anyString(), anyString());
+        // Badcase 06 教训: 跳过检索也要留痕, 否则降级/越界在指标里是静默的
+        verify(fixture.trace).span(anyString(), any(), eq("retrieve"), anyLong(), eq(false),
+                argThat(snapshot -> Boolean.TRUE.equals(snapshot.get("skipped"))));
         assertThat(events.stages).doesNotContain("retrieving");
         assertThat(events.done).isTrue();
     }
