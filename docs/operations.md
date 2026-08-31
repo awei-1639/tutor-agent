@@ -147,6 +147,11 @@ docker compose --env-file .env -f docker-compose.prod.yml up -d --build
 `MEMORY_FACTS_MAX_ACTIVE_PER_USER`（每用户有效事实上限，默认 60）、`MEMORY_FACTS_RECALL_TOP_K`（单轮召回条数，默认 6）、
 `MEMORY_RECALL_RECENCY_DECAY_DAYS`（记忆排序的 recency 衰减半衰参数 τ，默认 30 天）。关闭事实层后抽取与召回同时停用，聊天不受影响。
 
+Episode 重要性门控：`MEMORY_EPISODE_IMPORTANCE_GATE_ENABLED`（默认开启）。窗口内没有目标/偏好/约束/纠正等显著性信号时，
+跳过本轮 Episode 摘要与事实抽取（不烧 LLM）。源窗口未满 30 条时不推进水位线，后续消息累积后自动重试；
+窗口已满 30 条仍无显著信号则整窗跳过并推进水位线（日志 `episode 跳过整窗`），否则纯闲聊会话每轮都读到同一批消息、记忆永久停摆。
+关掉则恢复"每 12 条消息必抽取"的旧行为。
+
 同步 Outbox 暴露 `tutor.memory.sync.backlog`（待处理、退避中和处理中任务数）与 `tutor.memory.sync.failed`（终态失败任务数）两个低基数指标，默认每 10 秒刷新，可通过 `MEMORY_SYNC_METRICS_REFRESH_MS` 调整。生产环境应对失败数和持续增长的积压配置告警。
 
 OSS Bucket 还必须配置 CORS，允许前端站点对签名 URL 发起 `PUT`，至少放行 `Content-Type` 请求头并暴露 `ETag` 响应头；不要把 AccessKey 或 STS 长期凭证下发到浏览器。签名会在 15 分钟后失效，未完成的普通/分片会话由后台清理；同时建议配置 OSS 生命周期规则，自动终止长期未完成的 Multipart Upload，覆盖应用进程在创建会话后立即崩溃的极端情况。

@@ -351,6 +351,9 @@ LLM 不能直接执行任意图查询。跳数、候选规模、关系范围和�
   新会话开场通过 `/memories/open-items` 主动提醒上次未完成事项；
 - 记忆评测：`evals/run_memory_eval.mjs` 打真实 `/internal/memory-recall` 管线，
   覆盖事实命中、superseded 泄漏率（阈值 0）、时序正确性与无关注入；
+- 重要性门控：Episode 抽取前做确定性显著信号检查（目标/偏好/约束/纠正/掌握度），闲聊窗口不烧 LLM；
+  窗口未满时被跳过的窗口不推进水位线，后续累积后自动重试；窗口满 30 条仍无信号则整窗跳过并推进水位线，
+  避免长闲聊把该会话的记忆永久卡死，可用 `MEMORY_EPISODE_IMPORTANCE_GATE_ENABLED` 关闭；
 - Mem0：默认关闭，必须用户授权，调用超时或熔断后回退本地；语义事实仅存本地，不进 Mem0 outbox；
 - 写入与删除：通过本地事务 Outbox、记忆代际和带 fencing token 的租约执行；worker 崩溃后任务可被重新认领；
 - 单条删除：已知远端 UUID 时精确删除，未知 UUID 时按用户范围发现 `metadata.memory_id` 后删除，发现尚未完成则退避重试；
