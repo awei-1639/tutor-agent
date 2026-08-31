@@ -25,6 +25,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.timeout;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -86,14 +87,27 @@ class LlmGatewayBudgetTest {
             LlmGateway gateway = new LlmGateway(properties("http://127.0.0.1:" + server.getAddress().getPort() + "/v1"),
                     jdbc, budgetGuard, concurrency);
             CancellationToken cancellation = new CancellationToken();
-            gateway.chatStream(Purpose.CHAT,
-                    List.of(SystemMessage.from("system"), UserMessage.from("question")),
-                    "stream-trace", new NoopStreamingHandler(), cancellation);
+            // chatStream 是同步的 (返回即完成)，因此取消必须来自另一个线程 ——
+            // 生产中正是如此：cancel 由 SSE 的 onTimeout/onError 回调线程发出。
+            CountDownLatch returned = new CountDownLatch(1);
+            Thread streaming = new Thread(() -> {
+                try {
+                    gateway.chatStream(Purpose.CHAT,
+                            List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                            "stream-trace", new NoopStreamingHandler(), cancellation);
+                } finally {
+                    returned.countDown();
+                }
+            }, "test-chat-stream");
+            streaming.start();
 
             assertThat(connected.await(2, TimeUnit.SECONDS)).isTrue();
             cancellation.cancel();
 
             assertThat(disconnected.await(3, TimeUnit.SECONDS)).isTrue();
+            // 取消后 chatStream 必须及时返回，不能把调用线程一直挂在已断开的流上。
+            assertThat(returned.await(5, TimeUnit.SECONDS))
+                    .as("取消后 chatStream 应当返回").isTrue();
             verify(budgetGuard).settle(any(LlmBudgetGuard.Reservation.class), anyLong());
             verify(concurrency).release();
         } finally {
@@ -168,12 +182,59 @@ class LlmGatewayBudgetTest {
         }
     }
 
+    /**
+     * chatStream 必须在回答生成完毕后才返回。所有调用方 (ChatService.streamAnswer、
+     * Aggregator、ChatTurnService.run) 都按同步语义编写：ChatTurnService 在 turn() 返回
+     * 后立刻判定终态，若此时回答还在流，claim 仍是 RUNNING，会被误判成
+     * "聊天回合未产生终态" 而置为 FAILED；随后真正完成时 completeWithMessage 的
+     * WHERE status='RUNNING' 不再匹配，回答落不了库，onDone 也发不出去，SSE 挂到超时。
+     */
+    @Test
+    void chatStreamDoesNotReturnBeforeTheAnswerIsComplete() throws Exception {
+        stubReservation();
+        HttpServer server = sseServer(new AtomicReference<>(), List.of(
+                "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"回答\"},\"finish_reason\":null}]}",
+                "{\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}",
+                "[DONE]"), 300L);
+        server.start();
+        try {
+            LlmGateway gateway = new LlmGateway(properties("http://127.0.0.1:" + server.getAddress().getPort() + "/v1"),
+                    jdbc, budgetGuard, concurrency);
+            AtomicBoolean completed = new AtomicBoolean();
+
+            gateway.chatStream(Purpose.CHAT,
+                    List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                    "stream-trace", new NoopStreamingHandler() {
+                        @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
+                            completed.set(true);
+                        }
+                    }, new CancellationToken());
+
+            assertThat(completed).as("chatStream 返回时回答必须已完成").isTrue();
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private static HttpServer sseServer(AtomicReference<String> requestBody, List<String> events) throws IOException {
+        return sseServer(requestBody, events, 0L);
+    }
+
+    private static HttpServer sseServer(AtomicReference<String> requestBody, List<String> events,
+                                        long delayBeforeFirstEventMs) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
             requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
             exchange.sendResponseHeaders(200, 0);
+            if (delayBeforeFirstEventMs > 0) {
+                try {
+                    Thread.sleep(delayBeforeFirstEventMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
             try (OutputStream output = exchange.getResponseBody()) {
                 for (String event : events) {
                     output.write(("data: " + event + "\n\n").getBytes(StandardCharsets.UTF_8));

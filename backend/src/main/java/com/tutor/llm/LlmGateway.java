@@ -216,6 +216,12 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     /**
      * 可取消的流式聊天。取消令牌与供应商的 ResponseHandle 绑定，因此 SSE 客户端
      * 断开时会关闭底层 HTTP 流。
+     *
+     * 本方法是同步的：返回时回答已完成 (或已失败/已取消)。调用方
+     * (ChatService.streamAnswer、Aggregator、ChatTurnService.run) 都依赖这一点 ——
+     * ChatTurnService 在 turn() 返回后立刻判定回合终态，提前返回会让它把仍在生成的
+     * 回合误判为 "未产生终态"。单独起线程仅为让取消能中断阻塞读 (线程无法自我中断)，
+     * 不是为了 fire-and-forget。
      */
     public void chatStream(Purpose purpose, List<ChatMessage> messages, String traceId,
                            StreamingChatResponseHandler handler, CancellationToken cancellation) {
@@ -263,12 +269,13 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                 }
                 finish.run();
             }));
-            if (finished.get()) {
-                closeCancellationRegistration(cancellationRegistration);
-            }
             if (cancellation.isCancelled()) {
                 task.cancel(true);
                 finish.run();
+            }
+            awaitStream(task, traceId);
+            if (finished.get()) {
+                closeCancellationRegistration(cancellationRegistration);
             }
         } catch (RuntimeException e) {
             if (acquired && finished.compareAndSet(false, true)) {
@@ -278,6 +285,26 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                 settleAndRelease(reservation, 0, false);
             }
             throw e;
+        }
+    }
+
+    /**
+     * 等待流式任务收尾。取消是正常路径 (SSE 客户端断开)，不向上抛；
+     * runStreamingRequest 自身已捕获所有异常并回调 handler.onError，
+     * 因此这里只兜住 Future 层面的取消与中断。
+     */
+    private void awaitStream(Future<?> task, String traceId) {
+        try {
+            task.get();
+        } catch (java.util.concurrent.CancellationException e) {
+            log.debug("chat stream cancelled trace={}", traceId);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            task.cancel(true);
+            log.debug("chat stream interrupted trace={}", traceId);
+        } catch (java.util.concurrent.ExecutionException e) {
+            // runStreamingRequest 不应逃出异常；真逃出了说明是缺陷，记录后照常收尾。
+            log.error("chat stream task failed unexpectedly trace={}", traceId, e.getCause());
         }
     }
 
