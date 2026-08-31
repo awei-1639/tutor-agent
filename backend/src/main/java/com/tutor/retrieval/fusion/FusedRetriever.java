@@ -153,10 +153,18 @@ public class FusedRetriever {
                 .map(VectorStore.VectorHit::nodeId).forEach(resourceNodeIds::add);
         sparseHits.stream().filter(FusedRetriever::isResourceHit)
                 .map(VectorStore.VectorHit::nodeId).forEach(resourceNodeIds::add);
+        // 对称降权的判据比 resource 更窄: 只有课程/书目类资源 (种子 res: 节点与
+        // resource_kind='resource' 的文档), 普通知识文档切片 (doc:, node_type=document) 不算
+        Set<String> resourceOnlyIds = new LinkedHashSet<>();
+        vecHits.stream().filter(FusedRetriever::isResourceOnlyHit)
+                .map(VectorStore.VectorHit::nodeId).forEach(resourceOnlyIds::add);
+        sparseHits.stream().filter(FusedRetriever::isResourceOnlyHit)
+                .map(VectorStore.VectorHit::nodeId).forEach(resourceOnlyIds::add);
         Map<String, Double> fusedScores = fuseWithProfile(
                 vecHits.stream().map(VectorStore.VectorHit::nodeId).toList(),
                 sparseHits.stream().map(VectorStore.VectorHit::nodeId).toList(),
-                neighbors, expandSources, isResourceSeeking(query), graphPolicy, resourceNodeIds);
+                neighbors, expandSources, isResourceSeeking(query), graphPolicy, resourceNodeIds,
+                resourceOnlyIds);
 
         // 回捞扩展节点的 chunk 文本; 记录图谱路径 (哪个源节点经哪条边扩出)
         Map<String, VectorStore.VectorHit> byId = new HashMap<>();
@@ -421,6 +429,13 @@ public class FusedRetriever {
                 || id.startsWith("document:"));
     }
 
+    /** 对称降权判据: 课程/书目类资源, 不含普通知识文档切片 (node_type=document)。 */
+    private static boolean isResourceOnlyHit(VectorStore.VectorHit hit) {
+        if (hit == null) return false;
+        String type = hit.nodeType() == null ? "" : hit.nodeType().toLowerCase();
+        return type.equals("resource") || (hit.nodeId() != null && hit.nodeId().startsWith("res:"));
+    }
+
     /**
      * 三路 RRF (Phase 2 V4 2.1): 稠密+稀疏+图扩展。稀疏通道用 BETA 衰减,
      * 与 ALPHA 隔离以便独立调参; 阈值见 {@link VectorStore#sparseSearch}。
@@ -454,8 +469,21 @@ public class FusedRetriever {
                                     GraphExpansionPolicy policy,
                                     Set<String> resourceNodeIds,
                                     double resourceDampen) {
+        return fuse(vectorRanking, sparseRanking, neighbors, expandSources, resourceSeeking,
+                policy, resourceNodeIds, resourceDampen, Set.of());
+    }
+
+    static Map<String, Double> fuse(List<String> vectorRanking,
+                                    List<String> sparseRanking,
+                                    List<GraphStore.Neighbor> neighbors,
+                                    List<String> expandSources,
+                                    boolean resourceSeeking,
+                                    GraphExpansionPolicy policy,
+                                    Set<String> resourceNodeIds,
+                                    double resourceDampen,
+                                    Set<String> resourceOnlyIds) {
         return RrfFusionPolicy.fuse(vectorRanking, sparseRanking, neighbors, expandSources, resourceSeeking,
-                policy, resourceNodeIds, RRF_K, ALPHA, BETA, NON_RESOURCE_DAMPEN, resourceDampen);
+                policy, resourceNodeIds, RRF_K, ALPHA, BETA, NON_RESOURCE_DAMPEN, resourceDampen, resourceOnlyIds);
     }
 
     private Map<String, Double> fuseWithProfile(List<String> vectorRanking,
@@ -464,10 +492,11 @@ public class FusedRetriever {
                                                  List<String> expandSources,
                                                  boolean resourceSeeking,
                                                  GraphExpansionPolicy policy,
-                                                 Set<String> resourceNodeIds) {
+                                                 Set<String> resourceNodeIds,
+                                                 Set<String> resourceOnlyIds) {
         return RrfFusionPolicy.fuse(vectorRanking, sparseRanking, neighbors, expandSources, resourceSeeking,
                 policy, resourceNodeIds, profile.rrfK(), profile.graphAlpha(), profile.sparseBeta(),
-                profile.nonResourceDampen(), profile.resourceDampen());
+                profile.nonResourceDampen(), profile.resourceDampen(), resourceOnlyIds);
     }
 
     /** 稀疏通道权重 (Phase 2 V4 2.1): pg_trgm 兜底专有名词漏召, 不应主导排序。0.3 ≈ 图扩展(0.85)的 1/3,

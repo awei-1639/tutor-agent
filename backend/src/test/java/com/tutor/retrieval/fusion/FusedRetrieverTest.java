@@ -132,6 +132,22 @@ class FusedRetrieverTest {
     }
 
     @Test
+    void knowledgeDocumentChunksAreNotDampenedForNonSeekingQueries() {
+        // doc: 切片是概念类查询的知识正主, 不参与对称降权 (判据仅 res: 前缀与 resource_only 集合)
+        Map<String, Double> score = FusedRetriever.fuse(
+                List.of("doc:u1:0", "skill:b"), List.of(), List.of(),
+                List.of("doc:u1:0", "skill:b"), false, policy(), Set.of(), 0.5D);
+        assertThat(score.get("doc:u1:0")).isGreaterThan(score.get("skill:b"));
+
+        // resource_kind='resource' 的文档 (nodeType=resource 进入 resourceOnlyIds) 仍被降权
+        Map<String, Double> typed = FusedRetriever.fuse(
+                List.of("doc:u2:0", "skill:b"), List.of(), List.of(),
+                List.of("doc:u2:0", "skill:b"), false, policy(), Set.of(), 0.5D,
+                Set.of("doc:u2:0"));
+        assertThat(typed.get("skill:b")).isGreaterThan(typed.get("doc:u2:0"));
+    }
+
+    @Test
     void optionalChannelFloorKeepsOneCandidatePerAvailableChannel() {
         List<com.tutor.contract.Evidence> ranked = List.of(
                 new com.tutor.contract.Evidence("dense", "skill", "d", .9D, null, null, null, null),
