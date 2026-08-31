@@ -80,6 +80,12 @@ public class KnowledgeDocumentService {
         return uploadSessions.prepareUpload(adminId, requestedFilename, sizeBytes, contentType, requestedTitle);
     }
 
+    public UploadSession prepareUpload(long adminId, String requestedFilename, long sizeBytes,
+                                       String contentType, String requestedTitle, String requestedResourceKind) {
+        return uploadSessions.prepareUpload(adminId, requestedFilename, sizeBytes, contentType,
+                requestedTitle, requestedResourceKind);
+    }
+
     /** 重新签发短期 OSS URL，并返回 OSS 已持久化的分片。 */
     public UploadSession resumeUpload(long adminId, UUID id) {
         return uploadSessions.resumeUpload(adminId, id);
@@ -100,6 +106,10 @@ public class KnowledgeDocumentService {
 
     public UploadResult upload(long adminId, MultipartFile file, String requestedTitle) {
         return adminDocuments.upload(adminId, file, requestedTitle);
+    }
+
+    public UploadResult upload(long adminId, MultipartFile file, String requestedTitle, String requestedResourceKind) {
+        return adminDocuments.upload(adminId, file, requestedTitle, requestedResourceKind);
     }
 
     public List<Map<String, Object>> list(int limit) {

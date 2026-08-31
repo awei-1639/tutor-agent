@@ -50,6 +50,13 @@ final class KnowledgeUploadSessionService {
 
     KnowledgeDocumentService.UploadSession prepareUpload(long adminId, String requestedFilename, long sizeBytes,
                                                          String contentType, String requestedTitle) {
+        return prepareUpload(adminId, requestedFilename, sizeBytes, contentType, requestedTitle, null);
+    }
+
+    KnowledgeDocumentService.UploadSession prepareUpload(long adminId, String requestedFilename, long sizeBytes,
+                                                         String contentType, String requestedTitle,
+                                                         String requestedResourceKind) {
+        String resourceKind = KnowledgeDocumentFilePolicy.sanitizeResourceKind(requestedResourceKind);
         if (!uploadLimiter.allow(adminId)) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "上传过于频繁，请稍后再试");
         }
@@ -95,11 +102,12 @@ final class KnowledgeUploadSessionService {
             transactions.executeWithoutResult(status -> {
                 jdbc.update("""
                         INSERT INTO knowledge_documents
-                        (id, title, original_filename, content_type, size_bytes, content_hash, oss_object_key, status, created_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'uploading', ?)
+                        (id, title, original_filename, content_type, size_bytes, content_hash, oss_object_key,
+                         resource_kind, status, created_by)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?)
                         """, id, title, filename, effectiveType, sizeBytes,
                         KnowledgeDocumentFilePolicy.sha256(id.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                        objectKey, adminId);
+                        objectKey, resourceKind == null ? "document" : resourceKind, adminId);
                 jdbc.update("""
                         INSERT INTO knowledge_upload_sessions
                         (document_id, admin_user_id, object_key, expected_size, expires_at, upload_id, part_size)

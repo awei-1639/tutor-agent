@@ -21,6 +21,20 @@ final class KnowledgeDocumentFilePolicy {
         }
     }
 
+    /** 允许的 resource_kind 与检索通道语义对齐: document=知识讲解, resource=课程/书目清单, job=岗位资料。 */
+    static final java.util.Set<String> RESOURCE_KINDS = java.util.Set.of("document", "resource", "job");
+
+    /** 空值返回 null (调用方落库默认 'document'); 非法值显式拒绝, 不静默纠正。 */
+    static String sanitizeResourceKind(String requested) {
+        if (requested == null || requested.isBlank()) return null;
+        String normalized = requested.trim().toLowerCase(Locale.ROOT);
+        if (!RESOURCE_KINDS.contains(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "resourceKind 仅支持 document、resource、job");
+        }
+        return normalized;
+    }
+
     /** 扩展名仅用于体验提示；在进入解析器或 OSS 前拒绝常见的二进制伪装文件。 */
     static void requireContentMatchesExtension(String filename, byte[] bytes) {
         String normalized = filename.toLowerCase(Locale.ROOT);

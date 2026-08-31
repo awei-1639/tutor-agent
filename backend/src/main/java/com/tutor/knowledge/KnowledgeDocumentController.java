@@ -31,16 +31,19 @@ public class KnowledgeDocumentController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public KnowledgeDocumentService.UploadResult upload(@RequestParam("file") MultipartFile file,
-                                                        @RequestParam(required = false) String title) {
-        return documents.upload(admin.requireAdmin(), file, title);
+                                                        @RequestParam(required = false) String title,
+                                                        @RequestParam(required = false) String resourceKind) {
+        return documents.upload(admin.requireAdmin(), file, title, resourceKind);
     }
 
-    public record UploadSessionRequest(String filename, long sizeBytes, String contentType, String title) {}
+    public record UploadSessionRequest(String filename, long sizeBytes, String contentType, String title,
+                                       String resourceKind) {}
 
     @PostMapping(path = "/upload-session", consumes = MediaType.APPLICATION_JSON_VALUE)
     public KnowledgeDocumentService.UploadSession prepareUpload(@RequestBody UploadSessionRequest request) {
         if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "上传参数不能为空");
-        return documents.prepareUpload(admin.requireAdmin(), request.filename(), request.sizeBytes(), request.contentType(), request.title());
+        return documents.prepareUpload(admin.requireAdmin(), request.filename(), request.sizeBytes(),
+                request.contentType(), request.title(), request.resourceKind());
     }
 
     @GetMapping("/{id}/upload-session")

@@ -47,6 +47,12 @@ final class KnowledgeDocumentAdminService {
     }
 
     KnowledgeDocumentService.UploadResult upload(long adminId, MultipartFile file, String requestedTitle) {
+        return upload(adminId, file, requestedTitle, null);
+    }
+
+    KnowledgeDocumentService.UploadResult upload(long adminId, MultipartFile file, String requestedTitle,
+                                                 String requestedResourceKind) {
+        String resourceKind = KnowledgeDocumentFilePolicy.sanitizeResourceKind(requestedResourceKind);
         if (!uploadLimiter.allow(adminId)) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "上传过于频繁，请稍后再试");
         }
@@ -89,9 +95,11 @@ final class KnowledgeDocumentAdminService {
             transactions.executeWithoutResult(status -> {
                 jdbc.update("""
                         INSERT INTO knowledge_documents
-                        (id, title, original_filename, content_type, size_bytes, content_hash, oss_object_key, status, created_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'uploaded', ?)
-                        """, id, title, filename, file.getContentType(), bytes.length, hash, objectKey, adminId);
+                        (id, title, original_filename, content_type, size_bytes, content_hash, oss_object_key,
+                         resource_kind, status, created_by)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploaded', ?)
+                        """, id, title, filename, file.getContentType(), bytes.length, hash, objectKey,
+                        resourceKind == null ? "document" : resourceKind, adminId);
                 jobs.enqueue(id, 0);
             });
         } catch (RuntimeException e) {
