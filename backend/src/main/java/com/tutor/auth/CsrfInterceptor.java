@@ -20,6 +20,7 @@ public class CsrfInterceptor implements HandlerInterceptor {
         if ("GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)
                 || isCsrfExemptAuthEntry(request.getRequestURI())
                 || request.getRequestURI().startsWith("/internal")
+                || "/error".equals(request.getRequestURI())
                 || (request.getHeader("Authorization") != null
                     && request.getHeader("Authorization").startsWith("Bearer "))) {
             return true;
