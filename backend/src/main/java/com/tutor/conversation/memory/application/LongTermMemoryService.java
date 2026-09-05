@@ -1,0 +1,143 @@
+package com.tutor.conversation.memory.application;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import com.tutor.conversation.memory.external.Mem0CircuitBreaker;
+import com.tutor.conversation.memory.external.Mem0Client;
+import com.tutor.conversation.memory.local.EpisodeRecall;
+import com.tutor.conversation.memory.local.EpisodeStore;
+import com.tutor.conversation.memory.local.FactStore;
+import com.tutor.conversation.memory.policy.MemoryConsentService;
+import com.tutor.conversation.memory.external.MemorySyncOutbox;
+
+import java.time.Instant;
+import java.util.List;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/**
+ * 统一编排本地情节记忆与可选的 Mem0 长期记忆。
+ * 远程记忆始终是增强项：故障、超时或配置缺失都不能阻断主对话。
+ */
+@Service
+public class LongTermMemoryService {
+    private static final Logger log = LoggerFactory.getLogger(LongTermMemoryService.class);
+    private final EpisodeRecall localRecall;
+    private final Mem0Client mem0;
+    private final MemoryConsentService consent;
+    private final Mem0CircuitBreaker breaker;
+    private final TransactionTemplate transactions;
+    private final MemorySyncOutbox outbox;
+    private final FactStore factStore;
+    private final MemoryMergePolicy mergePolicy;
+
+    public LongTermMemoryService(EpisodeRecall localRecall, Mem0Client mem0,
+                                 MemoryConsentService consent, Mem0CircuitBreaker breaker,
+                                 TransactionTemplate transactions, MemorySyncOutbox outbox,
+                                 FactStore factStore,
+                                 @Value("${memory.recall.recency-decay-days:30}") double recencyDecayDays) {
+        this.localRecall = localRecall;
+        this.mem0 = mem0;
+        this.consent = consent;
+        this.breaker = breaker;
+        this.transactions = transactions;
+        this.outbox = outbox;
+        this.factStore = factStore;
+        this.mergePolicy = new MemoryMergePolicy(recencyDecayDays);
+    }
+
+    public record RecallResult(List<EpisodeStore.Episode> episodes, boolean degraded) {}
+    public record ForgetResult(boolean remoteDeletionPending) {}
+
+    public RecallResult recall(long userId, String query, String traceId) {
+        List<EpisodeStore.Episode> local;
+        boolean localDegraded = false;
+        try {
+            local = mergePolicy.safeEpisodes(localRecall.recall(userId, query, traceId));
+        } catch (RuntimeException e) {
+            // 记忆是增强能力；数据库、embedding 或连接池异常都不能阻断主对话。
+            log.warn("本地情景记忆召回失败，继续无记忆对话 user={} trace={}: {}",
+                    userId, traceId, e.getMessage());
+            local = List.of();
+            localDegraded = true;
+        }
+
+        try {
+            if (!mem0.enabled() || !consent.enabledFor(userId)
+                    || !outbox.remoteReadAllowed(userId) || !breaker.allowRequest()) {
+                return new RecallResult(local, localDegraded);
+            }
+        } catch (RuntimeException e) {
+            // 配置、授权存储或熔断器异常时安全关闭远程记忆。
+            log.warn("远程记忆状态检查失败，继续本地记忆 user={} trace={}: {}",
+                    userId, traceId, e.getMessage());
+            return new RecallResult(local, true);
+        }
+
+        try {
+            List<EpisodeStore.Episode> remote = mergePolicy.safeEpisodes(mem0.search(userId, query, traceId)).stream()
+                    .filter(episode -> {
+                        if (episode.id() == 0L) return true;
+                        if (!localRecall.isActiveById(episode.id(), userId)) return false;
+                        if (episode.remoteMemoryId() != null) {
+                            localRecall.recordRemoteMemoryId(episode.id(), userId, episode.remoteMemoryId());
+                        }
+                        return true;
+                    })
+                    .toList();
+            breaker.success();
+            return new RecallResult(mergePolicy.merge(local, remote), localDegraded);
+        } catch (RuntimeException e) {
+            breaker.failure();
+            log.warn("Mem0 召回失败，降级本地情节记忆 user={} trace={}: {}", userId, traceId, e.getMessage());
+            return new RecallResult(local, true);
+        }
+    }
+
+    /**
+     * 在 outbox worker 接收到已准入的结构化记忆记录前，刻意保持禁用。
+     * 写入未经审查的问题/回答会让助手幻觉和提示注入变成持久化远端记忆。
+     */
+    public void remember(long userId, String question, String answer, String traceId) {
+        log.debug("Mem0 对话双写已禁用，等待受控记忆同步 user={} trace={}", userId, traceId);
+    }
+
+    public ForgetResult forget(long userId) {
+        // 删除操作应幂等。只要已配置 Mem0 就始终入队，使后一次清除可以取代
+        // 较早的延迟删除，而不会让 worker 丢弃唯一的远端清理任务。
+        boolean remoteDeletionRequired = mem0.enabled();
+        transactions.executeWithoutResult(status -> {
+            consent.invalidateMemoryGeneration(userId);
+            localRecall.deleteByUser(userId);
+            factStore.deleteByUser(userId);
+            consent.setEnabled(userId, false);
+            if (remoteDeletionRequired) outbox.enqueueDeleteUser(userId);
+        });
+        return new ForgetResult(remoteDeletionRequired);
+    }
+
+    /** 删除单条本地记忆及其派生事实，并为已知的 Mem0 副本登记精确删除事件。 */
+    public boolean forgetOne(long userId, long memoryId) {
+        Boolean deleted = transactions.execute(status -> {
+            var remoteId = localRecall.remoteMemoryIdById(memoryId, userId);
+            if (!localRecall.deleteByIdForUser(memoryId, userId)) return false;
+            factStore.deleteBySourceEpisodeId(userId, memoryId);
+            if (mem0.enabled()) {
+                // UUID 尚未通过远程召回落库时也要登记事件，由 worker 做受限发现，避免删除窗口丢失。
+                outbox.enqueueDeleteMemory(userId, memoryId, remoteId.orElse(null));
+            }
+            return true;
+        });
+        return Boolean.TRUE.equals(deleted);
+    }
+
+    /** 重新授权时先清理旧远程副本；清理完成前 recall 会保持本地回退。 */
+    public void enableExternalMemory(long userId) {
+        transactions.executeWithoutResult(status -> {
+            consent.setEnabled(userId, true);
+            if (mem0.enabled()) outbox.enqueueDeleteUser(userId);
+        });
+    }
+
+}

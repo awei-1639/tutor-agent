@@ -20,47 +20,57 @@ agent/
 
 ## 2. 后端模块边界
 
-后端采用按业务能力组织的模块，而不是把所有 Controller、Service、Repository 分别集中到三个大目录：
+后端按七个逻辑业务域组织（物理包已与 `docs/refactoring-master-plan.md` 3.1 的目标架构对齐），
+而不是把所有 Controller、Service、Repository 分别集中到三个大目录：
 
 ```text
 com.tutor/
-├─ auth          登录、Cookie、JWT、刷新令牌、CSRF
-├─ chat          对话编排、SSE、会话、限流、留痕
-├─ context       Prompt 上下文和 Token 预算
-├─ contract      跨模块的稳定数据契约和枚举
-├─ expert        意图路由、专家执行、结果仲裁
-├─ retrieval     向量、稀疏、图谱、融合和多跳检索
-│  ├─ agentic     Agentic 多跳检索
-│  ├─ fusion      RRF、候选融合和 Rerank
-│  ├─ vector      pgvector / pg_trgm
-│  ├─ graph       Neo4j 图扩展
-│  └─ resilience  Neo4j 超时和熔断
-├─ memory        Episode、Mem0、授权和记忆降级
-│  ├─ local       会话和本地情节记忆
-│  ├─ application 本地/远端记忆编排
-│  ├─ external    Mem0 客户端和熔断
-│  └─ policy      授权、删除和记忆策略
-├─ profile       用户画像和技能对齐
-├─ resume        简历解析、PII 脱敏和加密存储
-├─ plan          学习计划和异步计划任务
-├─ push          岗位匹配、能力缺口和通知
-├─ interview     模拟面试
-├─ knowledge     管理端知识文档与 OSS
-├─ eval          RAG 评测和质量门禁
-├─ admin         管理员概览、用户操作和审计
-├─ llm           模型网关、预算和并发闸门
-├─ guard         引用和输出护栏
-└─ config        Spring 配置、健康检查和基础设施装配
+├─ identity       身份域
+│  ├─ auth        登录、Cookie、JWT、刷新令牌、CSRF
+│  ├─ profile     用户画像和技能对齐
+│  ├─ resume      简历解析、PII 脱敏和加密存储
+│  └─ admin       管理员概览、用户操作和审计
+├─ conversation   会话域
+│  ├─ chat        对话编排、SSE、会话、限流、留痕
+│  ├─ context     Prompt 上下文和 Token 预算
+│  └─ memory      Episode、Mem0、授权和记忆降级
+│     ├─ local       会话和本地情节记忆
+│     ├─ application 本地/远端记忆编排
+│     ├─ external    Mem0 客户端和熔断
+│     └─ policy      授权、删除和记忆策略
+├─ coaching       辅导域
+│  ├─ plan        学习计划和异步计划任务
+│  ├─ interview   模拟面试
+│  └─ push        岗位匹配、能力缺口和通知
+├─ knowledge      知识域
+│  ├─ document    管理端知识文档、上传与 OSS
+│  └─ retrieval   向量、稀疏、图谱、融合和多跳检索
+│     ├─ agentic     Agentic 多跳检索
+│     ├─ fusion      RRF、候选融合和 Rerank
+│     ├─ vector      pgvector / pg_trgm
+│     ├─ graph       Neo4j 图扩展
+│     └─ resilience  Neo4j 超时和熔断
+├─ agent          智能体域
+│  ├─ expert      意图路由、专家执行、结果仲裁
+│  ├─ tool        工具注册、执行、幂等
+│  └─ guard       引用和输出护栏
+├─ evaluation     评测域（RAG 评测和质量门禁）
+├─ platform       平台域
+│  ├─ llm         模型网关、预算和并发闸门
+│  ├─ config      Spring 配置、健康检查和基础设施装配
+│  ├─ ratelimit   限流
+│  └─ scheduling  定时任务锁
+└─ contract       跨域的稳定数据契约和枚举（保持在根包）
 ```
 
 当前已落地的职责边界示例：
 
 ```text
-chat/internal  ──> eval/InternalMemorySeedService
-push            ──> NotificationStore
-memory/external ──> MemorySyncJobStore
-memory/local    ──> FactPersistenceStore + FactPolicy
-interview       ──> *JobStore + *Worker + application facade
+conversation/chat/internal ──> evaluation/eval/InternalMemorySeedService
+coaching/push              ──> NotificationStore
+conversation/memory/external ──> MemorySyncJobStore
+conversation/memory/local    ──> FactPersistenceStore + FactPolicy
+coaching/interview           ──> *JobStore + *Worker + application facade
 ```
 
 ### 放置规则
