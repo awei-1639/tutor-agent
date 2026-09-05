@@ -470,4 +470,4 @@ infra_failures
 - 消融准备期间发现并修复两处回归：final @Repository 导致应用无法启动（新增 ArchUnit 门禁 repositoryBeansAreNotFinal），/error ERROR dispatch 被拦截器改写导致所有 5xx 变 401（影响所有业务端点的错误可见性，属既有问题）；
 - 当前检查点已通过 421 项测试（跳过 1 项）、JaCoCo 门禁和 `git diff --check`。
 
-下一切片只在新的检查点上进行：job_requirement 切片数据质量 badcase、Badcase 08 累积状态根因定位，或按主计划评估 Phase 6 收口/Phase 7 前置条件；物理包迁移在上述质量基线稳定后再评估。
+下一切片只在新的检查点上进行：按 Badcase 10 的修复方向实现 job_requirement 的"岗位→技能"答案形态转换（或意图感知扩展加权），并以全量评测回归验证；其余候选为 Badcase 08 累积状态根因定位与 Phase 6/7 前置评估；物理包迁移在质量基线稳定后再评估。
