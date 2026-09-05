@@ -34,6 +34,9 @@
 
 ## 3. 目标架构
 
+> 2026-09-05 更新：七个逻辑域已物理落地（切片见 `refactor/physical-package-migration` 分支
+> 的七个 refactor 提交），物理包结构与下图一致；`contract` 作为跨域契约保留在根包。
+
 ### 3.1 逻辑业务域
 
 ```text
