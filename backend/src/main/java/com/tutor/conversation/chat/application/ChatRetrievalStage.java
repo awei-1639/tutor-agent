@@ -10,9 +10,9 @@ import com.tutor.conversation.memory.application.FactRecallService;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.EpisodeStore;
 import com.tutor.conversation.memory.local.FactStore;
-import com.tutor.retrieval.GraphScope;
-import com.tutor.retrieval.agentic.AgenticRetriever;
-import com.tutor.retrieval.graph.GraphExpansionPolicy;
+import com.tutor.knowledge.retrieval.GraphScope;
+import com.tutor.knowledge.retrieval.agentic.AgenticRetriever;
+import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
 
 import java.util.ArrayList;
 import java.util.List;

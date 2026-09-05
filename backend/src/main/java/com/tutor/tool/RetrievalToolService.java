@@ -3,10 +3,10 @@ package com.tutor.tool;
 import com.tutor.contract.Evidence;
 import com.tutor.expert.IntentRouter;
 import com.tutor.expert.RoutingPolicy;
-import com.tutor.retrieval.GraphScope;
-import com.tutor.retrieval.agentic.AgenticRetriever;
-import com.tutor.retrieval.fusion.FusedRetriever;
-import com.tutor.retrieval.graph.GraphExpansionPolicy;
+import com.tutor.knowledge.retrieval.GraphScope;
+import com.tutor.knowledge.retrieval.agentic.AgenticRetriever;
+import com.tutor.knowledge.retrieval.fusion.FusedRetriever;
+import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

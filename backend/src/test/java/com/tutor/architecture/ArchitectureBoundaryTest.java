@@ -34,8 +34,8 @@ public class ArchitectureBoundaryTest {
         repositoryBeansAreNotFinal.check(classes);
     }
 
-    public static final ArchRule retrievalDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.retrieval..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation.chat..");
-    public static final ArchRule knowledgeDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.knowledge..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation.chat..");
+    public static final ArchRule retrievalDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.knowledge.retrieval..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation.chat..");
+    public static final ArchRule knowledgeDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.knowledge.document..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation.chat..");
     public static final ArchRule apiDoesNotDependOnLlmImplementations = noClasses().that().haveSimpleNameEndingWith("Controller").should().dependOnClassesThat().resideInAnyPackage("com.tutor.llm..");
     public static final ArchRule planApplicationServiceDoesNotOwnPersistenceOrScheduling = noClasses().that().haveSimpleName("PlanService").should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..", "org.springframework.scheduling..");
     public static final ArchRule careerGapApplicationServiceDoesNotOwnJobSql = noClasses().that().haveSimpleName("CareerGapService").should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..");

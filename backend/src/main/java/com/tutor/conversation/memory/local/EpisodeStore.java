@@ -84,7 +84,7 @@ public class EpisodeStore {
                     toPgTextArrayLiteral(maskedList(topics)), toPgTextArrayLiteral(maskedList(openItems)));
             if (embedding != null && embedding.length > 0) {
                 jdbc.update("UPDATE episodes SET embedding = ?::vector WHERE id = ?",
-                        com.tutor.retrieval.vector.VectorStore.toVectorLiteral(embedding), id);
+                        com.tutor.knowledge.retrieval.vector.VectorStore.toVectorLiteral(embedding), id);
             }
             return id;
         }
@@ -96,7 +96,7 @@ public class EpisodeStore {
                 toPgTextArrayLiteral(topics), toPgTextArrayLiteral(openItems));
         if (embedding != null && embedding.length > 0) {
             jdbc.update("UPDATE episodes SET embedding = ?::vector WHERE id = ?",
-                    com.tutor.retrieval.vector.VectorStore.toVectorLiteral(embedding), id);
+                    com.tutor.knowledge.retrieval.vector.VectorStore.toVectorLiteral(embedding), id);
         }
         return id;
     }
@@ -114,7 +114,7 @@ public class EpisodeStore {
                                           List<String> topics, List<String> openItems, float[] embedding,
                                           long sourceFromMessageId, long sourceToMessageId, long memoryGeneration) {
         String vector = embedding == null || embedding.length == 0 ? null
-                : com.tutor.retrieval.vector.VectorStore.toVectorLiteral(embedding);
+                : com.tutor.knowledge.retrieval.vector.VectorStore.toVectorLiteral(embedding);
         String maskedSummary = encKey.isBlank() ? summary : PiiMasker.mask(summary).masked();
         String topicsLiteral = toPgTextArrayLiteral(encKey.isBlank() ? topics : maskedList(topics));
         String openItemsLiteral = toPgTextArrayLiteral(encKey.isBlank() ? openItems : maskedList(openItems));

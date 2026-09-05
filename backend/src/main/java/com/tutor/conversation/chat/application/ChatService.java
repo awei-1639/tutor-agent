@@ -24,7 +24,7 @@ import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.conversation.memory.policy.MemoryConsentService;
 import com.tutor.identity.profile.ProfileService;
-import com.tutor.retrieval.agentic.AgenticRetriever;
+import com.tutor.knowledge.retrieval.agentic.AgenticRetriever;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

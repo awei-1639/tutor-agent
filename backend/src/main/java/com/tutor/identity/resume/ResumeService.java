@@ -10,7 +10,7 @@ import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
 import com.tutor.llm.structured.StructuredTask;
 import com.tutor.llm.LlmMessage;
-import com.tutor.retrieval.vector.VectorStore;
+import com.tutor.knowledge.retrieval.vector.VectorStore;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;

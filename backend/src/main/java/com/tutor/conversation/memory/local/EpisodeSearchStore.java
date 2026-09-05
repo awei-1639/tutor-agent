@@ -25,7 +25,7 @@ final class EpisodeSearchStore {
     }
 
     public List<EpisodeStore.Episode> searchByEmbedding(long userId, float[] queryVec, int topK) {
-        String vec = com.tutor.retrieval.vector.VectorStore.toVectorLiteral(queryVec);
+        String vec = com.tutor.knowledge.retrieval.vector.VectorStore.toVectorLiteral(queryVec);
         String summary = summaryColumn();
         String sql = "SELECT id, user_id, conversation_id, " + summary + ", topics, open_items, " +
                 "1 - (embedding <=> ?::vector) AS relevance, remote_memory_id, created_at " +

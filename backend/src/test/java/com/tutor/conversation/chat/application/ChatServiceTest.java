@@ -19,7 +19,7 @@ import com.tutor.conversation.memory.local.EpisodeSummarizer;
 import com.tutor.conversation.memory.local.SummaryFolder;
 import com.tutor.conversation.memory.policy.MemoryConsentService;
 import com.tutor.identity.profile.ProfileService;
-import com.tutor.retrieval.agentic.AgenticRetriever;
+import com.tutor.knowledge.retrieval.agentic.AgenticRetriever;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 

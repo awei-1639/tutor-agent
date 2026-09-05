@@ -1,7 +1,7 @@
 package com.tutor.identity.profile;
 
 import com.tutor.config.Neo4jProperties;
-import com.tutor.retrieval.resilience.Neo4jResilience;
+import com.tutor.knowledge.retrieval.resilience.Neo4jResilience;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.TransactionConfig;
