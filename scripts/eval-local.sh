@@ -15,6 +15,7 @@ set -uo pipefail
 MODE="retrieval"
 SEED="auto"        # auto | skip | force
 SMOKE_FLAG=""
+ROUTER_FLAG=""
 for arg in "$@"; do
   case "$arg" in
     --retrieval) MODE="retrieval" ;;
@@ -23,6 +24,8 @@ for arg in "$@"; do
     --skip-seed) SEED="skip" ;;
     --force-seed) SEED="force" ;;
     --smoke)     SMOKE_FLAG="--smoke" ;;
+    # 路由评测每条用例调一次路由 LLM; 检索通道消融用不到, 传此参数省掉这部分 token。
+    --skip-router) ROUTER_FLAG="--skip-router" ;;
     *) echo "未知参数: $arg"; exit 2 ;;
   esac
 done
@@ -114,7 +117,7 @@ baseline_before=$(ls -1t "$ROOT"/evals/results/eval_*.json 2>/dev/null | head -1
 
 run_retrieval() {
   echo "==> 检索评测 (run_eval.mjs)"
-  node "$ROOT/evals/run_eval.mjs" $SMOKE_FLAG
+  node "$ROOT/evals/run_eval.mjs" $SMOKE_FLAG $ROUTER_FLAG
 }
 run_citation() {
   echo "==> 引用忠实度评测 (run_citation_eval.mjs) — 消耗 DeepSeek + judge token"
