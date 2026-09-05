@@ -465,6 +465,9 @@ infra_failures
 - 回归审计发现并修复一处抽取回归：`AdminStore.audit` 行映射误用 `Map.of`，无 target 用户的审计行读取时抛 NPE；已恢复迁移前 `LinkedHashMap` 的 null 容忍语义；
 - 当前检查点已通过 420 项测试（跳过 1 项）、JaCoCo 门禁和 `git diff --check`；
 - push 域回归审计已完成：新增 `PushStoresPostgresIT`（4 项）覆盖通知读写与用户隔离、岗位查询回退、推送任务幂等和 embedding 相似度；`recordFailure` 后 `claimPush` 为 false、失败岗位不再重推的当前语义已钉入回归；
-- Memory 域回归审计已完成：新增 `MemoryStoresPostgresIT`（3 项）覆盖澄清状态/摘要加密与代际 fencing、Episode 全生命周期（加密、轮换、PII 脱敏、来源窗口幂等、过期过滤、用户隔离）和外部记忆授权代际语义；未发现抽取回归。
+- Memory 域回归审计已完成：新增 `MemoryStoresPostgresIT`（3 项）覆盖澄清状态/摘要加密与代际 fencing、Episode 全生命周期（加密、轮换、PII 脱敏、来源窗口幂等、过期过滤、用户隔离）和外部记忆授权代际语义；未发现抽取回归；
+- Phase 5 消融实验已完成（docs/phase5-retrieval-ablation-2026-09-05.md）：稀疏通道与 Rerank 保留（+3.4pt / +2.4pt Recall@5，零延迟成本），Agentic 多跳保留为路由按需升级、不做默认（multi_hop +4.7pt 但延迟 4 倍）；图谱扩展证据间接，需 vector_sparse 模式单独归因；
+- 消融准备期间发现并修复两处回归：final @Repository 导致应用无法启动（新增 ArchUnit 门禁 repositoryBeansAreNotFinal），/error ERROR dispatch 被拦截器改写导致所有 5xx 变 401（影响所有业务端点的错误可见性，属既有问题）；
+- 当前检查点已通过 421 项测试（跳过 1 项）、JaCoCo 门禁和 `git diff --check`。
 
-下一切片只在新的检查点上进行：进入 Phase 5 收口的检索通道消融实验（`scripts/eval-local.sh`，vector/sparse/graph/rerank 组合，以质量、延迟、Token 成本决定 Neo4j/Rerank/多跳存留）；物理包迁移等消融结论后再评估。
+下一切片只在新的检查点上进行：job_requirement 切片数据质量 badcase、Badcase 08 累积状态根因定位，或按主计划评估 Phase 6 收口/Phase 7 前置条件；物理包迁移在上述质量基线稳定后再评估。

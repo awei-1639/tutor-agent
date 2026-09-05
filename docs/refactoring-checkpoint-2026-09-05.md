@@ -63,9 +63,27 @@ watermark、Episode 全生命周期和外部记忆授权。
   JaCoCo 门禁通过；`git diff --check` 通过。
 - 未发现抽取回归；topics/open_items 在加密路径上被 PII 脱敏属于既有设计，已钉入回归。
 
+## 后续切片（同日）：Phase 5 消融准备中发现并修复两处启动/响应回归
+
+- **final @Repository 启动失败**：Spring Boot 的 PersistenceExceptionTranslation 会为每个
+  `@Repository` bean 建 CGLIB 代理，重构波新增的 6 个 final 存储 Bean（ProfileStore、
+  ChatTurnJobStore、InterviewTurnJobStore、InterviewCompletionJobStore、CareerJobStore、
+  PushJobStore）导致应用启动即失败。单测与 `mvn verify` 不加载完整上下文故未暴露；
+  由"本地起后端跑消融"这一步抓住。已去除 final 并新增 ArchUnit 规则
+  `repositoryBeansAreNotFinal` 门禁。
+- **5xx 被改写为 401**：业务端点异常经 Spring ERROR dispatch 到 `/error` 时，
+  `AuthInterceptor` 对 `/error` 走业务分支索要 token，把任何 500 改写成 401
+  （CsrfInterceptor 对 POST 同理）。全量评测中表现为"工具执行超时(500)后重试收到 401"。
+  已为 `/error` 放行两个拦截器并补 `AuthInterceptorTest` 回归用例。该 bug 影响所有业务端点的
+  错误可见性，属重构前既有问题，本次顺带修复。
+- 另：清理了一个 8 月 31 日起遗留、运行旧代码并占用 8180 端口的开发进程——首次 smoke 的
+  全零结果即打在它身上。
+- 验证：`mvn -B -ntp verify` 421 项通过、1 项跳过、JaCoCo 门禁通过；全量消融评测完整跑通
+  （见 docs/phase5-retrieval-ablation-2026-09-05.md）。
+
 ## 下一步候选
 
-- Phase 5 收口：用 `scripts/eval-local.sh` 跑检索通道消融实验（vector/sparse/graph/rerank 组合），
-  以质量、延迟、Token 成本决定 Neo4j/Rerank/多跳的存留；
-- Memory/Retrieval 等剩余边界的物理包迁移（identity/conversation/coaching/... 逻辑域）仍按计划
-  "先依赖规则、后逐片移动"的原则暂缓，等消融实验结论后再评估。
+- job_requirement 切片全线溃败（1.9%–12.7%）开 badcase，查岗位数据覆盖/描述质量；
+- Badcase 08 的累积状态成因定位（本次以重试兜底，非根因修复）；
+- 若需单独归因图谱扩展，给 /internal/retrieve 增加 vector_sparse（无图）模式再跑一轮；
+- 按主计划评估 Phase 6 收口与 Phase 7 前置条件。
