@@ -81,9 +81,22 @@ watermark、Episode 全生命周期和外部记忆授权。
 - 验证：`mvn -B -ntp verify` 421 项通过、1 项跳过、JaCoCo 门禁通过；全量消融评测完整跑通
   （见 docs/phase5-retrieval-ablation-2026-09-05.md）。
 
+## 后续切片（同日）：Badcase 10 修复（job_requirement 答案形态转换）
+
+- 新增 `JobSkillQueryClassifier` + `JobSkillAnswerPolicy`（纯函数）：技能寻求型查询且
+  融合排序首位为 `job:*` 时，用其 REQUIRES 技能邻居原位替换该节点；接入
+  `RetrievalCandidatePipeline`，vector_only/agentic 路径不受影响；
+- 全量回归（280×3）：job_requirement fused 7.8%→26.7%、rerank 12.7%→28.4%（3.4×/2.2×），
+  其余三切片无回退，总体 Recall@5/Hit@5 +3~6pt；剩余缺口是岗位级消歧（兄弟公司相似岗位
+  排前），已记录为独立工作项（见 Badcase 10"已实施"节）；
+- 附带修复评测基础设施：全量评测会把默认日预算（2M/用户 300k）打爆导致 fused 全空、
+  看起来像回归——eval-local.sh 现在在评测进程内提高 LLM_BUDGET_* 限额，生产配置不动；
+- 验证：定向测试 32 项通过；`mvn -B -ntp verify` 429 项通过、1 项跳过、JaCoCo 门禁通过。
+
 ## 下一步候选
 
-- job_requirement 切片全线溃败（1.9%–12.7%）开 badcase，查岗位数据覆盖/描述质量；
+- 岗位消歧：公司名/岗位名层面提升 job 节点匹配精度（别名、JD 全文 embedding），
+  把 job_requirement 从 28% 推向 50%；
 - Badcase 08 的累积状态成因定位（本次以重试兜底，非根因修复）；
 - 若需单独归因图谱扩展，给 /internal/retrieve 增加 vector_sparse（无图）模式再跑一轮；
 - 按主计划评估 Phase 6 收口与 Phase 7 前置条件。

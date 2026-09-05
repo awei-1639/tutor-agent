@@ -74,6 +74,12 @@ export INTERNAL_ENDPOINTS_ENABLED=true
 # 本地评测：node 可能是 Windows 侧的，跨 WSL2 边界访问后端时来源地址非 127.0.0.1，
 # 会被 /internal 的 loopback 检查挡成 404。评测是纯本地开发工具，显式放开。
 export INTERNAL_ENDPOINTS_LOOPBACK_ONLY=false
+# 全量评测 (840+ 次检索, 每次先过一次路由 LLM) 会把默认的每日预算
+# (llm.budget.daily-token-limit=2M / user-daily=300k) 打爆, 之后所有 LLM 调用
+# 瞬间 BudgetExhausted、fused 只剩稀疏兜底, 指标全为零且看起来像回归。
+# 只在评测后端进程内提高限额, 生产配置不动。
+export LLM_BUDGET_DAILYTOKENLIMIT="${LLM_BUDGET_DAILYTOKENLIMIT:-20000000}"
+export LLM_USER_DAILY_TOKEN_LIMIT="${LLM_USER_DAILY_TOKEN_LIMIT:-20000000}"
 export JWT_SECRET="${JWT_SECRET:-agent-local-eval-secret-32-bytes-minimum-2026}"
 java -jar "$JAR" >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID="$!"

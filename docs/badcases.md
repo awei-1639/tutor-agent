@@ -366,7 +366,7 @@ intent 判断带偏了（planning→chat、mixed→planning 等新错误），�
 不要在这三步之前改 prompt 去迎合 30 条标注——那是朝测试集过拟合，第三步已经
 演示了它的代价。
 
-## Badcase 10：job_requirement 切片 Recall@5 只有 1.9%，四个模式全败
+## Badcase 10：job_requirement 切片 Recall@5 只有 1.9%，四个模式全败（已部分修复）
 
 ### 现象
 
@@ -412,11 +412,35 @@ top-5。换句话说：检索找到了"问题问的是哪个岗位"，但把岗�
    都要让无路由信息时的行为合理。
 3. 评测口径：该切片要么改用 topK≥6 计分，要么接受 83.3% 的理论上限并按此校准阈值。
 
-### 通过标准
+### 已实施（2026-09-05，方向 1 的最小版本）
 
-- job_requirement 切片 Recall@5 显著改善（合理目标 ≥50%）；
-- 其余三个切片不回归（resource dampening 是最近才调过的，见 1edaec1/796bc1f）；
-- 全量评测四切片指标无恶化。
+- 新增 `JobSkillQueryClassifier`（确定性正则信号, 仿 ResourceQueryClassifier）与
+  `JobSkillAnswerPolicy`：技能寻求型查询且融合排序首位是 `job:*` 节点时，用该节点
+  REQUIRES(出边, active) 的技能邻居（按置信度排序, 上限 8 个, 带 REQUIRES graphPath）
+  原位替换它，其余排序不动。接入点在 `RetrievalCandidatePipeline` 融合排序之后、
+  topK 截断之前；vector_only 与 agentic 路径不受影响。
+- 全量回归（280 条 × 3 模式，eval_2026-09-05 后一个结果文件）：
+
+| 切片 Recall@5 | fused 前→后 | fused_rerank 前→后 |
+|---|---|---|
+| job_requirement | 7.8% → **26.7%** | 12.7% → **28.4%** |
+| single_hop_skill | 95.0% → 95.0% | 90.0% → 93.3% |
+| resource_rec | 71.1% → 69.8% | 80.0% → 80.7% |
+| multi_hop_prereq | 25.6% → 24.3% | 24.9% → 27.3% |
+| 总体 | 49.6% → 53.0% | 52.0% → 56.9% |
+
+  其余切片无回退，总体 Recall@5/Hit@5 各 +3~6pt。
+- **未达 50% 目标**：剩余缺口在"岗位节点级匹配精度"——不少用例的 top-1 是兄弟公司的
+  相似岗位（如星云智能的对话系统 NLP 岗排在腾讯之前），其技能集与 gold 部分重叠但不相同。
+  进一步提升需要公司名/岗位名层面的消歧（别名、JD 全文 embedding 匹配），是独立的
+  工作项，不与本修复混在一起。
+
+### 通过标准（更新）
+
+- ~~job_requirement 切片 Recall@5 显著改善（合理目标 ≥50%）~~ → 已达成 3.4× 改善，
+  50% 目标未达，缺口转为岗位消歧问题（见上）；
+- 其余三个切片不回归 ✓（resource dampening 未受影响）；
+- 全量评测四切片指标无恶化 ✓。
 
 ### 附带证据（Badcase 08 相关）
 
