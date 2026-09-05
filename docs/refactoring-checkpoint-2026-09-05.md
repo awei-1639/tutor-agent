@@ -33,7 +33,19 @@
 - `mvn -B -ntp verify`：420 项通过、1 项跳过，JaCoCo 门禁通过；
 - `git diff --check`：通过。
 
+## 后续切片（同日）：push 域三个 Store 的真实数据库回归
+
+- `PushStoresPostgresIT`（4 项）：通知读写与用户隔离（unread 过滤、markRead 不可跨用户、
+  guide 去重判断）、已释放岗位查询（目标匹配、无匹配回退、text[] 数组映射含 NULL）、
+  岗位释放批次与 fetched_at、推送任务幂等（claim 二次为 false、失败记录阻止重推并从候选中排除）、
+  最新简历 embedding 投影与 pgvector 余弦相似度（正交=0、自相似=1）。
+- 钉住当前行为：`recordFailure` 之后 `claimPush` 返回 false（唯一索引 `uq_push_tasks_user_job`），
+  失败岗位不再出现在候选列表——即当前实现中失败推送不会自动重试，行为变化需单独立项。
+- 验证：WSL + Testcontainers 全量 Flyway 下 4 项通过；`mvn -B -ntp verify` 420 项通过、
+  1 项跳过、JaCoCo 门禁通过；`git diff --check` 通过。
+
 ## 下一步候选
 
-- push 域三个 Store（`NotificationStore`、`CareerJobStore`、`PushJobStore`）尚无真实数据库回归，为下一候选切片；
-- 其余已收敛边界维持"不为拆而拆"原则：只有能明显降低跨域理解成本时才继续新增类型，优先补充行为/集成证据。
+- Memory 域边界（Conversation/Episode/Fact/MemorySync）按同样方式做回归审计；
+- Phase 5 收口：用 `scripts/eval-local.sh` 跑检索通道消融实验（vector/sparse/graph/rerank 组合），
+  以质量、延迟、Token 成本决定 Neo4j/Rerank/多跳的存留。

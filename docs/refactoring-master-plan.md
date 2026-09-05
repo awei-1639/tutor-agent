@@ -463,6 +463,7 @@ infra_failures
 - 当前检查点已通过 418 项测试（跳过 1 项）、实际执行的架构边界规则、JaCoCo 门禁和 `git diff --check`；Interview Testcontainers 集成测试 2 项、Memory Sync Outbox 4 项、User Facts 6 项和 Chat Turn 2 项 PostgreSQL 集成测试通过；未修改 HTTP、SSE、数据库 Schema、前端或 LangGraph 接入。
 - Admin/Feedback/Resume 回归审计已完成：新增 `AdminStorePostgresIT`（2 项）、`MessageFeedbackStorePostgresIT`（2 项）、`ResumeStorePostgresIT`（1 项）真实数据库回归（WSL + Testcontainers，全量 Flyway migration）；
 - 回归审计发现并修复一处抽取回归：`AdminStore.audit` 行映射误用 `Map.of`，无 target 用户的审计行读取时抛 NPE；已恢复迁移前 `LinkedHashMap` 的 null 容忍语义；
-- 当前检查点已通过 420 项测试（跳过 1 项）、JaCoCo 门禁和 `git diff --check`。
+- 当前检查点已通过 420 项测试（跳过 1 项）、JaCoCo 门禁和 `git diff --check`；
+- push 域回归审计已完成：新增 `PushStoresPostgresIT`（4 项）覆盖通知读写与用户隔离、岗位查询回退、推送任务幂等和 embedding 相似度；`recordFailure` 后 `claimPush` 为 false、失败岗位不再重推的当前语义已钉入回归。
 
-下一切片只在新的检查点上进行：push 域三个 Store（`NotificationStore`、`CareerJobStore`、`PushJobStore`）的真实数据库回归为下一候选；其余边界维持"不为拆而拆"，只有能明显降低跨域理解成本时才继续新增类型。
+下一切片只在新的检查点上进行：Memory 域边界（Conversation/Episode/Fact/MemorySync）按同样方式做回归审计；随后进入 Phase 5 收口的检索通道消融实验，只有能明显降低跨域理解成本时才继续新增类型。
