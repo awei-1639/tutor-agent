@@ -1,7 +1,7 @@
 package com.tutor.coaching.interview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.config.ExecutorLifecycle;
+import com.tutor.platform.config.ExecutorLifecycle;
 import com.tutor.coaching.plan.PlanService;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;

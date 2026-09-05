@@ -1,11 +1,11 @@
 package com.tutor.conversation.memory.local;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.structured.FactExtractOutput;
-import com.tutor.llm.structured.StructuredOutputError;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
+import com.tutor.platform.llm.structured.FactExtractOutput;
+import com.tutor.platform.llm.structured.StructuredOutputError;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
 import com.tutor.conversation.memory.policy.MemoryAdmissionPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

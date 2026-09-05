@@ -1,12 +1,12 @@
 package com.tutor.coaching.plan;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmBudgetGuard;
-import com.tutor.llm.structured.PlanOutput;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
-import com.tutor.llm.LlmMessage;
+import com.tutor.platform.llm.LlmBudgetGuard;
+import com.tutor.platform.llm.structured.PlanOutput;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
+import com.tutor.platform.llm.LlmMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,6 +1,6 @@
 package com.tutor.conversation.memory.local;
 
-import com.tutor.llm.structured.FactExtractOutput;
+import com.tutor.platform.llm.structured.FactExtractOutput;
 import com.tutor.conversation.memory.BigramSimilarity;
 import com.tutor.conversation.memory.policy.MemoryAdmissionPolicy;
 import org.slf4j.Logger;

@@ -1,7 +1,7 @@
 package com.tutor.agent.guard;
 
 import com.tutor.contract.Evidence;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

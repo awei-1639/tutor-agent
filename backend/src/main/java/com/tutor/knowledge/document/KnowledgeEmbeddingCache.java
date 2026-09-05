@@ -1,6 +1,6 @@
 package com.tutor.knowledge.document;
 
-import com.tutor.llm.EmbeddingGateway;
+import com.tutor.platform.llm.EmbeddingGateway;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;

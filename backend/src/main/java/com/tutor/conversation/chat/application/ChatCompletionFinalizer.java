@@ -5,7 +5,7 @@ import com.tutor.conversation.chat.application.ChatTurnService.Claim;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
 import com.tutor.conversation.memory.local.ConversationStore;
-import com.tutor.config.ExecutorLifecycle;
+import com.tutor.platform.config.ExecutorLifecycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

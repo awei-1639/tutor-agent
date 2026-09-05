@@ -1,6 +1,6 @@
 package com.tutor.conversation.memory.local;
 
-import com.tutor.llm.EmbeddingGateway;
+import com.tutor.platform.llm.EmbeddingGateway;
 import com.tutor.conversation.memory.local.EpisodeStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

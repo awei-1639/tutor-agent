@@ -1,6 +1,6 @@
 package com.tutor.identity.auth;
 
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.neo4j.driver.Driver;

@@ -16,7 +16,7 @@ import com.tutor.contract.Evidence;
 import com.tutor.contract.Intent;
 import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.agent.expert.IntentRouter;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import com.tutor.knowledge.retrieval.fusion.FusedRetriever;
 import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;

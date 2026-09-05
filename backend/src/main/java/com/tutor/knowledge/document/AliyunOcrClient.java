@@ -3,7 +3,7 @@ package com.tutor.knowledge.document;
 import com.aliyun.ocr_api20210707.Client;
 import com.aliyun.ocr_api20210707.models.RecognizeAllTextRequest;
 import com.aliyun.teautil.models.RuntimeOptions;
-import com.tutor.config.AliyunOcrProperties;
+import com.tutor.platform.config.AliyunOcrProperties;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;

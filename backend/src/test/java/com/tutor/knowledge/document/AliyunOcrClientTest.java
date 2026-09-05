@@ -1,6 +1,6 @@
 package com.tutor.knowledge.document;
 
-import com.tutor.config.AliyunOcrProperties;
+import com.tutor.platform.config.AliyunOcrProperties;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

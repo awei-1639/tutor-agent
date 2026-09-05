@@ -2,17 +2,17 @@ package com.tutor.conversation.memory.local;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.EmbeddingGateway;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.structured.EpisodeSummaryOutput;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
+import com.tutor.platform.llm.EmbeddingGateway;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.structured.EpisodeSummaryOutput;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.conversation.memory.local.EpisodeStore;
 import com.tutor.conversation.memory.policy.MemoryAdmissionPolicy;
 import com.tutor.identity.resume.PiiMasker;
-import com.tutor.llm.LlmMessage;
+import com.tutor.platform.llm.LlmMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

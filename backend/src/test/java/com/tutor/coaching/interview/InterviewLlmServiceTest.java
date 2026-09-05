@@ -1,7 +1,7 @@
 package com.tutor.coaching.interview;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

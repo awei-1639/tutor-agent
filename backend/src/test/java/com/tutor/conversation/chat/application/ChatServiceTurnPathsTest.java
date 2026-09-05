@@ -3,7 +3,7 @@ package com.tutor.conversation.chat.application;
 import com.tutor.identity.auth.AuthContext;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
-import com.tutor.llm.LlmStreamHandler;
+import com.tutor.platform.llm.LlmStreamHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -224,7 +224,7 @@ class ChatServiceTurnPathsTest {
         doAnswer(invocation -> {
             LlmStreamHandler handler = invocation.getArgument(3);
             handler.onToken(answer);
-            handler.onComplete(new com.tutor.llm.LlmStreamResult("test", 0, 0, false));
+            handler.onComplete(new com.tutor.platform.llm.LlmStreamResult("test", 0, 0, false));
             return null;
         }).when(fixture.gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
     }

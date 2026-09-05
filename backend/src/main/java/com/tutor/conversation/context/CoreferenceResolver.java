@@ -1,12 +1,12 @@
 package com.tutor.conversation.context;
 
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.structured.CoreferenceOutput;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.structured.CoreferenceOutput;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
 import com.tutor.conversation.memory.local.ConversationStore;
-import com.tutor.llm.LlmMessage;
+import com.tutor.platform.llm.LlmMessage;
 
 
 import java.util.ArrayList;

@@ -1,6 +1,6 @@
 package com.tutor.knowledge.retrieval.graph;
 
-import com.tutor.config.Neo4jProperties;
+import com.tutor.platform.config.Neo4jProperties;
 import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.resilience.Neo4jResilience;
 import org.neo4j.driver.Driver;

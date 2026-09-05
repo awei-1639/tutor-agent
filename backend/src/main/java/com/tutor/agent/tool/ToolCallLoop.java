@@ -3,12 +3,12 @@ package com.tutor.agent.tool;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.LlmMessage;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
-import com.tutor.llm.structured.ToolLoopOutput;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.LlmMessage;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
+import com.tutor.platform.llm.structured.ToolLoopOutput;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
 

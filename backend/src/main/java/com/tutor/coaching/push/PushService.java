@@ -5,7 +5,7 @@ import com.tutor.identity.auth.AuthContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.identity.profile.ProfileService;
 import com.tutor.identity.profile.SkillAlignService;
-import com.tutor.scheduling.ScheduledTaskLock;
+import com.tutor.platform.scheduling.ScheduledTaskLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

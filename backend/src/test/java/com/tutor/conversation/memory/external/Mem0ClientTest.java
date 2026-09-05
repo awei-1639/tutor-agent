@@ -1,7 +1,7 @@
 package com.tutor.conversation.memory.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.config.Mem0Properties;
+import com.tutor.platform.config.Mem0Properties;
 import com.tutor.conversation.memory.policy.MemoryAdmissionPolicy;
 import org.junit.jupiter.api.Test;
 

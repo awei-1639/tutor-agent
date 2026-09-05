@@ -2,12 +2,12 @@ package com.tutor.agent.guard;
 
 import com.tutor.contract.Evidence;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.structured.CitationGuardOutput;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
-import com.tutor.llm.LlmMessage;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.structured.CitationGuardOutput;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
+import com.tutor.platform.llm.LlmMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

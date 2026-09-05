@@ -7,7 +7,7 @@ import com.tutor.conversation.context.ContextualQueryRewriter;
 import com.tutor.conversation.context.ConversationContextSelector;
 import com.tutor.agent.expert.IntentRouter;
 import com.tutor.agent.expert.RoutingPolicy;
-import com.tutor.llm.BudgetPressureService;
+import com.tutor.platform.llm.BudgetPressureService;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmMessage;
-import com.tutor.llm.structured.ExpertPayload;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
+import com.tutor.platform.llm.LlmMessage;
+import com.tutor.platform.llm.structured.ExpertPayload;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
 
 import java.time.Duration;
 import java.util.List;

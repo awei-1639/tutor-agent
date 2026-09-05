@@ -1,13 +1,13 @@
 package com.tutor.agent.expert;
 
 import com.tutor.contract.Intent;
-import com.tutor.config.LlmProperties;
+import com.tutor.platform.config.LlmProperties;
 import com.tutor.conversation.context.TokenBudget;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.Purpose;
 import com.tutor.contract.CancellationToken;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

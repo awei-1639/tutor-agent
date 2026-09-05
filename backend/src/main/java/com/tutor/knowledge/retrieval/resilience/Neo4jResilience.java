@@ -1,6 +1,6 @@
 package com.tutor.knowledge.retrieval.resilience;
 
-import com.tutor.config.Neo4jProperties;
+import com.tutor.platform.config.Neo4jProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

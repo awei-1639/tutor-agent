@@ -1,7 +1,7 @@
 package com.tutor.identity.resume;
 
 import com.tutor.identity.auth.AuthContext;
-import com.tutor.config.RequestTraceFilter;
+import com.tutor.platform.config.RequestTraceFilter;
 import com.tutor.agent.tool.ToolExecutionContext;
 import com.tutor.agent.tool.ToolExecutor;
 import com.tutor.agent.tool.ToolInputs;

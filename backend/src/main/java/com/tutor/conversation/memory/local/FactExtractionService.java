@@ -1,12 +1,12 @@
 package com.tutor.conversation.memory.local;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.structured.FactExtractOutput;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
+import com.tutor.platform.llm.structured.FactExtractOutput;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
 import com.tutor.conversation.memory.policy.MemoryAdmissionPolicy;
-import com.tutor.llm.LlmMessage;
+import com.tutor.platform.llm.LlmMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

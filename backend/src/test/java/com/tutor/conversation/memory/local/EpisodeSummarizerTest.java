@@ -1,6 +1,6 @@
 package com.tutor.conversation.memory.local;
 
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -82,7 +82,7 @@ class EpisodeSummarizerTest {
                 any(), any(), any(), any(), anyLong())).thenReturn(55L);
 
         new EpisodeSummarizer(gateway, gateway, episodes, conversations, committer, admission,
-                12, new com.tutor.llm.structured.StructuredOutputService(gateway, null), factExtraction,
+                12, new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), factExtraction,
                 new com.tutor.conversation.memory.policy.MemoryImportanceGate(), true)
                 .maybeSummarize(1L, 7L, "trace");
 
@@ -91,7 +91,7 @@ class EpisodeSummarizerTest {
         when(committer.commitReturningId(anyLong(), anyLong(), anyLong(), anyLong(), anyLong(),
                 any(), any(), any(), any(), anyLong())).thenReturn(0L);
         new EpisodeSummarizer(gateway, gateway, episodes, conversations, committer, admission,
-                12, new com.tutor.llm.structured.StructuredOutputService(gateway, null), factExtraction,
+                12, new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), factExtraction,
                 new com.tutor.conversation.memory.policy.MemoryImportanceGate(), true)
                 .maybeSummarize(1L, 7L, "trace2");
         verify(factExtraction, times(1)).extractFromWindow(anyLong(), anyLong(), anyLong(), any(), any());
@@ -168,7 +168,7 @@ class EpisodeSummarizerTest {
                 any(), any(), any(), any(), anyLong())).thenReturn(55L);
 
         new EpisodeSummarizer(gateway, gateway, episodes, conversations, committer, admission,
-                12, new com.tutor.llm.structured.StructuredOutputService(gateway, null), null,
+                12, new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), null,
                 new com.tutor.conversation.memory.policy.MemoryImportanceGate(), false)
                 .maybeSummarize(1L, 7L, "trace");
 

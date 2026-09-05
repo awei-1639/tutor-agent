@@ -12,7 +12,7 @@ import com.tutor.agent.expert.Aggregator;
 import com.tutor.agent.expert.ExpertRunner;
 import com.tutor.agent.expert.IntentRouter;
 import com.tutor.agent.guard.CitationGuard;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.conversation.memory.local.EpisodeSummarizer;
@@ -89,8 +89,8 @@ class ChatServiceTest {
         when(citationGuard.guard(anyString(), any(), anyString()))
                 .thenReturn(new CitationGuard.GuardResult(0, 0, List.of(), 1.0, "not_applicable"));
         doAnswer(invocation -> {
-            invocation.<com.tutor.llm.LlmStreamHandler>getArgument(3)
-                    .onComplete(new com.tutor.llm.LlmStreamResult("test", 0, 0, false));
+            invocation.<com.tutor.platform.llm.LlmStreamHandler>getArgument(3)
+                    .onComplete(new com.tutor.platform.llm.LlmStreamResult("test", 0, 0, false));
             return null;
         }).when(gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
 

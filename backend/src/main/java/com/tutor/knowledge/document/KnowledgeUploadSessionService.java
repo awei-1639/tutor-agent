@@ -1,8 +1,8 @@
 package com.tutor.knowledge.document;
 
 import com.aliyun.oss.model.PartETag;
-import com.tutor.config.KnowledgeIngestionProperties;
-import com.tutor.config.KnowledgeUploadProperties;
+import com.tutor.platform.config.KnowledgeIngestionProperties;
+import com.tutor.platform.config.KnowledgeUploadProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

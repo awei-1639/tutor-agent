@@ -1,6 +1,6 @@
 package com.tutor.knowledge.retrieval.fusion;
 
-import com.tutor.llm.EmbeddingGateway;
+import com.tutor.platform.llm.EmbeddingGateway;
 import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
 import com.tutor.knowledge.retrieval.graph.GraphStore;

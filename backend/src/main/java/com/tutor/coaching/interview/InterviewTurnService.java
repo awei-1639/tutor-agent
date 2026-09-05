@@ -1,6 +1,6 @@
 package com.tutor.coaching.interview;
 
-import com.tutor.llm.LlmBudgetGuard;
+import com.tutor.platform.llm.LlmBudgetGuard;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;

@@ -1,7 +1,7 @@
 package com.tutor.knowledge.document;
 
-import com.tutor.config.KnowledgeIngestionProperties;
-import com.tutor.config.ExecutorLifecycle;
+import com.tutor.platform.config.KnowledgeIngestionProperties;
+import com.tutor.platform.config.ExecutorLifecycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

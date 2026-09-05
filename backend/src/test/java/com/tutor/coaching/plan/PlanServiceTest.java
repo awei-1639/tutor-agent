@@ -1,9 +1,9 @@
 package com.tutor.coaching.plan;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.LlmMessage;
-import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.LlmMessage;
+import com.tutor.platform.llm.structured.StructuredOutputService;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;

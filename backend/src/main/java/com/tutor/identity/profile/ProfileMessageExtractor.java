@@ -1,11 +1,11 @@
 package com.tutor.identity.profile;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmMessage;
-import com.tutor.llm.structured.ProfileExtractOutput;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
+import com.tutor.platform.llm.LlmMessage;
+import com.tutor.platform.llm.structured.ProfileExtractOutput;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
 import com.tutor.identity.resume.PiiMasker;
 
 import java.util.HashMap;

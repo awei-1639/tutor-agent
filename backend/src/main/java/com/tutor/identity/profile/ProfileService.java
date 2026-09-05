@@ -2,8 +2,8 @@ package com.tutor.identity.profile;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.structured.StructuredOutputService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ public class ProfileService {
     private final ProfileStore store;
     private final TransactionTemplate transactions;
     private final ProfileMessageExtractor messageExtractor;
-    private final com.tutor.scheduling.ScheduledTaskLock taskLock;
+    private final com.tutor.platform.scheduling.ScheduledTaskLock taskLock;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ProfileService(JsonGenerationGateway gateway, ProfileStore store) {
@@ -46,7 +46,7 @@ public class ProfileService {
     @Autowired
     public ProfileService(JsonGenerationGateway gateway, ProfileStore store, TransactionTemplate transactions,
                           StructuredOutputService structuredOutputService,
-                          com.tutor.scheduling.ScheduledTaskLock taskLock) {
+                          com.tutor.platform.scheduling.ScheduledTaskLock taskLock) {
         this.store = store;
         this.transactions = transactions;
         this.messageExtractor = new ProfileMessageExtractor(structuredOutputService);

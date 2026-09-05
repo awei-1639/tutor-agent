@@ -5,9 +5,9 @@ import com.tutor.contract.Evidence;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.Intent;
 import com.tutor.contract.CancellationToken;
-import com.tutor.config.LlmProperties;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.platform.config.LlmProperties;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.structured.StructuredOutputService;
 
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;

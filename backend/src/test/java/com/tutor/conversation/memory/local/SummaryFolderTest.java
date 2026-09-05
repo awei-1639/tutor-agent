@@ -1,8 +1,8 @@
 package com.tutor.conversation.memory.local;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmMessage;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmMessage;
+import com.tutor.platform.llm.LlmGateway;
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.conversation.memory.local.SummaryFolder;
 import org.junit.jupiter.api.BeforeEach;

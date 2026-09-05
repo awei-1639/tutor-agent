@@ -1,7 +1,7 @@
 package com.tutor.knowledge.retrieval.agentic;
 
 import com.tutor.contract.Evidence;
-import com.tutor.llm.RetrievalJudge;
+import com.tutor.platform.llm.RetrievalJudge;
 import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.fusion.FusedRetriever;
 import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;

@@ -3,7 +3,7 @@ package com.tutor.evaluation.eval;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Evidence;
-import com.tutor.config.ExecutorLifecycle;
+import com.tutor.platform.config.ExecutorLifecycle;
 import com.tutor.agent.expert.IntentRouter;
 import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.knowledge.retrieval.GraphScope;

@@ -15,7 +15,7 @@ import com.aliyun.oss.model.InitiateMultipartUploadRequest;
 import com.aliyun.oss.model.ListPartsRequest;
 import com.aliyun.oss.model.PartListing;
 import com.aliyun.oss.model.PartETag;
-import com.tutor.config.OssProperties;
+import com.tutor.platform.config.OssProperties;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;

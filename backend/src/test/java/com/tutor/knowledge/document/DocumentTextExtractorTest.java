@@ -1,6 +1,6 @@
 package com.tutor.knowledge.document;
 
-import com.tutor.config.AliyunOcrProperties;
+import com.tutor.platform.config.AliyunOcrProperties;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.junit.jupiter.api.Test;
 

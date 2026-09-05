@@ -18,10 +18,10 @@ import com.tutor.contract.Intent;
 import com.tutor.contract.Purpose;
 import com.tutor.agent.expert.Aggregator;
 import com.tutor.agent.expert.ExpertRunner;
-import com.tutor.llm.BudgetPressureService;
-import com.tutor.llm.LlmMessage;
-import com.tutor.llm.LlmStreamHandler;
-import com.tutor.llm.StreamingGenerationGateway;
+import com.tutor.platform.llm.BudgetPressureService;
+import com.tutor.platform.llm.LlmMessage;
+import com.tutor.platform.llm.LlmStreamHandler;
+import com.tutor.platform.llm.StreamingGenerationGateway;
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.identity.resume.ResumeService;
 import com.tutor.agent.tool.ToolCallLoop;
@@ -202,7 +202,7 @@ final class ChatAnswerStage {
                 if (!cancellation.isCancelled()) events.onToken(token);
             }
 
-            @Override public void onComplete(com.tutor.llm.LlmStreamResult response) {
+            @Override public void onComplete(com.tutor.platform.llm.LlmStreamResult response) {
                 completionFinalizer.completeAnswer(full.toString(), intentName, context, question,
                         retrieved.evidences(), assembled.citationIds(), traceId, events, cancellation,
                         claim, response.truncated());

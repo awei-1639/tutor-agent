@@ -1,7 +1,7 @@
 package com.tutor.coaching.interview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.JsonGenerationGateway;
 import com.tutor.coaching.plan.PlanService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;

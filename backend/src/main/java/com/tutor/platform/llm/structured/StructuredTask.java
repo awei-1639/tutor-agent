@@ -1,0 +1,19 @@
+package com.tutor.platform.llm.structured;
+
+public enum StructuredTask {
+    COREFERENCE,
+    RETRIEVAL_JUDGE,
+    ROUTER,
+    TOOL_CALL,
+    INTERVIEW_QUESTION,
+    INTERVIEW_FOLLOW_UP,
+    INTERVIEW_SCORECARD,
+    RESUME_EXTRACT,
+    PROFILE_EXTRACT,
+    EXPERT,
+    PLAN,
+    CITATION_GUARD,
+    SUMMARY_FOLDER,
+    EPISODE_SUMMARY,
+    FACT_EXTRACT
+}

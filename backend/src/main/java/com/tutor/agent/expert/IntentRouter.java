@@ -3,12 +3,12 @@ package com.tutor.agent.expert;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Intent;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.structured.RouterOutput;
-import com.tutor.llm.structured.StructuredOutputResult;
-import com.tutor.llm.structured.StructuredOutputService;
-import com.tutor.llm.structured.StructuredTask;
-import com.tutor.llm.LlmMessage;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.structured.RouterOutput;
+import com.tutor.platform.llm.structured.StructuredOutputResult;
+import com.tutor.platform.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.structured.StructuredTask;
+import com.tutor.platform.llm.LlmMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

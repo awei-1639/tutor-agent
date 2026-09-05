@@ -2,7 +2,7 @@ package com.tutor.conversation.context;
 
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.JsonGenerationGateway;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

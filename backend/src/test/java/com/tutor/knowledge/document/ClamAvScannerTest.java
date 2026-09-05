@@ -1,6 +1,6 @@
 package com.tutor.knowledge.document;
 
-import com.tutor.config.ClamAvProperties;
+import com.tutor.platform.config.ClamAvProperties;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatCode;

@@ -22,7 +22,7 @@ class ClarifyDetectingHandlerTest {
         @Override public void onError(Throwable error) { throw new AssertionError(error); }
     }
 
-    private com.tutor.llm.LlmStreamResult completeResult() { return new com.tutor.llm.LlmStreamResult("test", 0, 0, false); }
+    private com.tutor.platform.llm.LlmStreamResult completeResult() { return new com.tutor.platform.llm.LlmStreamResult("test", 0, 0, false); }
 
     @Test
     void clarifyPrefixSplitAcrossTokensIsDetectedAndNotForwarded() {

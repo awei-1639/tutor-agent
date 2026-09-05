@@ -1,6 +1,6 @@
 package com.tutor.agent.expert;
 
-import com.tutor.config.ExecutorLifecycle;
+import com.tutor.platform.config.ExecutorLifecycle;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.ExpertOutput;
 import org.slf4j.Logger;

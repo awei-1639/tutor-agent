@@ -3,7 +3,7 @@ package com.tutor.agent.expert;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Intent;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

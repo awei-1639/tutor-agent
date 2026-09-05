@@ -13,7 +13,7 @@ import com.tutor.agent.expert.ExpertRunner;
 import com.tutor.agent.expert.IntentRouter;
 import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.agent.guard.CitationGuard;
-import com.tutor.llm.LlmGateway;
+import com.tutor.platform.llm.LlmGateway;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.conversation.memory.local.EpisodeSummarizer;

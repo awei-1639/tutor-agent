@@ -1,8 +1,8 @@
 package com.tutor.knowledge.document;
 
-import com.tutor.llm.EmbeddingGateway;
-import com.tutor.config.KnowledgeIngestionProperties;
-import com.tutor.config.KnowledgeUploadProperties;
+import com.tutor.platform.llm.EmbeddingGateway;
+import com.tutor.platform.config.KnowledgeIngestionProperties;
+import com.tutor.platform.config.KnowledgeUploadProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

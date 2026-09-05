@@ -1,8 +1,8 @@
 package com.tutor.identity.profile;
 
 import com.tutor.contract.Purpose;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.structured.StructuredOutputService;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.structured.StructuredOutputService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

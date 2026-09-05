@@ -1,6 +1,6 @@
 package com.tutor.evaluation.eval;
 
-import com.tutor.llm.EmbeddingGateway;
+import com.tutor.platform.llm.EmbeddingGateway;
 import com.tutor.conversation.memory.local.EpisodeStore;
 import com.tutor.conversation.memory.local.FactStore;
 import org.springframework.jdbc.core.JdbcTemplate;

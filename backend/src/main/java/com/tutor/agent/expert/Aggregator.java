@@ -5,10 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.StreamingGenerationGateway;
-import com.tutor.llm.LlmMessage;
-import com.tutor.llm.LlmStreamHandler;
-import com.tutor.llm.LlmStreamResult;
+import com.tutor.platform.llm.StreamingGenerationGateway;
+import com.tutor.platform.llm.LlmMessage;
+import com.tutor.platform.llm.LlmStreamHandler;
+import com.tutor.platform.llm.LlmStreamResult;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

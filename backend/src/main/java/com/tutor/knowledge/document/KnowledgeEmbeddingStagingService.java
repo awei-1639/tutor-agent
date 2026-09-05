@@ -1,7 +1,7 @@
 package com.tutor.knowledge.document;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.llm.EmbeddingGateway;
+import com.tutor.platform.llm.EmbeddingGateway;
 import com.tutor.knowledge.retrieval.vector.VectorStore;
 import org.springframework.jdbc.core.JdbcTemplate;
 

@@ -5,7 +5,7 @@ import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
 import com.tutor.knowledge.retrieval.graph.GraphStore;
 import com.tutor.knowledge.retrieval.vector.VectorStore;
-import com.tutor.llm.EmbeddingGateway;
+import com.tutor.platform.llm.EmbeddingGateway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

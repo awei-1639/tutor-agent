@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
 import com.tutor.contract.SideEffect;
 import com.tutor.contract.ToolSpec;
-import com.tutor.llm.JsonGenerationGateway;
-import com.tutor.llm.LlmMessage;
+import com.tutor.platform.llm.JsonGenerationGateway;
+import com.tutor.platform.llm.LlmMessage;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

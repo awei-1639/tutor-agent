@@ -1,6 +1,6 @@
 package com.tutor.identity.profile;
 
-import com.tutor.config.Neo4jProperties;
+import com.tutor.platform.config.Neo4jProperties;
 import com.tutor.knowledge.retrieval.resilience.Neo4jResilience;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
