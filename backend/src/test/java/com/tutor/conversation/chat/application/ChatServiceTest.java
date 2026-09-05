@@ -8,10 +8,10 @@ import com.tutor.conversation.context.TokenBudget;
 import com.tutor.conversation.context.sections.ProfileSection;
 import com.tutor.contract.Intent;
 import com.tutor.contract.CancellationToken;
-import com.tutor.expert.Aggregator;
-import com.tutor.expert.ExpertRunner;
-import com.tutor.expert.IntentRouter;
-import com.tutor.guard.CitationGuard;
+import com.tutor.agent.expert.Aggregator;
+import com.tutor.agent.expert.ExpertRunner;
+import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.guard.CitationGuard;
 import com.tutor.llm.LlmGateway;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.ConversationStore;
@@ -64,7 +64,7 @@ class ChatServiceTest {
         LongTermMemoryService longTermMemory = mock(LongTermMemoryService.class);
         com.tutor.conversation.context.sections.EpisodeSection episodeSection = mock(com.tutor.conversation.context.sections.EpisodeSection.class);
         CitationGuard citationGuard = mock(CitationGuard.class);
-        com.tutor.expert.RoutingPolicy routingPolicy = new com.tutor.expert.RoutingPolicy();
+        com.tutor.agent.expert.RoutingPolicy routingPolicy = new com.tutor.agent.expert.RoutingPolicy();
         MemoryConsentService memoryConsent = mock(MemoryConsentService.class);
         CitationVerificationService citationVerification = new CitationVerificationService(conversations, citationGuard);
         PostTurnTaskService postTurnTasks = new PostTurnTaskService(profiles, summaryFolder, episodeSummarizer,

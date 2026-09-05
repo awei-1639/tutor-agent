@@ -2,7 +2,7 @@ package com.tutor.conversation.chat.application;
 
 import com.tutor.identity.auth.AuthContext;
 import com.tutor.contract.Intent;
-import com.tutor.expert.IntentRouter;
+import com.tutor.agent.expert.IntentRouter;
 import com.tutor.llm.BudgetExhausted;
 import com.tutor.llm.BudgetPressureService;
 import com.tutor.llm.LlmBudgetGuard;

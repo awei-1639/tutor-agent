@@ -1,12 +1,12 @@
 package com.tutor.conversation.chat.internal;
 
-import com.tutor.expert.IntentRouter;
-import com.tutor.expert.RoutingPolicy;
+import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.contract.Intent;
 import com.tutor.eval.InternalMemorySeedService;
 import com.tutor.conversation.memory.application.FactRecallService;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
-import com.tutor.tool.ToolExecutor;
+import com.tutor.agent.tool.ToolExecutor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;

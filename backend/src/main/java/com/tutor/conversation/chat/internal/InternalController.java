@@ -1,15 +1,15 @@
 package com.tutor.conversation.chat.internal;
 
-import com.tutor.expert.IntentRouter;
-import com.tutor.expert.RoutingPolicy;
+import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.identity.auth.AuthContext;
 import com.tutor.eval.InternalMemorySeedService;
 import com.tutor.conversation.memory.application.FactRecallService;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.FactStore;
-import com.tutor.tool.ToolExecutionContext;
-import com.tutor.tool.ToolExecutor;
-import com.tutor.tool.ToolInputs;
+import com.tutor.agent.tool.ToolExecutionContext;
+import com.tutor.agent.tool.ToolExecutor;
+import com.tutor.agent.tool.ToolInputs;
 import org.slf4j.MDC;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;

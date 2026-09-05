@@ -2,7 +2,7 @@ package com.tutor.conversation.chat.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Evidence;
-import com.tutor.guard.CitationSourcePolicy;
+import com.tutor.agent.guard.CitationSourcePolicy;
 
 import java.util.ArrayList;
 import java.util.Collections;

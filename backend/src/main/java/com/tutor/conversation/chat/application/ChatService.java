@@ -9,10 +9,10 @@ import com.tutor.conversation.context.sections.ProfileSection;
 import com.tutor.conversation.chat.support.TraceRecorder;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.CancellationToken;
-import com.tutor.tool.ToolCallLoop;
-import com.tutor.expert.Aggregator;
-import com.tutor.expert.ExpertRunner;
-import com.tutor.expert.IntentRouter;
+import com.tutor.agent.tool.ToolCallLoop;
+import com.tutor.agent.expert.Aggregator;
+import com.tutor.agent.expert.ExpertRunner;
+import com.tutor.agent.expert.IntentRouter;
 import com.tutor.llm.BudgetExhausted;
 import com.tutor.llm.BudgetPressureService;
 import com.tutor.llm.LlmBudgetGuard;
@@ -43,7 +43,7 @@ import java.util.UUID;
 @Service
 public class ChatService {
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
-    private final com.tutor.expert.RoutingPolicy routingPolicy;
+    private final com.tutor.agent.expert.RoutingPolicy routingPolicy;
     private final ChatRoutingStage routingStage;
     private final ChatContextLoader contextLoader;
     private final ChatRetrievalStage retrievalStage;
@@ -54,7 +54,7 @@ public class ChatService {
                        ProfileSection profileSection, TokenBudget tokenBudget,
                        StreamingGenerationGateway gateway, ConversationStore conversations,
                        ProfileService profileService, IntentRouter router,
-                       com.tutor.expert.RoutingPolicy routingPolicy,
+                       com.tutor.agent.expert.RoutingPolicy routingPolicy,
                        ExpertRunner expertRunner, Aggregator aggregator, TraceRecorder trace,
                        com.tutor.identity.resume.ResumeService resumeService,
                        LongTermMemoryService longTermMemory,
@@ -76,7 +76,7 @@ public class ChatService {
                        ProfileSection profileSection, TokenBudget tokenBudget,
                        StreamingGenerationGateway gateway, ConversationStore conversations,
                        ProfileService profileService, IntentRouter router,
-                       com.tutor.expert.RoutingPolicy routingPolicy,
+                       com.tutor.agent.expert.RoutingPolicy routingPolicy,
                        ExpertRunner expertRunner, Aggregator aggregator, TraceRecorder trace,
                        com.tutor.identity.resume.ResumeService resumeService,
                        LongTermMemoryService longTermMemory,

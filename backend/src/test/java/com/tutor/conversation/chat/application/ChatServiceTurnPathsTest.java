@@ -165,7 +165,7 @@ class ChatServiceTurnPathsTest {
         fixture.routeAsResumeExpert();
         CancellationToken cancellation = new CancellationToken();
         org.mockito.Mockito.when(fixture.expertRunner.buildBriefing(anyString(), any(), anyString()))
-                .thenReturn(new com.tutor.expert.ExpertRunner.Briefing("briefing", java.util.Set.of()));
+                .thenReturn(new com.tutor.agent.expert.ExpertRunner.Briefing("briefing", java.util.Set.of()));
         // 专家执行期间用户断开 SSE：仲裁不应再启动，也不应落库。
         org.mockito.Mockito.when(fixture.expertRunner.run(any(), anyString(), anyString(), any(), any(), any()))
                 .thenAnswer(invocation -> {
@@ -188,9 +188,9 @@ class ChatServiceTurnPathsTest {
     void toolLoopAnswersWithoutStreamingWhenEnabled() {
         ChatServiceFixture fixture = new ChatServiceFixture();
         fixture.routeAsDirectChat();
-        com.tutor.tool.ToolCallLoop loop = org.mockito.Mockito.mock(com.tutor.tool.ToolCallLoop.class);
+        com.tutor.agent.tool.ToolCallLoop loop = org.mockito.Mockito.mock(com.tutor.agent.tool.ToolCallLoop.class);
         org.mockito.Mockito.when(loop.run(any(), any(), anyString(), any()))
-                .thenReturn(new com.tutor.tool.ToolCallLoop.LoopResult("工具回答", 1, List.of("retrieve")));
+                .thenReturn(new com.tutor.agent.tool.ToolCallLoop.LoopResult("工具回答", 1, List.of("retrieve")));
         AuthContext.set(ChatServiceFixture.USER_ID);
 
         RecordingEvents events = new RecordingEvents();
@@ -207,7 +207,7 @@ class ChatServiceTurnPathsTest {
         ChatServiceFixture fixture = new ChatServiceFixture();
         fixture.routeAsDirectChat();
         streamAnswer(fixture, "流式兜底回答");
-        com.tutor.tool.ToolCallLoop loop = org.mockito.Mockito.mock(com.tutor.tool.ToolCallLoop.class);
+        com.tutor.agent.tool.ToolCallLoop loop = org.mockito.Mockito.mock(com.tutor.agent.tool.ToolCallLoop.class);
         org.mockito.Mockito.when(loop.run(any(), any(), anyString(), any()))
                 .thenThrow(new IllegalStateException("loop exceeded steps"));
         AuthContext.set(ChatServiceFixture.USER_ID);

@@ -5,7 +5,7 @@ import com.tutor.conversation.chat.application.ChatModels.RetrievedContext;
 import com.tutor.conversation.chat.application.ChatModels.TurnContext;
 import com.tutor.conversation.chat.support.TraceRecorder;
 import com.tutor.contract.Evidence;
-import com.tutor.expert.RoutingPolicy;
+import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.conversation.memory.application.FactRecallService;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.EpisodeStore;

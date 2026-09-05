@@ -2,7 +2,7 @@ package com.tutor.conversation.chat.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Evidence;
-import com.tutor.guard.CitationGuard;
+import com.tutor.agent.guard.CitationGuard;
 import com.tutor.conversation.memory.local.ConversationStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

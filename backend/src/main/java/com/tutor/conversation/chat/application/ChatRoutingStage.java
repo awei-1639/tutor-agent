@@ -5,8 +5,8 @@ import com.tutor.conversation.chat.application.ChatModels.TurnContext;
 import com.tutor.conversation.chat.support.TraceRecorder;
 import com.tutor.conversation.context.ContextualQueryRewriter;
 import com.tutor.conversation.context.ConversationContextSelector;
-import com.tutor.expert.IntentRouter;
-import com.tutor.expert.RoutingPolicy;
+import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.llm.BudgetPressureService;
 
 import java.util.ArrayList;

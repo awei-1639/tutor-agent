@@ -1,7 +1,7 @@
 package com.tutor.knowledge.retrieval.graph;
 
-import com.tutor.expert.IntentRouter;
-import com.tutor.expert.RoutingPolicy;
+import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.expert.RoutingPolicy;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

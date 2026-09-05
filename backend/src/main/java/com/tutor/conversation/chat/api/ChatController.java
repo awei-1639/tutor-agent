@@ -9,7 +9,7 @@ import com.tutor.conversation.chat.application.ChatTurnEvents;
 import com.tutor.conversation.chat.support.ChatRateLimiter;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
-import com.tutor.guard.CitationSourcePolicy;
+import com.tutor.agent.guard.CitationSourcePolicy;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

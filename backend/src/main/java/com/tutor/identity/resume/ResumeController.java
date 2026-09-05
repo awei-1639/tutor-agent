@@ -2,10 +2,10 @@ package com.tutor.identity.resume;
 
 import com.tutor.identity.auth.AuthContext;
 import com.tutor.config.RequestTraceFilter;
-import com.tutor.tool.ToolExecutionContext;
-import com.tutor.tool.ToolExecutor;
-import com.tutor.tool.ToolInputs;
-import com.tutor.tool.ToolExecutionException;
+import com.tutor.agent.tool.ToolExecutionContext;
+import com.tutor.agent.tool.ToolExecutor;
+import com.tutor.agent.tool.ToolInputs;
+import com.tutor.agent.tool.ToolExecutionException;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

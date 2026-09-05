@@ -8,11 +8,11 @@ import com.tutor.conversation.context.sections.ProfileSection;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.Intent;
-import com.tutor.expert.Aggregator;
-import com.tutor.expert.ExpertRunner;
-import com.tutor.expert.IntentRouter;
-import com.tutor.expert.RoutingPolicy;
-import com.tutor.guard.CitationGuard;
+import com.tutor.agent.expert.Aggregator;
+import com.tutor.agent.expert.ExpertRunner;
+import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.expert.RoutingPolicy;
+import com.tutor.agent.guard.CitationGuard;
 import com.tutor.llm.LlmGateway;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.ConversationStore;
@@ -87,7 +87,7 @@ final class ChatServiceFixture {
     }
 
     /** 启用受控工具循环的构造器；toolLoopEnabled=false 时与 {@link #build()} 行为一致。 */
-    ChatService buildWithToolLoop(com.tutor.tool.ToolCallLoop toolCallLoop, boolean toolLoopEnabled) {
+    ChatService buildWithToolLoop(com.tutor.agent.tool.ToolCallLoop toolCallLoop, boolean toolLoopEnabled) {
         return new ChatService(agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
                 longTermMemory, episodeSection, factRecall, factsSection,

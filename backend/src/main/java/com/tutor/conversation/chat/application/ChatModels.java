@@ -1,8 +1,8 @@
 package com.tutor.conversation.chat.application;
 
 import com.tutor.conversation.memory.local.ConversationStore;
-import com.tutor.expert.IntentRouter;
-import com.tutor.expert.RoutingPolicy;
+import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.conversation.memory.local.EpisodeStore;
 import com.tutor.conversation.memory.local.FactStore;
 
