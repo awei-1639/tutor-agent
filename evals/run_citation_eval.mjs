@@ -81,12 +81,22 @@ async function chat(question) {
 }
 
 // ---- 抽取引用句: 按句切分, 保留含[S#]的句子 ----
+// 模型两种写法都用: 「正文[S1]。」和「正文。[S1]」。只按句末标点切分时后者会错位 ——
+// 标记被留到下一句开头, 末尾的标记还会单独成句, 产出只有 [S1] 没有正文的空 claim;
+// judge 收到空输入只能判"不支撑", 大量伪失败污染准确率 (首跑 51 条里有 15 条如此)。
+// 因此改为整体匹配「一句正文 + 紧跟其后的引用标记」, 而不是 split ——
+// split 的 lookbehind 里可选标记能匹配空, 句末位置依然会成为切点, 无法把标记留在前一句。
+const CITED_SENTENCE = /[^。！？!?\n]*[。！？!?\n](?:[ \t]*\[S\d+])*|[^。！？!?\n]+$/g;
+
 function citedClaims(answer) {
-  const sentences = answer.split(/(?<=[。！？!?\n])/);
   const claims = [];
-  for (const s of sentences) {
-    const sids = [...s.matchAll(/\[S(\d)]/g)].map(m => 'S' + m[1]);
-    if (sids.length) claims.push({ sentence: s.replace(/\s+/g, ' ').trim(), sids: [...new Set(sids)] });
+  for (const [sentence] of answer.matchAll(CITED_SENTENCE)) {
+    const sids = [...sentence.matchAll(/\[S(\d+)]/g)].map(m => 'S' + m[1]);
+    if (!sids.length) continue;
+    // 去掉标记后必须还剩实质文字, 否则这条无法判定, 计入分母只会拉低准确率。
+    const text = sentence.replace(/\s+/g, ' ').trim();
+    if (!text.replace(/\[S\d+]/g, '').replace(/[\s。！？!?、,，:：]/g, '')) continue;
+    claims.push({ sentence: text, sids: [...new Set(sids)] });
   }
   return claims;
 }
