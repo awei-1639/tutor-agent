@@ -3,7 +3,7 @@ package com.tutor.tool;
 import com.tutor.contract.SideEffect;
 import com.tutor.contract.ToolSpec;
 import com.tutor.identity.profile.ProfileService;
-import com.tutor.push.PushService;
+import com.tutor.coaching.push.PushService;
 import com.tutor.identity.resume.ResumeService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
