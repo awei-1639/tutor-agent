@@ -158,8 +158,10 @@ final class RetrievalCandidatePipeline {
                 })
                 .filter(evidence -> evidence != null)
                 .toList();
-        List<Evidence> selected = !channelFloorEnabled ? ranked.stream().limit(topK).toList()
-                : FusedRetriever.ensureChannelFloor(ranked, topK,
+        List<Evidence> answerShaped = JobSkillAnswerPolicy.promoteRequiredSkills(
+                ranked, neighbors, byId, query);
+        List<Evidence> selected = !channelFloorEnabled ? answerShaped.stream().limit(topK).toList()
+                : FusedRetriever.ensureChannelFloor(answerShaped, topK,
                 denseHits.stream().map(VectorStore.VectorHit::nodeId).collect(java.util.stream.Collectors.toSet()),
                 sparseHits.stream().map(VectorStore.VectorHit::nodeId).collect(java.util.stream.Collectors.toSet()),
                 neighbors.stream().map(GraphStore.Neighbor::dstId).collect(java.util.stream.Collectors.toSet()));
