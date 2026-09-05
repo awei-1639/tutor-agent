@@ -1,7 +1,7 @@
 package com.tutor.llm;
 
 import com.tutor.config.LlmProperties;
-import com.tutor.context.BudgetPressureView;
+import com.tutor.conversation.context.BudgetPressureView;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;

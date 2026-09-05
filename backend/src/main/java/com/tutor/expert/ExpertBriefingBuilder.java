@@ -1,7 +1,7 @@
 package com.tutor.expert;
 
 import com.tutor.contract.Evidence;
-import com.tutor.context.TokenBudget;
+import com.tutor.conversation.context.TokenBudget;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;

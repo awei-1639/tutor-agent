@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
-import com.tutor.context.TokenBudget;
+import com.tutor.conversation.context.TokenBudget;
 
 import java.util.ArrayList;
 import java.util.List;

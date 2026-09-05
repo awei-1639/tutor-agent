@@ -2,7 +2,7 @@ package com.tutor.expert;
 
 import com.tutor.contract.Intent;
 import com.tutor.config.LlmProperties;
-import com.tutor.context.TokenBudget;
+import com.tutor.conversation.context.TokenBudget;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.Purpose;

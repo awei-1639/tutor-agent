@@ -1,6 +1,6 @@
 package com.tutor.knowledge;
 
-import com.tutor.context.TokenBudget;
+import com.tutor.conversation.context.TokenBudget;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
