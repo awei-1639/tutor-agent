@@ -46,7 +46,7 @@ class CareerGapControllerTest {
     void addsOnlySelectedGapSkillsToAuthenticatedUsersPlan() throws Exception {
         CareerGapService service = mock(CareerGapService.class);
         when(service.addGapTasks(eq(42L), eq(203L), eq(List.of("skill:transformers"))))
-                .thenReturn(List.of(new com.tutor.plan.PlanService.PlanTask(
+                .thenReturn(List.of(new com.tutor.plan.PlanModels.PlanTask(
                         9L, 3L, LocalDate.now(), "完成练习", "practice", 45, "提交练习答案")));
         AuthContext.set(42L);
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new CareerGapController(service)).build();

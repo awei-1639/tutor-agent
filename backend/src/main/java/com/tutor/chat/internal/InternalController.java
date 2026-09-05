@@ -3,16 +3,14 @@ package com.tutor.chat.internal;
 import com.tutor.expert.IntentRouter;
 import com.tutor.expert.RoutingPolicy;
 import com.tutor.auth.AuthContext;
-import com.tutor.llm.EmbeddingGateway;
+import com.tutor.eval.InternalMemorySeedService;
 import com.tutor.memory.application.FactRecallService;
 import com.tutor.memory.application.LongTermMemoryService;
-import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.local.FactStore;
 import com.tutor.tool.ToolExecutionContext;
 import com.tutor.tool.ToolExecutor;
 import com.tutor.tool.ToolInputs;
 import org.slf4j.MDC;
-import org.springframework.jdbc.core.JdbcTemplate;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -39,29 +37,20 @@ public class InternalController {
     private final ToolExecutor toolExecutor;
     private final LongTermMemoryService longTermMemory;
     private final FactRecallService factRecall;
-    private final EpisodeStore episodeStore;
-    private final FactStore factStore;
-    private final EmbeddingGateway embeddingGateway;
-    private final JdbcTemplate jdbc;
+    private final InternalMemorySeedService memorySeedService;
 
     public InternalController(IntentRouter router,
                               RoutingPolicy routingPolicy,
                               ToolExecutor toolExecutor,
                               LongTermMemoryService longTermMemory,
                               FactRecallService factRecall,
-                              EpisodeStore episodeStore,
-                              FactStore factStore,
-                              EmbeddingGateway embeddingGateway,
-                              JdbcTemplate jdbc) {
+                              InternalMemorySeedService memorySeedService) {
         this.router = router;
         this.routingPolicy = routingPolicy;
         this.toolExecutor = toolExecutor;
         this.longTermMemory = longTermMemory;
         this.factRecall = factRecall;
-        this.episodeStore = episodeStore;
-        this.factStore = factStore;
-        this.embeddingGateway = embeddingGateway;
-        this.jdbc = jdbc;
+        this.memorySeedService = memorySeedService;
     }
 
     public record RetrieveRequest(@NotBlank @Size(max = 4000) String query,
@@ -123,49 +112,14 @@ public class InternalController {
     @PostMapping("/memory-seed")
     public Map<String, Object> memorySeed(@Valid @RequestBody MemorySeedRequest req) {
         String traceId = MDC.get("traceId");
-        jdbc.update("INSERT INTO users (id) VALUES (?) ON CONFLICT DO NOTHING", req.userId());
-        // 幂等重建：先清掉该用户的派生记忆（不动 messages/conversations）。
-        jdbc.update("DELETE FROM user_facts WHERE user_id=?", req.userId());
-        jdbc.update("DELETE FROM episode_memory_tombstones WHERE user_id=?", req.userId());
-        jdbc.update("DELETE FROM episodes WHERE user_id=?", req.userId());
-        long conversationId = jdbc.queryForObject(
-                "INSERT INTO conversations (user_id, last_active_at) VALUES (?, now()) RETURNING id",
-                Long.class, req.userId());
-
-        int episodeCount = 0;
-        if (req.episodes() != null) {
-            int index = 0;
-            for (SeedEpisode seed : req.episodes()) {
-                if (seed.summary() == null || seed.summary().isBlank()) continue;
-                float[] embedding = embeddingGateway.embed(seed.summary(), traceId);
-                // 每条种子 episode 用互异的负数源窗口，避免命中 (user, conv, from, to) 部分唯一索引。
-                long window = -1000L - index;
-                long id = episodeStore.insertIfAbsentReturningId(req.userId(), conversationId,
-                        seed.summary(), seed.topics() == null ? List.of() : seed.topics(), List.of(),
-                        embedding, window, window, 0L);
-                index++;
-                if (id == 0) continue;
-                int ageDays = seed.ageDays() == null ? 0 : Math.max(0, seed.ageDays());
-                jdbc.update("UPDATE episodes SET created_at = now() - (? * interval '1 day') WHERE id=?",
-                        ageDays, id);
-                episodeCount++;
-            }
-        }
-
-        int factCount = 0;
-        if (req.facts() != null) {
-            for (SeedFact seed : req.facts()) {
-                if (seed.text() == null || seed.text().isBlank()) continue;
-                long id = factStore.insertIfAbsentReturningId(req.userId(), null, 0L,
-                        seed.text(), seed.category(), seed.confidence() == null ? 0.7D : seed.confidence());
-                if (id == 0) continue;
-                if ("superseded".equalsIgnoreCase(seed.status())) {
-                    jdbc.update("UPDATE user_facts SET status='superseded' WHERE id=?", id);
-                }
-                factCount++;
-            }
-        }
-        return Map.of("user_id", req.userId(), "episodes", episodeCount, "facts", factCount);
+        List<InternalMemorySeedService.SeedEpisode> episodes = req.episodes() == null ? List.of()
+                : req.episodes().stream().map(seed -> new InternalMemorySeedService.SeedEpisode(
+                        seed.summary(), seed.topics(), seed.ageDays())).toList();
+        List<InternalMemorySeedService.SeedFact> facts = req.facts() == null ? List.of()
+                : req.facts().stream().map(seed -> new InternalMemorySeedService.SeedFact(
+                        seed.text(), seed.category(), seed.confidence(), seed.status())).toList();
+        InternalMemorySeedService.Result result = memorySeedService.seed(req.userId(), episodes, facts, traceId);
+        return Map.of("user_id", result.userId(), "episodes", result.episodes(), "facts", result.facts());
     }
 
     @SuppressWarnings("unchecked")

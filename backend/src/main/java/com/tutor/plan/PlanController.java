@@ -29,10 +29,10 @@ public class PlanController {
                               @Size(max = 12000) String checkinHistory) {}
 
     @PostMapping
-    public ResponseEntity<PlanService.PlanGenerationJob> generate(
+    public ResponseEntity<PlanModels.PlanGenerationJob> generate(
             @Valid @RequestBody PlanRequest req,
             @RequestHeader(value = "X-Trace-Id", required = false) String traceId) {
-        PlanService.PlanGenerationJob job = plans.enqueueWeeklyPlan(currentUserId(), req.goal(),
+        PlanModels.PlanGenerationJob job = plans.enqueueWeeklyPlan(currentUserId(), req.goal(),
                 req.currentSkills() == null ? "" : req.currentSkills(),
                 req.checkinHistory() == null ? "" : req.checkinHistory(),
                 traceId == null ? "user" : traceId);
@@ -40,19 +40,19 @@ public class PlanController {
     }
 
     @GetMapping("/jobs/{jobId}")
-    public PlanService.PlanGenerationJob generationJob(@PathVariable long jobId) {
+    public PlanModels.PlanGenerationJob generationJob(@PathVariable long jobId) {
         return plans.generationJob(currentUserId(), jobId);
     }
 
     public record CheckinRequest(long taskId, @NotBlank String status, String feedback) {}
 
     @PostMapping("/checkin")
-    public PlanService.Checkin checkin(@Valid @RequestBody CheckinRequest req) {
+    public PlanModels.Checkin checkin(@Valid @RequestBody CheckinRequest req) {
         return plans.checkin(req.taskId(), currentUserId(), req.status(), req.feedback());
     }
 
     @GetMapping("/today")
-    public List<PlanService.PlanTask> today() {
+    public List<PlanModels.PlanTask> today() {
         return plans.todayTasks(currentUserId());
     }
 

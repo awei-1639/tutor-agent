@@ -4,9 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
 import com.tutor.llm.JsonGenerationGateway;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -36,7 +34,7 @@ public class StructuredOutputService {
     public <T> StructuredOutputResult<T> generate(
             StructuredTask task,
             Purpose purpose,
-            List<ChatMessage> messages,
+            List<LlmMessage> messages,
             Class<T> outputType,
             Consumer<T> businessValidator,
             String traceId
@@ -47,7 +45,7 @@ public class StructuredOutputService {
     public <T> StructuredOutputResult<T> generate(
             StructuredTask task,
             Purpose purpose,
-            List<ChatMessage> messages,
+            List<LlmMessage> messages,
             Class<T> outputType,
             Consumer<T> businessValidator,
             Duration requestTimeout,
@@ -146,8 +144,8 @@ public class StructuredOutputService {
         }
     }
 
-    private List<ChatMessage> repairMessages(
-            List<ChatMessage> original,
+    private List<LlmMessage> repairMessages(
+            List<LlmMessage> original,
             StructuredSchemaRegistry.Definition<?> definition,
             String raw,
             List<StructuredOutputError> errors
@@ -167,18 +165,18 @@ public class StructuredOutputService {
                 原始输出：
                 %s
                 """.formatted(definition.schemaId(), definition.schemaJson(), errorText, boundedRaw);
-        List<ChatMessage> repaired = new ArrayList<>(original == null ? List.of() : original);
-        repaired.add(SystemMessage.from(repairPrompt));
-        repaired.add(UserMessage.from("请只返回修复后的 JSON。"));
+        List<LlmMessage> repaired = new ArrayList<>(original == null ? List.of() : original);
+        repaired.add(LlmMessage.system(repairPrompt));
+        repaired.add(LlmMessage.user("请只返回修复后的 JSON。"));
         return List.copyOf(repaired);
     }
 
-    private List<ChatMessage> contractMessages(
-            List<ChatMessage> original,
+    private List<LlmMessage> contractMessages(
+            List<LlmMessage> original,
             StructuredSchemaRegistry.Definition<?> definition
     ) {
-        List<ChatMessage> result = new ArrayList<>();
-        result.add(SystemMessage.from("""
+        List<LlmMessage> result = new ArrayList<>();
+        result.add(LlmMessage.system("""
                 你必须输出符合以下结构化契约的 JSON object。
                 Schema ID：%s
                 Schema：%s

@@ -9,9 +9,9 @@ import com.tutor.llm.structured.ResumeExtractOutput;
 import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
 import com.tutor.llm.structured.StructuredTask;
+import com.tutor.llm.LlmMessage;
 import com.tutor.retrieval.vector.VectorStore;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -48,8 +48,7 @@ public class ResumeService {
             只抽取文本中真实存在的信息, 缺失字段给空串/空数组, 禁止编造。
             """;
 
-    private final JdbcTemplate jdbc;
-    private final JsonGenerationGateway jsonGateway;
+    private final ResumeStore store;
     private final EmbeddingGateway embeddingGateway;
     private final com.tutor.profile.ProfileService profileService;
     private final StructuredOutputService structuredOutputService;
@@ -58,18 +57,17 @@ public class ResumeService {
     @Value("${security.resume-enc-key:}")
     String encKey;
 
-    public ResumeService(JdbcTemplate jdbc, JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
+    public ResumeService(org.springframework.jdbc.core.JdbcTemplate jdbc, JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
                          com.tutor.profile.ProfileService profileService) {
-        this(jdbc, jsonGateway, embeddingGateway, profileService,
+        this(new ResumeStore(jdbc), jsonGateway, embeddingGateway, profileService,
                 new StructuredOutputService(jsonGateway, null));
     }
 
     @Autowired
-    public ResumeService(JdbcTemplate jdbc, JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
+    public ResumeService(ResumeStore store, JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
                          com.tutor.profile.ProfileService profileService,
                          StructuredOutputService structuredOutputService) {
-        this.jdbc = jdbc;
-        this.jsonGateway = jsonGateway;
+        this.store = store;
         this.embeddingGateway = embeddingGateway;
         this.profileService = profileService;
         this.structuredOutputService = structuredOutputService;
@@ -94,7 +92,7 @@ public class ResumeService {
         StructuredOutputResult<ResumeExtractOutput> extracted = structuredOutputService.generate(
                 StructuredTask.RESUME_EXTRACT,
                 Purpose.EXTRACT,
-                List.of(SystemMessage.from(STRUCT_SYS), UserMessage.from(masked.masked())),
+                List.of(LlmMessage.system(STRUCT_SYS), LlmMessage.user(masked.masked())),
                 ResumeExtractOutput.class,
                 this::validateExtractedResume,
                 traceId
@@ -115,13 +113,9 @@ public class ResumeService {
         float[] vec = embeddingGateway.embed(masked.masked(), traceId);
 
         // 4) 加密落库 (pgcrypto); 多次上传保留历史版本, 读取端总取最新
-        Long resumeId = jdbc.queryForObject("""
-                INSERT INTO resumes (user_id, raw_encrypted, structured, embedding)
-                VALUES (?, pgp_sym_encrypt(?, ?), ?::jsonb, ?::vector) RETURNING id
-                """, Long.class, userId, text, encKey, structJson, VectorStore.toVectorLiteral(vec));
+        long resumeId = store.insert(userId, text, encKey, structJson, VectorStore.toVectorLiteral(vec));
         try {
-            jdbc.update("INSERT INTO pii_mappings (user_id, mapping_encrypted) VALUES (?, pgp_sym_encrypt(?, ?))",
-                    userId, mapper.writeValueAsString(masked.mapping()), encKey);
+            store.savePiiMapping(userId, mapper.writeValueAsString(masked.mapping()), encKey);
         } catch (Exception e) {
             throw new IllegalStateException("PII映射保存失败", e);
         }
@@ -144,12 +138,10 @@ public class ResumeService {
 
     /** 最新简历的结构化紧凑文本 (专家简报注入用, 实现设计3.4分级注入); 无简历返回空串 */
     public String latestStructuredCompact(long userId, int maxChars) {
-        List<String> rows = jdbc.query(
-                "SELECT structured::text FROM resumes WHERE user_id=? ORDER BY id DESC LIMIT 1",
-                (rs, i) -> rs.getString(1), userId);
-        if (rows.isEmpty()) return "";
+        Optional<String> structuredJson = store.latestStructuredJson(userId);
+        if (structuredJson.isEmpty()) return "";
         try {
-            JsonNode s = mapper.readTree(rows.get(0));
+            JsonNode s = mapper.readTree(structuredJson.orElseThrow());
             StringBuilder sb = new StringBuilder("## 简历(结构化)\n");
             if (s.hasNonNull("summary")) sb.append(s.get("summary").asText()).append('\n');
             for (JsonNode e : s.path("experiences")) {

@@ -20,7 +20,6 @@ import com.tutor.memory.local.SummaryFolder;
 import com.tutor.memory.policy.MemoryConsentService;
 import com.tutor.profile.ProfileService;
 import com.tutor.retrieval.agentic.AgenticRetriever;
-import com.tutor.retrieval.fusion.FusedRetriever;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -48,7 +47,6 @@ class ChatServiceTest {
 
     @Test
     void keepsRequestUserForBackgroundWorkAfterStreamingCompletion() {
-        FusedRetriever retriever = mock(FusedRetriever.class);
         AgenticRetriever agenticRetriever = mock(AgenticRetriever.class);
         PromptAssembler promptAssembler = mock(PromptAssembler.class);
         ProfileSection profileSection = mock(ProfileSection.class);
@@ -71,9 +69,9 @@ class ChatServiceTest {
         CitationVerificationService citationVerification = new CitationVerificationService(conversations, citationGuard);
         PostTurnTaskService postTurnTasks = new PostTurnTaskService(profiles, summaryFolder, episodeSummarizer,
                 longTermMemory, memoryConsent);
-        ChatService service = new ChatService(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget,
+        ChatService service = new ChatService(agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
-                summaryFolder, episodeSummarizer, longTermMemory, episodeSection,
+                longTermMemory, episodeSection,
                 mock(com.tutor.memory.application.FactRecallService.class),
                 mock(com.tutor.context.sections.FactsSection.class),
                 citationVerification, postTurnTasks, memoryConsent);
@@ -91,9 +89,8 @@ class ChatServiceTest {
         when(citationGuard.guard(anyString(), any(), anyString()))
                 .thenReturn(new CitationGuard.GuardResult(0, 0, List.of(), 1.0, "not_applicable"));
         doAnswer(invocation -> {
-            invocation.<dev.langchain4j.model.chat.response.StreamingChatResponseHandler>getArgument(3)
-                    .onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse.builder()
-                            .aiMessage(dev.langchain4j.data.message.AiMessage.from("hello")).build());
+            invocation.<com.tutor.llm.LlmStreamHandler>getArgument(3)
+                    .onComplete(new com.tutor.llm.LlmStreamResult("test", 0, 0, false));
             return null;
         }).when(gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
 
@@ -105,7 +102,7 @@ class ChatServiceTest {
         });
     }
 
-    private static class NoopTurnEvents implements ChatService.TurnEvents {
+    private static class NoopTurnEvents implements ChatTurnEvents {
         @Override public void onMeta(long conversationId, String traceId) { }
         @Override public void onStage(String phase) { }
         @Override public void onCitations(List<com.tutor.contract.Evidence> evidences) { }

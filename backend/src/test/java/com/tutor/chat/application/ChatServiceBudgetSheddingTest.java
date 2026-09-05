@@ -151,7 +151,7 @@ class ChatServiceBudgetSheddingTest {
     }
 
     /** 记录 error(code, message) 与 done 事件的最小 TurnEvents 实现。 */
-    private static final class RecordingEvents implements ChatService.TurnEvents {
+    private static final class RecordingEvents implements ChatTurnEvents {
         final List<Map.Entry<String, String>> errors = new CopyOnWriteArrayList<>();
         final List<String> done = new CopyOnWriteArrayList<>();
 

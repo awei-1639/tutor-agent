@@ -3,7 +3,9 @@ package com.tutor.chat.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.auth.AuthContext;
 import com.tutor.chat.application.ChatService;
+import com.tutor.chat.application.ChatModels;
 import com.tutor.chat.application.ChatTurnService;
+import com.tutor.chat.application.ChatTurnEvents;
 import com.tutor.chat.support.ChatRateLimiter;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
@@ -71,7 +73,7 @@ public class ChatController {
         emitter.onTimeout(cancellation::cancel);
         emitter.onError(error -> cancellation.cancel());
         AtomicLong tokenSequence = new AtomicLong();
-        ChatService.TurnEvents callbacks = new ChatService.TurnEvents() {
+        ChatTurnEvents callbacks = new ChatTurnEvents() {
                     @Override public void onMeta(long conversationId, String traceId) {
                         onMeta(conversationId, traceId, null);
                     }
@@ -120,7 +122,7 @@ public class ChatController {
                         }
                     }
 
-                    @Override public void onMemories(List<ChatService.MemoryRef> memories) {
+                    @Override public void onMemories(List<ChatModels.MemoryRef> memories) {
                         if (memories == null || memories.isEmpty()) return;
                         send(emitter, "memories", Map.of("items", memories), cancellation);
                     }

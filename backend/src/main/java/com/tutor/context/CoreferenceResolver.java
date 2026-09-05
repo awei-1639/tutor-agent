@@ -6,8 +6,8 @@ import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
 import com.tutor.llm.structured.StructuredTask;
 import com.tutor.memory.local.ConversationStore;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -136,8 +136,8 @@ public final class CoreferenceResolver {
                         StructuredTask.COREFERENCE,
                         com.tutor.contract.Purpose.EXTRACT,
                         List.of(
-                                SystemMessage.from("你是严格的中文对话指代解析器。"),
-                                UserMessage.from(prompt)
+                                LlmMessage.system("你是严格的中文对话指代解析器。"),
+                                LlmMessage.user(prompt)
                         ),
                         CoreferenceOutput.class,
                         output -> validateBusinessOutput(

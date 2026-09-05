@@ -3,7 +3,7 @@ package com.tutor.chat.application;
 import com.tutor.auth.AuthContext;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import com.tutor.llm.LlmStreamHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -110,7 +110,7 @@ class ChatServiceTurnPathsTest {
         ChatServiceFixture fixture = new ChatServiceFixture();
         fixture.routeAsDirectChat();
         doAnswer(invocation -> {
-            invocation.<StreamingChatResponseHandler>getArgument(3)
+            invocation.<LlmStreamHandler>getArgument(3)
                     .onError(new IllegalStateException("provider down"));
             return null;
         }).when(fixture.gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
@@ -222,10 +222,9 @@ class ChatServiceTurnPathsTest {
 
     private static void streamAnswer(ChatServiceFixture fixture, String answer) {
         doAnswer(invocation -> {
-            StreamingChatResponseHandler handler = invocation.getArgument(3);
-            handler.onPartialResponse(answer);
-            handler.onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse.builder()
-                    .aiMessage(dev.langchain4j.data.message.AiMessage.from(answer)).build());
+            LlmStreamHandler handler = invocation.getArgument(3);
+            handler.onToken(answer);
+            handler.onComplete(new com.tutor.llm.LlmStreamResult("test", 0, 0, false));
             return null;
         }).when(fixture.gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
     }
@@ -234,7 +233,7 @@ class ChatServiceTurnPathsTest {
         return new Evidence(nodeId, "skill", "证据文本", 0.9D, null, null, null, null);
     }
 
-    private static final class RecordingEvents implements ChatService.TurnEvents {
+    private static final class RecordingEvents implements ChatTurnEvents {
         final List<String> stages = new ArrayList<>();
         final List<String> errors = new ArrayList<>();
         final StringBuilder tokens = new StringBuilder();

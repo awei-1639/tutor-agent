@@ -3,6 +3,7 @@ package com.tutor.chat.api;
 import com.tutor.auth.AuthContext;
 import com.tutor.chat.api.ChatController;
 import com.tutor.chat.application.ChatService;
+import com.tutor.chat.application.ChatTurnEvents;
 import com.tutor.chat.support.ChatRateLimiter;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
@@ -40,7 +41,7 @@ class ChatControllerTest {
         AuthContext.set(7L);
         ChatService service = mock(ChatService.class);
         doAnswer(invocation -> {
-            ChatService.TurnEvents events = invocation.getArgument(2);
+            ChatTurnEvents events = invocation.getArgument(2);
             events.onMeta(7L, "trace-1");
             events.onStage("routing");
             events.onExpertDone("resume", "timeout", "专家执行超时");
@@ -49,7 +50,7 @@ class ChatControllerTest {
             events.onToken("hello");
             events.onDone(9L, "hello", "pending", List.of());
             return null;
-        }).when(service).turn(any(), anyString(), any(ChatService.TurnEvents.class), any(CancellationToken.class));
+        }).when(service).turn(any(), anyString(), any(ChatTurnEvents.class), any(CancellationToken.class));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new ChatController(service, new ChatRateLimiter(20))).build();
 
         MvcResult initial = mvc.perform(post("/chat")
@@ -83,7 +84,7 @@ class ChatControllerTest {
                 .andExpect(request().asyncStarted());
         mvc.perform(post("/chat").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isTooManyRequests());
-        verify(service).turn(any(), anyString(), any(ChatService.TurnEvents.class), any(CancellationToken.class));
+        verify(service).turn(any(), anyString(), any(ChatTurnEvents.class), any(CancellationToken.class));
         verifyNoMoreInteractions(service);
     }
 
@@ -94,9 +95,9 @@ class ChatControllerTest {
         CompletableFuture<Long> seenUser = new CompletableFuture<>();
         doAnswer(invocation -> {
             seenUser.complete(AuthContext.currentUserId());
-            invocation.<ChatService.TurnEvents>getArgument(2).onDone(9L, "done");
+            invocation.<ChatTurnEvents>getArgument(2).onDone(9L, "done");
             return null;
-        }).when(service).turn(any(), anyString(), any(ChatService.TurnEvents.class), any(CancellationToken.class));
+        }).when(service).turn(any(), anyString(), any(ChatTurnEvents.class), any(CancellationToken.class));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new ChatController(service, new ChatRateLimiter(20))).build();
 
         MvcResult initial = mvc.perform(post("/chat")

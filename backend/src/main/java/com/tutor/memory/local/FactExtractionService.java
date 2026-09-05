@@ -6,8 +6,8 @@ import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
 import com.tutor.llm.structured.StructuredTask;
 import com.tutor.memory.policy.MemoryAdmissionPolicy;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +76,7 @@ public class FactExtractionService {
             StructuredOutputResult<FactExtractOutput> structured = structuredOutputService.generate(
                     StructuredTask.FACT_EXTRACT,
                     Purpose.EXTRACT,
-                    List.of(SystemMessage.from(SYS), UserMessage.from(maskedUserConversation)),
+                    List.of(LlmMessage.system(SYS), LlmMessage.user(maskedUserConversation)),
                     FactExtractOutput.class,
                     output -> {
                         if (output.facts() == null) {

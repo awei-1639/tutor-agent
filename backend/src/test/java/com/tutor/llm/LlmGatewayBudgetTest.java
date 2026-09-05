@@ -63,7 +63,7 @@ class LlmGatewayBudgetTest {
         doThrow(new IllegalStateException("full")).when(concurrency).acquire();
 
         assertThatThrownBy(() -> gateway.chatJson(Purpose.EXPERT,
-                List.of(SystemMessage.from("system"), UserMessage.from("question")), "trace"))
+                List.of(LlmMessage.system("system"), LlmMessage.user("question")), "trace"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("full");
 
@@ -93,7 +93,7 @@ class LlmGatewayBudgetTest {
             Thread streaming = new Thread(() -> {
                 try {
                     gateway.chatStream(Purpose.CHAT,
-                            List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                            List.of(LlmMessage.system("system"), LlmMessage.user("question")),
                             "stream-trace", new NoopStreamingHandler(), cancellation);
                 } finally {
                     returned.countDown();
@@ -128,13 +128,13 @@ class LlmGatewayBudgetTest {
         try {
             LlmGateway gateway = new LlmGateway(properties("http://127.0.0.1:" + server.getAddress().getPort() + "/v1"),
                     jdbc, budgetGuard, concurrency);
-            AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+            AtomicReference<Boolean> truncated = new AtomicReference<>();
             CountDownLatch completed = new CountDownLatch(1);
             gateway.chatStream(Purpose.CHAT,
-                    List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                    List.of(LlmMessage.system("system"), LlmMessage.user("question")),
                     "stream-trace", new NoopStreamingHandler() {
-                        @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
-                            finishReason.set(response.finishReason());
+                        @Override public void onComplete(LlmStreamResult response) {
+                            truncated.set(response.truncated());
                             completed.countDown();
                         }
                     }, new CancellationToken());
@@ -146,7 +146,7 @@ class LlmGatewayBudgetTest {
             verify(budgetGuard, timeout(5000)).settle(reservation.capture(), eq(49L));
             assertThat(reservation.getValue().traceId()).isEqualTo("stream-trace");
             assertThat(reservation.getValue().reservedTokens()).isGreaterThan(49L);
-            assertThat(finishReason.get()).isEqualTo(FinishReason.STOP);
+            assertThat(truncated.get()).isFalse();
             // 记账精度: 请求显式开启 include_usage，供应商才会在流末尾上报真实用量。
             assertThat(requestBody.get()).contains("\"stream_options\":{\"include_usage\":true}");
         } finally {
@@ -164,19 +164,19 @@ class LlmGatewayBudgetTest {
         try {
             LlmGateway gateway = new LlmGateway(properties("http://127.0.0.1:" + server.getAddress().getPort() + "/v1"),
                     jdbc, budgetGuard, concurrency);
-            AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+            AtomicReference<Boolean> truncated = new AtomicReference<>();
             CountDownLatch completed = new CountDownLatch(1);
             gateway.chatStream(Purpose.CHAT,
-                    List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                    List.of(LlmMessage.system("system"), LlmMessage.user("question")),
                     "stream-trace", new NoopStreamingHandler() {
-                        @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
-                            finishReason.set(response.finishReason());
+                        @Override public void onComplete(LlmStreamResult response) {
+                            truncated.set(response.truncated());
                             completed.countDown();
                         }
                     }, new CancellationToken());
 
             assertThat(completed.await(5, TimeUnit.SECONDS)).isTrue();
-            assertThat(finishReason.get()).isEqualTo(FinishReason.LENGTH);
+            assertThat(truncated.get()).isTrue();
         } finally {
             server.stop(0);
         }
@@ -203,9 +203,9 @@ class LlmGatewayBudgetTest {
             AtomicBoolean completed = new AtomicBoolean();
 
             gateway.chatStream(Purpose.CHAT,
-                    List.of(SystemMessage.from("system"), UserMessage.from("question")),
+                    List.of(LlmMessage.system("system"), LlmMessage.user("question")),
                     "stream-trace", new NoopStreamingHandler() {
-                        @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
+                        @Override public void onComplete(LlmStreamResult response) {
                             completed.set(true);
                         }
                     }, new CancellationToken());
@@ -266,9 +266,9 @@ class LlmGatewayBudgetTest {
         }
     }
 
-    private static class NoopStreamingHandler implements dev.langchain4j.model.chat.response.StreamingChatResponseHandler {
-        @Override public void onPartialResponse(String token) { }
-        @Override public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) { }
+    private static class NoopStreamingHandler implements LlmStreamHandler {
+        @Override public void onToken(String token) { }
+        @Override public void onComplete(LlmStreamResult response) { }
         @Override public void onError(Throwable error) { }
     }
 

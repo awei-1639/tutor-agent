@@ -7,13 +7,10 @@ import com.tutor.retrieval.GraphScope;
 import com.tutor.retrieval.graph.GraphExpansionPolicy;
 import com.tutor.retrieval.graph.GraphStore;
 import com.tutor.retrieval.vector.VectorStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -26,7 +23,6 @@ import java.util.Set;
  */
 @Component
 public class FusedRetriever {
-    private static final Logger log = LoggerFactory.getLogger(FusedRetriever.class);
     /** α>0.733才能让rank1源的扩展节点(α/(K+1))超过向量第5名(1/(K+5))——否则图谱通道无法触及top5 */
     static final double ALPHA = 0.85;
     /**
@@ -41,24 +37,19 @@ public class FusedRetriever {
     static final int EXPAND_PER_SOURCE = 6; // 每个源节点最多取 6 个邻居
     static final int EXPAND_LIMIT = 40; // 所有源节点总共最多取 40 个邻居
 
-    private final EmbeddingGateway embeddings;
     private final RerankGateway reranker;
-    private final VectorStore vectorStore;
-    private final GraphStore graphStore;
-    private final EntityAliasStore aliasStore;
     private final RetrievalProfile profile;
+    private final RetrievalCandidatePipeline candidatePipeline;
     /** 默认禁用；仅在离线评测确认收益后启用。 */
     @Value("${tutor.retrieval.channel-floor.enabled:false}")
     private boolean channelFloorEnabled;
 
     public FusedRetriever(EmbeddingGateway embeddings, RerankGateway reranker, VectorStore vectorStore, GraphStore graphStore,
                           EntityAliasStore aliasStore, RetrievalProfile profile) {
-        this.embeddings = embeddings;
         this.reranker = reranker;
-        this.vectorStore = vectorStore;
-        this.graphStore = graphStore;
-        this.aliasStore = aliasStore;
         this.profile = profile;
+        this.candidatePipeline = new RetrievalCandidatePipeline(
+                embeddings, vectorStore, graphStore, aliasStore, profile);
     }
 
     /** 当前检索调参档案的稳定标识，用于追踪与反馈归因。 */
@@ -77,9 +68,9 @@ public class FusedRetriever {
     public RetrievalOutcome retrieve(String query, int topK, String traceId, boolean fused, boolean rerank,
                                      GraphExpansionPolicy graphPolicy, GraphScope scope) {
         boolean rerankEffective = rerank && isResourceSeeking(query);
-        CandidateOutcome candidateOutcome = retrieveFused(query,
+        RetrievalCandidatePipeline.CandidateOutcome candidateOutcome = candidatePipeline.retrieve(query,
                 rerankEffective ? Math.max(topK, profile.rerankPool()) : topK,
-                traceId, fused, graphPolicy, scope);
+                traceId, fused, graphPolicy, scope, channelFloorEnabled);
         List<Evidence> candidates = candidateOutcome.evidences();
         if (!rerankEffective || candidates.size() <= topK) {
             return new RetrievalOutcome(candidates.subList(0, Math.min(topK, candidates.size())),
@@ -101,101 +92,6 @@ public class FusedRetriever {
             return new RetrievalOutcome(candidates.subList(0, Math.min(topK, candidates.size())),
                     candidateOutcome.telemetry().withRerank(false, true));
         }
-    }
-
-    private CandidateOutcome retrieveFused(String query, int topK, String traceId, boolean fused,
-                                           GraphExpansionPolicy graphPolicy, GraphScope scope) {
-        GraphScope effectiveScope = scope == null ? GraphScope.publicOnly() : scope;
-        List<VectorStore.VectorHit> vecHits;
-        try {
-            float[] qv = embeddings.embedQuery(query, traceId);
-            vecHits = vectorStore.search(qv, profile.vectorTopN(), effectiveScope);
-        } catch (RuntimeException error) {
-            // Embedding 或 Provider 故障不能把检索升级为聊天硬失败；确定性的 PostgreSQL 稀疏检索仍可保障回答路径可用。
-            log.warn("向量检索不可用, 降级稀疏检索 trace={} type={}", traceId, error.getClass().getSimpleName());
-            List<Evidence> fallback = sparseFallback(query, topK, effectiveScope);
-            return new CandidateOutcome(fallback, new RetrievalTelemetry(0, fallback.size(), 0, 0,
-                    true, false, false, false));
-        }
-        if (!fused) {
-            return new CandidateOutcome(vecHits.stream().limit(topK)
-                    .map(h -> evidence(h, h.score(), null))
-                    .toList(), new RetrievalTelemetry(vecHits.size(), 0, 0, 0,
-                    false, false, false, false));
-        }
-        // 稀疏通道 (Phase 2 V4 2.1): pg_trgm 模糊匹配, 取 TOPN 同样的 20 候选
-        List<VectorStore.VectorHit> sparseHits;
-        boolean sparseDegraded = false;
-        try {
-            sparseHits = vectorStore.sparseSearch(query, profile.vectorTopN(), profile.sparseThreshold(), effectiveScope);
-        } catch (RuntimeException error) {
-            log.warn("稀疏检索不可用, 保留向量结果 trace={} type={}", traceId, error.getClass().getSimpleName());
-            sparseHits = List.of();
-            sparseDegraded = true;
-        }
-        List<String> aliasSources = List.of();
-        if (graphPolicy != null && graphPolicy.enabled()) {
-            LinkedHashSet<String> aliases = new LinkedHashSet<>();
-            if (aliasStore != null) {
-                List<String> aliasNodeSources = aliasStore.resolveNodeIds(seedAliases(query), 4);
-                if (aliasNodeSources != null) aliases.addAll(aliasNodeSources);
-            }
-            List<String> graphAliasSources = graphStore.findSeedIds(seedAliases(query), 4, effectiveScope);
-            if (graphAliasSources != null) aliases.addAll(graphAliasSources);
-            aliasSources = aliases.stream().limit(2).toList();
-        }
-        List<String> expandSources = selectExpansionSourcesWithProfile(vecHits, sparseHits, graphPolicy, aliasSources);
-        List<GraphStore.Neighbor> neighbors = graphStore.expand(
-                expandSources, profile.expandPerSource(), profile.expandLimit(), graphPolicy, effectiveScope);
-
-        Set<String> resourceNodeIds = new LinkedHashSet<>();
-        vecHits.stream().filter(FusedRetriever::isResourceHit)
-                .map(VectorStore.VectorHit::nodeId).forEach(resourceNodeIds::add);
-        sparseHits.stream().filter(FusedRetriever::isResourceHit)
-                .map(VectorStore.VectorHit::nodeId).forEach(resourceNodeIds::add);
-        // 对称降权的判据比 resource 更窄: 只有课程/书目类资源 (种子 res: 节点与
-        // resource_kind='resource' 的文档), 普通知识文档切片 (doc:, node_type=document) 不算
-        Set<String> resourceOnlyIds = new LinkedHashSet<>();
-        vecHits.stream().filter(FusedRetriever::isResourceOnlyHit)
-                .map(VectorStore.VectorHit::nodeId).forEach(resourceOnlyIds::add);
-        sparseHits.stream().filter(FusedRetriever::isResourceOnlyHit)
-                .map(VectorStore.VectorHit::nodeId).forEach(resourceOnlyIds::add);
-        Map<String, Double> fusedScores = fuseWithProfile(
-                vecHits.stream().map(VectorStore.VectorHit::nodeId).toList(),
-                sparseHits.stream().map(VectorStore.VectorHit::nodeId).toList(),
-                neighbors, expandSources, isResourceSeeking(query), graphPolicy, resourceNodeIds,
-                resourceOnlyIds);
-
-        // 回捞扩展节点的 chunk 文本; 记录图谱路径 (哪个源节点经哪条边扩出)
-        Map<String, VectorStore.VectorHit> byId = new HashMap<>();
-        vecHits.forEach(h -> byId.put(h.nodeId(), h));
-        sparseHits.forEach(h -> byId.putIfAbsent(h.nodeId(), h));
-        Map<String, String> graphPath = new HashMap<>();
-        List<String> missing = new ArrayList<>();
-        for (GraphStore.Neighbor n : neighbors) {
-            graphPath.putIfAbsent(n.dstId(), formatGraphPath(n));
-            if (!byId.containsKey(n.dstId())) missing.add(n.dstId());
-        }
-        byId.putAll(vectorStore.byNodeIds(missing, effectiveScope));
-
-        List<Evidence> ranked = fusedScores.entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .map(e -> {
-                    VectorStore.VectorHit h = byId.get(e.getKey());
-                    if (h == null) return null;
-                    return evidence(h, e.getValue(), graphPath.get(h.nodeId()));
-                })
-                .filter(x -> x != null)
-                .toList();
-        List<Evidence> selected = !channelFloorEnabled ? ranked.stream().limit(topK).toList() : ensureChannelFloor(ranked, topK,
-                vecHits.stream().map(VectorStore.VectorHit::nodeId).collect(java.util.stream.Collectors.toSet()),
-                sparseHits.stream().map(VectorStore.VectorHit::nodeId).collect(java.util.stream.Collectors.toSet()),
-                neighbors.stream().map(GraphStore.Neighbor::dstId).collect(java.util.stream.Collectors.toSet()));
-        return new CandidateOutcome(selected, new RetrievalTelemetry(vecHits.size(), sparseHits.size(),
-                neighbors.size(), expandSources.size(), false, sparseDegraded, false, false));
-    }
-
-    private record CandidateOutcome(List<Evidence> evidences, RetrievalTelemetry telemetry) {
     }
 
     public record RetrievalOutcome(List<Evidence> evidences, RetrievalTelemetry telemetry) {
@@ -257,102 +153,36 @@ public class FusedRetriever {
      */
     public List<Evidence> expandFrontier(List<Evidence> frontier, int topK,
                                          GraphExpansionPolicy policy, GraphScope scope) {
-        if (frontier == null || frontier.isEmpty() || topK <= 0 || policy == null || !policy.enabled()) {
-            return List.of();
-        }
-        Map<String, Evidence> sourceById = new LinkedHashMap<>();
-        frontier.stream()
-                .filter(e -> e != null && e.nodeId() != null && !e.nodeId().isBlank())
-                .forEach(e -> sourceById.putIfAbsent(e.nodeId(), e));
-        if (sourceById.isEmpty()) return List.of();
-
-        List<GraphStore.Neighbor> neighbors = graphStore.expand(
-                sourceById.keySet().stream().toList(), profile.expandPerSource(),
-                Math.min(profile.expandLimit(), Math.max(topK * 4, topK)), policy,
-                scope == null ? GraphScope.publicOnly() : scope);
-        if (neighbors.isEmpty()) return List.of();
-        Map<String, VectorStore.VectorHit> hits = vectorStore.byNodeIds(
-                neighbors.stream().map(GraphStore.Neighbor::dstId).distinct().toList(),
-                scope == null ? GraphScope.publicOnly() : scope);
-        List<Evidence> result = new ArrayList<>();
-        Set<String> seen = new LinkedHashSet<>();
-        for (GraphStore.Neighbor neighbor : neighbors) {
-            if (!seen.add(neighbor.dstId())) continue;
-            VectorStore.VectorHit hit = hits.get(neighbor.dstId());
-            Evidence source = sourceById.get(neighbor.srcId());
-            if (hit == null || source == null) continue;
-            GraphExpansionPolicy.Rule rule = policy.ruleFor(neighbor.rel(), neighbor.direction());
-            if (rule == null || !"active".equalsIgnoreCase(neighbor.status())) continue;
-            double parentScore = Math.max(0D, Math.min(1D, source.score()));
-            double score = parentScore * ALPHA * rule.weight()
-                    * Math.max(0D, Math.min(1D, neighbor.confidence()));
-            String path = appendGraphPath(source.graphPath(), formatGraphPath(neighbor));
-            result.add(evidence(hit, score, path));
-            if (result.size() >= topK) break;
-        }
-        return result;
+        return candidatePipeline.expandFrontier(frontier, topK, policy, scope);
     }
 
-    private static String appendGraphPath(String prefix, String current) {
-        if (prefix == null || prefix.isBlank()) return current;
-        return prefix + " | " + current;
-    }
-
-    /**
-     * 稠密和稀疏候选都获得成为图扩展源的有限机会。稠密通道保留更大配额，稀疏通道则保留
-     * Embedding 可能遗漏的罕见术语或缩写命中。
-     */
+    /** Compatibility seam for the profile-independent expansion-source policy tests. */
     static List<String> selectExpansionSources(List<VectorStore.VectorHit> dense,
                                                 List<VectorStore.VectorHit> sparse,
                                                 GraphExpansionPolicy policy) {
         return selectExpansionSources(dense, sparse, policy, List.of());
     }
 
-    /** 选择图扩展源，并从普通候选配额中预留最多两个别名源名额。 */
     static List<String> selectExpansionSources(List<VectorStore.VectorHit> dense,
                                                 List<VectorStore.VectorHit> sparse,
                                                 GraphExpansionPolicy policy,
                                                 List<String> aliases) {
         if (policy == null || !policy.enabled()) return List.of();
-        List<String> aliasSources = aliases == null ? List.of() : aliases.stream()
-                .filter(id -> id != null && !id.isBlank())
-                .distinct()
-                .limit(2)
-                .toList();
-        int baseSourceLimit = Math.max(0, EXPAND_SOURCE_N - aliasSources.size());
-        Set<String> ids = new LinkedHashSet<>();
-        if (dense != null) dense.stream()
-                .filter(h -> h != null && h.nodeId() != null && h.score() >= policy.minSourceScore())
-                .limit(DENSE_EXPAND_SOURCE_N)
-                .map(VectorStore.VectorHit::nodeId)
-                .forEach(ids::add);
-        if (sparse != null) sparse.stream()
-                .filter(h -> h != null && h.nodeId() != null && h.score() >= policy.minSourceScore())
-                .limit(SPARSE_EXPAND_SOURCE_N)
-                .map(VectorStore.VectorHit::nodeId)
-                .forEach(ids::add);
-        LinkedHashSet<String> result = new LinkedHashSet<>(ids.stream().limit(baseSourceLimit).toList());
-        result.addAll(aliasSources);
-        return result.stream().limit(EXPAND_SOURCE_N).toList();
-    }
-
-    private List<String> selectExpansionSourcesWithProfile(List<VectorStore.VectorHit> dense,
-                                                           List<VectorStore.VectorHit> sparse,
-                                                           GraphExpansionPolicy policy,
-                                                           List<String> aliasSources) {
-        List<String> safeAliases = aliasSources == null ? List.of() : aliasSources.stream()
+        List<String> safeAliases = aliases == null ? List.of() : aliases.stream()
                 .filter(id -> id != null && !id.isBlank()).distinct().limit(2).toList();
-        int baseSourceLimit = Math.max(0, profile.expandSourceN() - safeAliases.size());
-        Set<String> ids = new LinkedHashSet<>();
+        int baseLimit = Math.max(0, EXPAND_SOURCE_N - safeAliases.size());
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
         if (dense != null) dense.stream()
-                .filter(h -> h != null && h.nodeId() != null && h.score() >= policy.minSourceScore())
-                .limit(profile.denseExpandSourceN()).map(VectorStore.VectorHit::nodeId).forEach(ids::add);
+                .filter(hit -> hit != null && hit.nodeId() != null
+                        && hit.score() >= policy.minSourceScore())
+                .limit(DENSE_EXPAND_SOURCE_N).map(VectorStore.VectorHit::nodeId).forEach(ids::add);
         if (sparse != null) sparse.stream()
-                .filter(h -> h != null && h.nodeId() != null && h.score() >= policy.minSourceScore())
-                .limit(profile.sparseExpandSourceN()).map(VectorStore.VectorHit::nodeId).forEach(ids::add);
-        LinkedHashSet<String> result = new LinkedHashSet<>(ids.stream().limit(baseSourceLimit).toList());
+                .filter(hit -> hit != null && hit.nodeId() != null
+                        && hit.score() >= policy.minSourceScore())
+                .limit(SPARSE_EXPAND_SOURCE_N).map(VectorStore.VectorHit::nodeId).forEach(ids::add);
+        LinkedHashSet<String> result = new LinkedHashSet<>(ids.stream().limit(baseLimit).toList());
         result.addAll(safeAliases);
-        return result.stream().limit(profile.expandSourceN()).toList();
+        return result.stream().limit(EXPAND_SOURCE_N).toList();
     }
 
     static List<String> seedAliases(String query) {
@@ -369,7 +199,7 @@ public class FusedRetriever {
                 .distinct().limit(16).toList();
     }
 
-    private static String formatGraphPath(GraphStore.Neighbor neighbor) {
+    static String formatGraphPath(GraphStore.Neighbor neighbor) {
         String path = neighbor.direction() == GraphExpansionPolicy.Direction.INCOMING
                 ? neighbor.dstId() + " -[" + neighbor.rel() + "]-> " + neighbor.srcId()
                 : neighbor.srcId() + " -[" + neighbor.rel() + "]-> " + neighbor.dstId();
@@ -377,18 +207,7 @@ public class FusedRetriever {
                 + ", 来源=" + neighbor.source() + ")";
     }
 
-    private List<Evidence> sparseFallback(String query, int topK, GraphScope scope) {
-        try {
-            return vectorStore.sparseSearch(query, Math.max(topK, profile.vectorTopN()), profile.sparseThreshold(), scope).stream()
-                    .limit(topK)
-                    .map(h -> evidence(h, h.score(), null))
-                    .toList();
-        } catch (RuntimeException ignored) {
-            return List.of();
-        }
-    }
-
-    private static Evidence evidence(VectorStore.VectorHit hit, double score, String graphPath) {
+    static Evidence evidence(VectorStore.VectorHit hit, double score, String graphPath) {
         return new Evidence(hit.nodeId(), hit.nodeType(), hit.chunkText(), score, graphPath,
                 hit.sourceUrl(), hit.sourceStatus(), hit.contentHash());
     }
@@ -416,7 +235,7 @@ public class FusedRetriever {
         return ResourceQueryClassifier.classify(query);
     }
 
-    private static boolean isResourceHit(VectorStore.VectorHit hit) {
+    static boolean isResourceHit(VectorStore.VectorHit hit) {
         if (hit == null) return false;
         String type = hit.nodeType() == null ? "" : hit.nodeType().toLowerCase();
         String status = hit.sourceStatus() == null ? "" : hit.sourceStatus().toLowerCase();
@@ -430,7 +249,7 @@ public class FusedRetriever {
     }
 
     /** 对称降权判据: 课程/书目类资源, 不含普通知识文档切片 (node_type=document)。 */
-    private static boolean isResourceOnlyHit(VectorStore.VectorHit hit) {
+    static boolean isResourceOnlyHit(VectorStore.VectorHit hit) {
         if (hit == null) return false;
         String type = hit.nodeType() == null ? "" : hit.nodeType().toLowerCase();
         return type.equals("resource") || (hit.nodeId() != null && hit.nodeId().startsWith("res:"));

@@ -6,9 +6,7 @@ import com.tutor.config.KnowledgeUploadProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.URL;
 import java.time.Duration;
@@ -24,24 +22,22 @@ final class KnowledgeUploadSessionService {
     private static final Logger log = LoggerFactory.getLogger(KnowledgeUploadSessionService.class);
     private static final Duration DIRECT_UPLOAD_VALIDITY = Duration.ofMinutes(15);
 
-    private final JdbcTemplate jdbc;
+    private final KnowledgeUploadSessionStore store;
     private final OssStorage oss;
     private final KnowledgeIngestionJobStore jobs;
-    private final TransactionTemplate transactions;
     private final KnowledgeUploadRateLimiter uploadLimiter;
     private final KnowledgeOssCleanupStore ossCleanup;
     private final KnowledgeUploadProperties uploadProperties;
     private final KnowledgeIngestionProperties ingestionProperties;
 
-    KnowledgeUploadSessionService(JdbcTemplate jdbc, OssStorage oss, KnowledgeIngestionJobStore jobs,
-                                   TransactionTemplate transactions, KnowledgeUploadRateLimiter uploadLimiter,
+    KnowledgeUploadSessionService(KnowledgeUploadSessionStore store, OssStorage oss, KnowledgeIngestionJobStore jobs,
+                                   KnowledgeUploadRateLimiter uploadLimiter,
                                    KnowledgeOssCleanupStore ossCleanup,
                                    KnowledgeUploadProperties uploadProperties,
                                    KnowledgeIngestionProperties ingestionProperties) {
-        this.jdbc = jdbc;
+        this.store = store;
         this.oss = oss;
         this.jobs = jobs;
-        this.transactions = transactions;
         this.uploadLimiter = uploadLimiter;
         this.ossCleanup = ossCleanup;
         this.uploadProperties = uploadProperties;
@@ -99,22 +95,10 @@ final class KnowledgeUploadSessionService {
             }
             final String finalUploadId = uploadId;
             final long finalPartSize = partSize;
-            transactions.executeWithoutResult(status -> {
-                jdbc.update("""
-                        INSERT INTO knowledge_documents
-                        (id, title, original_filename, content_type, size_bytes, content_hash, oss_object_key,
-                         resource_kind, status, created_by)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?)
-                        """, id, title, filename, effectiveType, sizeBytes,
-                        KnowledgeDocumentFilePolicy.sha256(id.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                        objectKey, resourceKind == null ? "document" : resourceKind, adminId);
-                jdbc.update("""
-                        INSERT INTO knowledge_upload_sessions
-                        (document_id, admin_user_id, object_key, expected_size, expires_at, upload_id, part_size)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """, id, adminId, objectKey, sizeBytes, expiresAt, finalUploadId,
-                        finalPartSize == 0 ? null : finalPartSize);
-            });
+            store.create(id, adminId, title, filename, effectiveType, sizeBytes,
+                    KnowledgeDocumentFilePolicy.sha256(id.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                    objectKey, resourceKind == null ? "document" : resourceKind,
+                    expiresAt, finalUploadId, finalPartSize);
         } catch (RuntimeException error) {
             if (uploadId != null) {
                 try {
@@ -136,11 +120,7 @@ final class KnowledgeUploadSessionService {
     KnowledgeDocumentService.UploadSession resumeUpload(long adminId, UUID id) {
         Map<String, Object> session;
         try {
-            session = jdbc.queryForMap("""
-                    SELECT s.object_key, s.expected_size, s.status, s.expires_at, s.upload_id, s.part_size
-                    FROM knowledge_upload_sessions s JOIN knowledge_documents d ON d.id=s.document_id
-                    WHERE s.document_id=? AND s.admin_user_id=? AND d.deleted_at IS NULL
-                    """, id, adminId);
+            session = store.findForAdmin(id, adminId);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "上传会话不存在");
         }
@@ -164,10 +144,7 @@ final class KnowledgeUploadSessionService {
         }
 
         Instant renewedExpiry = Instant.now().plus(uploadProperties.sessionTtl());
-        int renewed = jdbc.update("""
-                UPDATE knowledge_upload_sessions SET expires_at=?
-                WHERE document_id=? AND admin_user_id=? AND status='pending' AND expires_at > now()
-                """, renewedExpiry, id, adminId);
+        int renewed = store.renew(id, adminId, renewedExpiry);
         if (renewed != 1) throw new ResponseStatusException(HttpStatus.CONFLICT, "上传会话状态已变化");
 
         try {
@@ -193,8 +170,7 @@ final class KnowledgeUploadSessionService {
             } catch (RuntimeException ignored) {
                 // 单次 PUT 尚未到达 OSS，返回新的上传 URL。
             }
-            String contentType = jdbc.queryForObject(
-                    "SELECT content_type FROM knowledge_documents WHERE id=?", String.class, id);
+            String contentType = store.contentType(id);
             String freshUrl = objectReady ? ""
                     : oss.presignedPutUrl(objectKey, contentType, DIRECT_UPLOAD_VALIDITY).toString();
             return new KnowledgeDocumentService.UploadSession(id.toString(), freshUrl, renewedExpiry.toString(),
@@ -208,11 +184,7 @@ final class KnowledgeUploadSessionService {
                                                           List<KnowledgeDocumentService.CompletedPart> completedParts) {
         Map<String, Object> session;
         try {
-            session = jdbc.queryForMap("""
-                    SELECT s.object_key, s.expected_size, s.status, s.expires_at, s.upload_id, s.part_size
-                    FROM knowledge_upload_sessions s JOIN knowledge_documents d ON d.id=s.document_id
-                    WHERE s.document_id=? AND s.admin_user_id=? AND d.deleted_at IS NULL
-                    """, id, adminId);
+            session = store.findForAdmin(id, adminId);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "上传会话不存在");
         }
@@ -241,15 +213,7 @@ final class KnowledgeUploadSessionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OSS 文件尚未上传完成");
         }
         try {
-            transactions.executeWithoutResult(status -> {
-                int updated = jdbc.update("""
-                        UPDATE knowledge_upload_sessions SET status='completed', completed_at=now()
-                        WHERE document_id=? AND admin_user_id=? AND status='pending' AND expires_at > now()
-                        """, id, adminId);
-                if (updated != 1) throw new IllegalStateException("上传会话状态已变化");
-                jdbc.update("UPDATE knowledge_documents SET status='uploaded', error_message=NULL, updated_at=now() WHERE id=? AND status='uploading'", id);
-                jobs.enqueue(id, 0);
-            });
+            store.complete(id, adminId, () -> jobs.enqueue(id, 0));
         } catch (RuntimeException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "上传会话已完成或已失效");
         }
@@ -258,12 +222,7 @@ final class KnowledgeUploadSessionService {
     }
 
     void cleanupExpiredUploadSessions() {
-        List<Map<String, Object>> expired = jdbc.query("""
-                SELECT document_id, object_key, upload_id FROM knowledge_upload_sessions
-                WHERE status='pending' AND expires_at < now()
-                ORDER BY expires_at LIMIT 50
-                """, (rs, rowNum) -> Map.of("id", rs.getObject(1, UUID.class), "key", rs.getString(2),
-                "uploadId", rs.getString(3) == null ? "" : rs.getString(3)));
+        List<Map<String, Object>> expired = store.expiredPending();
         for (Map<String, Object> row : expired) {
             UUID id = (UUID) row.get("id");
             String objectKey = (String) row.get("key");
@@ -316,15 +275,11 @@ final class KnowledgeUploadSessionService {
     }
 
     private void expireUploadSession(UUID id) {
-        transactions.executeWithoutResult(status -> {
-            jdbc.update("UPDATE knowledge_upload_sessions SET status='expired' WHERE document_id=? AND status='pending'", id);
-            jdbc.update("UPDATE knowledge_documents SET status='deleted', deleted_at=COALESCE(deleted_at, now()), updated_at=now() WHERE id=? AND status='uploading'", id);
-        });
+        store.expire(id);
     }
 
     private void audit(long adminId, String action, UUID documentId) {
-        jdbc.update("INSERT INTO admin_audit_log (admin_user_id, action, metadata) VALUES (?, ?, ?::jsonb)",
-                adminId, action, "{\"documentId\":\"" + documentId + "\"}");
+        store.audit(adminId, action, documentId);
     }
 
     private static Instant instantOf(Object value) {

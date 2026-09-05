@@ -12,8 +12,8 @@ import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.policy.MemoryAdmissionPolicy;
 import com.tutor.resume.PiiMasker;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -138,7 +138,7 @@ public class EpisodeSummarizer {
             StructuredOutputResult<EpisodeSummaryOutput> structured = structuredOutputService.generate(
                     StructuredTask.EPISODE_SUMMARY,
                     Purpose.SUMMARY,
-                    List.of(SystemMessage.from(SYS), UserMessage.from(safeConversation)),
+                    List.of(LlmMessage.system(SYS), LlmMessage.user(safeConversation)),
                     EpisodeSummaryOutput.class,
                     output -> {
                         if (output.summary() == null || output.summary().isBlank()

@@ -2,7 +2,8 @@ package com.tutor.llm.structured;
 
 import com.tutor.contract.Purpose;
 import com.tutor.llm.JsonGenerationGateway;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -35,7 +36,7 @@ class StructuredOutputServiceTest {
                 .generate(
                         StructuredTask.COREFERENCE,
                         Purpose.EXTRACT,
-                        List.of(UserMessage.from("question")),
+                        List.of(LlmMessage.user("question")),
                         CoreferenceOutput.class,
                         output -> assertThat(output.confidence()).isGreaterThan(0.9D),
                         "trace"
@@ -65,7 +66,7 @@ class StructuredOutputServiceTest {
                 .generate(
                         StructuredTask.COREFERENCE,
                         Purpose.EXTRACT,
-                        List.of(UserMessage.from("question")),
+                        List.of(LlmMessage.user("question")),
                         CoreferenceOutput.class,
                         output -> {
                             if (!"订单系统".equals(output.resolvedTo())) {
@@ -93,7 +94,7 @@ class StructuredOutputServiceTest {
                 .generate(
                         StructuredTask.COREFERENCE,
                         Purpose.EXTRACT,
-                        List.of(UserMessage.from("question")),
+                        List.of(LlmMessage.user("question")),
                         CoreferenceOutput.class,
                         null,
                         "trace"

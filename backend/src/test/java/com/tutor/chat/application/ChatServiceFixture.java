@@ -46,7 +46,6 @@ final class ChatServiceFixture {
     static final long USER_ID = 42L;
     static final long CONVERSATION_ID = 9L;
 
-    final FusedRetriever retriever = mock(FusedRetriever.class);
     final AgenticRetriever agenticRetriever = mock(AgenticRetriever.class);
     final PromptAssembler promptAssembler = mock(PromptAssembler.class);
     final ProfileSection profileSection = mock(ProfileSection.class);
@@ -81,17 +80,17 @@ final class ChatServiceFixture {
     }
 
     ChatService build() {
-        return new ChatService(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget,
+        return new ChatService(agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
-                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, factRecall, factsSection,
+                longTermMemory, episodeSection, factRecall, factsSection,
                 citationVerification, postTurnTasks, memoryConsent);
     }
 
     /** 启用受控工具循环的构造器；toolLoopEnabled=false 时与 {@link #build()} 行为一致。 */
     ChatService buildWithToolLoop(com.tutor.tool.ToolCallLoop toolCallLoop, boolean toolLoopEnabled) {
-        return new ChatService(retriever, agenticRetriever, promptAssembler, profileSection, tokenBudget,
+        return new ChatService(agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
-                summaryFolder, episodeSummarizer, longTermMemory, episodeSection, factRecall, factsSection,
+                longTermMemory, episodeSection, factRecall, factsSection,
                 citationVerification, postTurnTasks, memoryConsent, null, null, toolCallLoop, toolLoopEnabled);
     }
 
