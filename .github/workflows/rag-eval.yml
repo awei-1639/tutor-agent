@@ -21,9 +21,9 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'backend/src/main/java/com/tutor/retrieval/**'
-      - 'backend/src/main/java/com/tutor/context/**'
-      - 'backend/src/main/java/com/tutor/expert/**'
+      - 'backend/src/main/java/com/tutor/knowledge/retrieval/**'
+      - 'backend/src/main/java/com/tutor/conversation/context/**'
+      - 'backend/src/main/java/com/tutor/agent/expert/**'
       - 'graph_data/**'
       - 'evals/**'
 

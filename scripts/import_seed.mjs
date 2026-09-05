@@ -5,15 +5,20 @@
 //   wsl docker exec -i tutor-postgres psql -U tutor -d tutor -q < kg_entity_aliases.sql
 //   wsl docker exec -i tutor-postgres psql -U tutor -d tutor -q < kg_chunks.sql
 //   wsl docker exec -i tutor-postgres psql -U tutor -d tutor -q < jobs.sql
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const env = Object.fromEntries(
-  readFileSync(new URL('../.env', import.meta.url), 'utf8')
-    .split(/\r?\n/).filter(l => l.includes('=') && !l.startsWith('#'))
-    .map(l => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()])
-);
+// .env 是本地便利来源, 不是硬依赖: CI 里密钥经 process.env 注入,
+// 文件不存在时静默跳过, 环境变量始终优先于 .env。
+const envFile = existsSync(new URL('../.env', import.meta.url))
+  ? Object.fromEntries(
+      readFileSync(new URL('../.env', import.meta.url), 'utf8')
+        .split(/\r?\n/).filter(l => l.includes('=') && !l.startsWith('#'))
+        .map(l => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()])
+    )
+  : {};
+const env = { ...envFile, ...process.env };
 const OUT = process.env.OUT_DIR || join(tmpdir(), 'tutor-seed');
 mkdirSync(OUT, { recursive: true });
 
