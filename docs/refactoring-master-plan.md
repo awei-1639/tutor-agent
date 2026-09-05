@@ -464,6 +464,7 @@ infra_failures
 - Admin/Feedback/Resume 回归审计已完成：新增 `AdminStorePostgresIT`（2 项）、`MessageFeedbackStorePostgresIT`（2 项）、`ResumeStorePostgresIT`（1 项）真实数据库回归（WSL + Testcontainers，全量 Flyway migration）；
 - 回归审计发现并修复一处抽取回归：`AdminStore.audit` 行映射误用 `Map.of`，无 target 用户的审计行读取时抛 NPE；已恢复迁移前 `LinkedHashMap` 的 null 容忍语义；
 - 当前检查点已通过 420 项测试（跳过 1 项）、JaCoCo 门禁和 `git diff --check`；
-- push 域回归审计已完成：新增 `PushStoresPostgresIT`（4 项）覆盖通知读写与用户隔离、岗位查询回退、推送任务幂等和 embedding 相似度；`recordFailure` 后 `claimPush` 为 false、失败岗位不再重推的当前语义已钉入回归。
+- push 域回归审计已完成：新增 `PushStoresPostgresIT`（4 项）覆盖通知读写与用户隔离、岗位查询回退、推送任务幂等和 embedding 相似度；`recordFailure` 后 `claimPush` 为 false、失败岗位不再重推的当前语义已钉入回归；
+- Memory 域回归审计已完成：新增 `MemoryStoresPostgresIT`（3 项）覆盖澄清状态/摘要加密与代际 fencing、Episode 全生命周期（加密、轮换、PII 脱敏、来源窗口幂等、过期过滤、用户隔离）和外部记忆授权代际语义；未发现抽取回归。
 
-下一切片只在新的检查点上进行：Memory 域边界（Conversation/Episode/Fact/MemorySync）按同样方式做回归审计；随后进入 Phase 5 收口的检索通道消融实验，只有能明显降低跨域理解成本时才继续新增类型。
+下一切片只在新的检查点上进行：进入 Phase 5 收口的检索通道消融实验（`scripts/eval-local.sh`，vector/sparse/graph/rerank 组合，以质量、延迟、Token 成本决定 Neo4j/Rerank/多跳存留）；物理包迁移等消融结论后再评估。
