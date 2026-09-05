@@ -5,8 +5,7 @@ import com.tutor.contract.Purpose;
 import com.tutor.contract.SideEffect;
 import com.tutor.contract.ToolSpec;
 import com.tutor.llm.JsonGenerationGateway;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -27,7 +26,7 @@ class ToolCallLoopTest {
                 "{\"type\":\"final\",\"answer\":\"工具返回：hello\"}");
         ToolCallLoop loop = new ToolCallLoop(gateway, new ToolExecutor(registry, call -> { }, new ObjectMapper()), new ObjectMapper());
 
-        ToolCallLoop.LoopResult result = loop.run(Purpose.CHAT, List.of(UserMessage.from("查询")), "trace-1",
+        ToolCallLoop.LoopResult result = loop.run(Purpose.CHAT, List.of(LlmMessage.user("查询")), "trace-1",
                 new ToolExecutionContext("trace-1", "chat", 7, null, false));
 
         assertThat(result.answer()).isEqualTo("工具返回：hello");
@@ -67,7 +66,7 @@ class ToolCallLoopTest {
 
         ToolCallLoop.LoopResult result = loop.run(
                 Purpose.CHAT,
-                List.of(UserMessage.from("查询")),
+                List.of(LlmMessage.user("查询")),
                 "trace-repair",
                 new ToolExecutionContext("trace-repair", "chat", 7, null, false));
 
@@ -81,7 +80,7 @@ class ToolCallLoopTest {
         private final String[] responses;
         private int index;
         private SequenceGateway(String... responses) { this.responses = responses; }
-        public String chatJson(Purpose purpose, List<ChatMessage> messages, String traceId) { return responses[Math.min(index++, responses.length - 1)]; }
-        public String chatJson(Purpose purpose, List<ChatMessage> messages, String traceId, Duration timeout, int maxAttempts) { return chatJson(purpose, messages, traceId); }
+        public String chatJson(Purpose purpose, List<LlmMessage> messages, String traceId) { return responses[Math.min(index++, responses.length - 1)]; }
+        public String chatJson(Purpose purpose, List<LlmMessage> messages, String traceId, Duration timeout, int maxAttempts) { return chatJson(purpose, messages, traceId); }
     }
 }

@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 class HealthControllerTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private final Driver neo4j = mock(Driver.class);
-    private final HealthController controller = new HealthController(jdbc, neo4j);
+    private final HealthController controller = new HealthController(new HealthReadinessService(jdbc, neo4j));
 
     @Test
     void livenessDoesNotDependOnStorage() {

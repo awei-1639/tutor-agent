@@ -41,6 +41,18 @@ class AuthInterceptorTest {
     }
 
     @Test
+    void errorDispatchPassesThroughWithoutAuthenticating() throws Exception {
+        // Spring 把业务端点异常 ERROR dispatch 到 /error; 若这里拦下要求 token,
+        // 所有 5xx 都会被改写成 401, 客户端永远看不到真实状态码。
+        HttpServletRequest request = request("/error", null);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
+        verifyNoInteractions(jwt);
+        verify(response, never()).setStatus(anyInt());
+    }
+
+    @Test
     void prometheusEndpointRequiresAuthentication() throws Exception {
         HttpServletRequest request = request("/actuator/prometheus", null);
         HttpServletResponse response = responseWithWriter();

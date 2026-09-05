@@ -1,7 +1,6 @@
 package com.tutor.llm;
 
 import com.tutor.config.LlmProperties;
-import com.tutor.config.ExecutorLifecycle;
 import com.tutor.context.TokenBudget;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
@@ -11,21 +10,8 @@ import com.tutor.llm.structured.StructuredOutputRecorder;
 import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
 import com.tutor.llm.structured.StructuredTask;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.TokenUsage;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -33,24 +19,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.Executors;
 
 /**
  * 全项目唯一的 LLM/Embedding 出口 (实现设计 6.1)。
@@ -68,18 +39,15 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     private final EmbeddingProviderClient embeddingClient;
     private final RerankProviderClient rerankClient;
     private final ChatStreamProviderClient chatStreamClient;
+    private final LlmJsonExecutor jsonExecutor;
     private final RetrievalJudgePromptFactory judgePromptFactory = new RetrievalJudgePromptFactory();
     private final TokenBudget tokenBudget = new TokenBudget();
+    private final LlmRequestPolicy requestPolicy;
     private final ObjectMapper mapper = new ObjectMapper();
     private final StructuredOutputService structuredOutputService;
     private volatile GenAiTelemetry telemetry = new GenAiTelemetry(null);
     private volatile BudgetPressureService budgetPressure;
-    /** 预留估算校准：实测/估算比值的 EMA（钳制 0.8~1.5，种子 1.2），只由供应商实测用量驱动。 */
-    private volatile double reserveCalibration = 1.2;
-    private final ExecutorService streamingExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
+    private final LlmStreamingExecutor streamingExecutor;
 
     public LlmGateway(LlmProperties props, JdbcTemplate jdbc, LlmBudgetGuard budgetGuard,
                       LlmConcurrencyGate concurrency) {
@@ -93,15 +61,18 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         this.usageRecorder = new LlmUsageRecorder(jdbc);
         this.budgetGuard = budgetGuard;
         this.concurrency = concurrency;
+        this.requestPolicy = new LlmRequestPolicy(props, tokenBudget);
         this.embeddingClient = new EmbeddingProviderClient(props);
         this.rerankClient = new RerankProviderClient(props);
         this.chatStreamClient = new ChatStreamProviderClient(props);
+        this.streamingExecutor = new LlmStreamingExecutor(chatStreamClient, tokenBudget, requestPolicy);
+        this.jsonExecutor = new LlmJsonExecutor(props, requestPolicy);
         this.structuredOutputService = new StructuredOutputService(this, structuredOutputRecorder);
     }
 
     @PreDestroy
     void shutdownStreamingExecutor() {
-        ExecutorLifecycle.shutdown(streamingExecutor, "llm-streaming", log);
+        streamingExecutor.shutdown();
     }
 
     /** 可选注入 OpenTelemetry tracer；未配置时保持 no-op，不影响测试构造器。 */
@@ -128,9 +99,9 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
 
     private float[] embedInternal(String text, String traceId, boolean preserveHeadTail) {
         String safeText = preserveHeadTail
-                ? tokenBudget.headTail(text, tokenLimits().embedInputTokens(), 0.6D)
-                : boundedText(text, tokenLimits().embedInputTokens());
-        long perAttemptEstimate = estimateText(safeText);
+                ? tokenBudget.headTail(text, requestPolicy.tokenLimits().embedInputTokens(), 0.6D)
+                : requestPolicy.boundedText(text, requestPolicy.tokenLimits().embedInputTokens());
+        long perAttemptEstimate = requestPolicy.estimateText(safeText);
         long reserved = scaleEstimate(perAttemptEstimate, EMBED_MAX_ATTEMPTS);
         LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, false);
         boolean acquired = false;
@@ -172,9 +143,9 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         if (texts == null || texts.isEmpty()) return List.of();
         if (texts.size() > 32) throw new IllegalArgumentException("embedding batch too large");
         List<String> safeTexts = texts.stream()
-                .map(text -> boundedText(text, tokenLimits().embedInputTokens()))
+                .map(text -> requestPolicy.boundedText(text, requestPolicy.tokenLimits().embedInputTokens()))
                 .toList();
-        long perAttemptEstimate = safeTexts.stream().mapToLong(this::estimateText).sum();
+        long perAttemptEstimate = safeTexts.stream().mapToLong(requestPolicy::estimateText).sum();
         long reserved = scaleEstimate(perAttemptEstimate, EMBED_MAX_ATTEMPTS);
         // 批量嵌入属于知识入库等后台工作，占用后台子预算，不挤占前台可用额度。
         LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, true);
@@ -208,254 +179,58 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     }
 
     /** 流式对话。首 token 前失败可由调用方决定是否重建; 网关负责限额检查与记账。 */
-    public void chatStream(Purpose purpose, List<ChatMessage> messages, String traceId,
-                           StreamingChatResponseHandler handler) {
+    public void chatStream(Purpose purpose, List<LlmMessage> messages, String traceId,
+                           LlmStreamHandler handler) {
         chatStream(purpose, messages, traceId, handler, new CancellationToken());
     }
 
-    /**
-     * 可取消的流式聊天。取消令牌与供应商的 ResponseHandle 绑定，因此 SSE 客户端
-     * 断开时会关闭底层 HTTP 流。
-     */
-    public void chatStream(Purpose purpose, List<ChatMessage> messages, String traceId,
-                           StreamingChatResponseHandler handler, CancellationToken cancellation) {
+    /** Synchronous to callers: returns only after the provider stream has settled. */
+    public void chatStream(Purpose purpose, List<LlmMessage> messages, String traceId,
+                           LlmStreamHandler handler, CancellationToken cancellation) {
         if (cancellation == null) throw new IllegalArgumentException("cancellation must not be null");
         if (cancellation.isCancelled()) return;
-        List<ChatMessage> safeMessages = boundedMessages(purpose, messages);
-        long reserved = estimate(purpose, safeMessages);
+        List<ChatMessage> safeMessages = boundedMessages(purpose, LlmMessageMapper.toLangChain(messages));
+        long reserved = requestPolicy.estimate(purpose, safeMessages, budgetPressure);
         LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, false);
         boolean acquired = false;
-        AtomicBoolean finished = new AtomicBoolean();
-        AtomicLong actualTokens = new AtomicLong();
-        AtomicBoolean truncated = new AtomicBoolean();
-        java.util.concurrent.atomic.AtomicReference<InputStream> inputStream = new java.util.concurrent.atomic.AtomicReference<>();
-        java.util.concurrent.atomic.AtomicReference<Future<?>> streamTask = new java.util.concurrent.atomic.AtomicReference<>();
-        java.util.concurrent.atomic.AtomicReference<AutoCloseable> cancellationRegistration = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicBoolean settled = new java.util.concurrent.atomic.AtomicBoolean();
+        LlmStreamingExecutor.Accounting accounting = new LlmStreamingExecutor.Accounting() {
+            @Override
+            public void settle(long actualTokens) {
+                if (settled.compareAndSet(false, true)) {
+                    settleAndRelease(reservation, actualTokens, true);
+                }
+            }
+
+            @Override
+            public void record(String traceId, Purpose purpose, String model,
+                               long inputTokens, long outputTokens, long durationMs, String status) {
+                recordUsage(traceId, purpose, model, inputTokens, outputTokens, durationMs, status);
+            }
+
+            @Override
+            public void calibrate(long estimated, long measured) {
+                requestPolicy.calibrate(estimated, measured);
+            }
+        };
         try {
             concurrency.acquire();
             acquired = true;
             if (cancellation.isCancelled()) {
-                settleAndRelease(reservation, 0, true);
+                accounting.settle(0);
                 return;
             }
             String model = props.routing().getOrDefault(purpose.name().toLowerCase(), "deepseek-chat");
-            Runnable finish = () -> {
-                if (finished.compareAndSet(false, true)) {
-                    settleAndRelease(reservation, actualTokens.get(), true);
-                    closeCancellationRegistration(cancellationRegistration);
-                }
-            };
-            HttpRequest request = chatStreamClient.buildRequest(model, safeMessages, outputLimit(purpose));
-            Future<?> task = streamingExecutor.submit(() -> runStreamingRequest(
-                    request, purpose, model, traceId, handler, cancellation, inputStream, finish,
-                    outputLimit(purpose), actualTokens, truncated, reserved));
-            streamTask.set(task);
-            cancellationRegistration.set(cancellation.onCancel(() -> {
-                Future<?> running = streamTask.get();
-                if (running != null) running.cancel(true);
-                InputStream input = inputStream.get();
-                if (input != null) {
-                    try {
-                        input.close();
-                    } catch (IOException ignored) {
-                        // 重复关闭已关闭的流不会造成问题。
-                    }
-                }
-                finish.run();
-            }));
-            if (finished.get()) {
-                closeCancellationRegistration(cancellationRegistration);
-            }
-            if (cancellation.isCancelled()) {
-                task.cancel(true);
-                finish.run();
-            }
-        } catch (RuntimeException e) {
-            if (acquired && finished.compareAndSet(false, true)) {
-                settleAndRelease(reservation, actualTokens.get(), true);
-                closeCancellationRegistration(cancellationRegistration);
-            } else if (!acquired) {
+            int maxOutputTokens = requestPolicy.outputLimit(purpose, budgetPressure);
+            streamingExecutor.stream(purpose, safeMessages, model, traceId, handler,
+                    cancellation, maxOutputTokens, reserved, accounting);
+        } catch (RuntimeException error) {
+            if (acquired) {
+                accounting.settle(0);
+            } else {
                 settleAndRelease(reservation, 0, false);
             }
-            throw e;
-        }
-    }
-
-    private void runStreamingRequest(HttpRequest request, Purpose purpose, String model, String traceId,
-                                     StreamingChatResponseHandler handler, CancellationToken cancellation,
-                                     java.util.concurrent.atomic.AtomicReference<InputStream> inputStream,
-                                     Runnable finish, int maxOutputTokens,
-                                     AtomicLong actualTokens, AtomicBoolean truncated, long reservedEstimate) {
-        long startedAt = System.currentTimeMillis();
-        StringBuilder fullText = new StringBuilder();
-        AtomicLong inputTokens = new AtomicLong(-1);
-        AtomicLong outputTokens = new AtomicLong(-1);
-        AtomicBoolean usageRecorded = new AtomicBoolean();
-        try {
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                try (InputStream ignored = response.body()) {
-                    // 上报供应商失败前先读取完毕并关闭错误响应体。
-                }
-                throw new IllegalStateException("chat stream HTTP " + response.statusCode());
-            }
-            inputStream.set(response.body());
-            try (InputStream body = response.body()) {
-                streamSse(body, fullText, inputTokens, outputTokens, actualTokens, truncated,
-                        handler, cancellation, maxOutputTokens);
-            } finally {
-                inputStream.set(null);
-            }
-            if (cancellation.isCancelled()) {
-                if (outputTokens.get() < 0) outputTokens.set(tokenBudget.count(fullText.toString()));
-                recordStreamUsage(traceId, purpose, model, inputTokens, outputTokens,
-                        startedAt, "cancelled", usageRecorded);
-                finish.run();
-                return;
-            }
-            if (fullText.toString().isBlank()) {
-                throw new IllegalStateException("chat stream returned an empty response");
-            }
-            if (outputTokens.get() < 0) outputTokens.set(tokenBudget.count(fullText.toString()));
-            TokenUsage usage = tokenUsage(inputTokens.get(), outputTokens.get());
-            ChatResponse complete = ChatResponse.builder()
-                    .aiMessage(AiMessage.from(fullText.toString()))
-                    .modelName(model)
-                    .tokenUsage(usage)
-                    .finishReason(truncated.get() ? FinishReason.LENGTH : FinishReason.STOP)
-                    .build();
-            actualTokensFor(usage, inputTokens, outputTokens);
-            recordStreamUsage(traceId, purpose, model, inputTokens, outputTokens,
-                    startedAt, "ok", usageRecorded);
-            // 供应商实测用量到位后校准预留估算（仅在正常完成时，失败路径的估算会失真）。
-            if (inputTokens.get() > 0 || outputTokens.get() > 0) {
-                calibrate(reservedEstimate, Math.max(0, inputTokens.get()) + Math.max(0, outputTokens.get()));
-            }
-            finish.run();
-            if (!cancellation.isCancelled()) handler.onCompleteResponse(complete);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            if (outputTokens.get() < 0) outputTokens.set(tokenBudget.count(fullText.toString()));
-            recordStreamUsage(traceId, purpose, model, inputTokens, outputTokens,
-                    startedAt, cancellation.isCancelled() ? "cancelled" : "error", usageRecorded);
-            finish.run();
-            if (!cancellation.isCancelled()) handler.onError(e);
-        } catch (Exception e) {
-            if (outputTokens.get() < 0) outputTokens.set(tokenBudget.count(fullText.toString()));
-            recordStreamUsage(traceId, purpose, model, inputTokens, outputTokens,
-                    startedAt, cancellation.isCancelled() ? "cancelled" : "error", usageRecorded);
-            finish.run();
-            if (!cancellation.isCancelled()) handler.onError(e);
-        }
-    }
-
-    private void streamSse(InputStream body, StringBuilder fullText,
-                           AtomicLong inputTokens, AtomicLong outputTokens,
-                           AtomicLong actualTokens, AtomicBoolean truncated,
-                           StreamingChatResponseHandler handler, CancellationToken cancellation,
-                           int maxOutputTokens) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
-            String line;
-            StringBuilder data = new StringBuilder();
-            while (!cancellation.isCancelled() && (line = reader.readLine()) != null) {
-                if (line.isEmpty()) {
-                    if (consumeSseData(data.toString(), fullText, inputTokens, outputTokens,
-                            actualTokens, truncated, handler, cancellation, maxOutputTokens)) return;
-                    data.setLength(0);
-                } else if (line.startsWith("data:")) {
-                    if (data.length() > 0) data.append('\n');
-                    data.append(line.substring(5).stripLeading());
-                }
-            }
-            if (!cancellation.isCancelled() && data.length() > 0) {
-                consumeSseData(data.toString(), fullText, inputTokens, outputTokens,
-                        actualTokens, truncated, handler, cancellation, maxOutputTokens);
-            }
-        }
-    }
-
-    private boolean consumeSseData(String data, StringBuilder fullText,
-                                   AtomicLong inputTokens, AtomicLong outputTokens,
-                                   AtomicLong actualTokens, AtomicBoolean truncated,
-                                   StreamingChatResponseHandler handler, CancellationToken cancellation,
-                                   int maxOutputTokens) throws IOException {
-        if (data == null || data.isBlank()) return false;
-        if ("[DONE]".equals(data.trim())) return true;
-        JsonNode root = mapper.readTree(data);
-        JsonNode usage = root.path("usage");
-        if (usage.isObject()) {
-            inputTokens.set(usage.path("prompt_tokens").asLong(usage.path("input_tokens").asLong(-1)));
-            outputTokens.set(usage.path("completion_tokens").asLong(usage.path("output_tokens").asLong(-1)));
-            // 供应商上报的实测总量覆盖本地逐 chunk 估算，保证结算尽量接近真实成本。
-            if (inputTokens.get() > 0 || outputTokens.get() > 0) {
-                actualTokens.set(Math.max(0, inputTokens.get()) + Math.max(0, outputTokens.get()));
-            }
-        }
-        JsonNode choices = root.path("choices");
-        if (!choices.isArray() || choices.isEmpty() || cancellation.isCancelled()) return false;
-        JsonNode choice = choices.get(0);
-        if ("length".equals(choice.path("finish_reason").asText(null))) {
-            truncated.set(true);
-        }
-        JsonNode delta = choice.path("delta");
-        String token = delta.path("content").asText("");
-        if (!token.isEmpty()) {
-            int remaining = maxOutputTokens - tokenBudget.count(fullText.toString());
-            if (remaining <= 0) {
-                truncated.set(true);
-                return true;
-            }
-            String boundedToken = tokenBudget.truncate(token, remaining);
-            // truncate() 会为面向用户的文本添加省略号；流式增量不应凭空添加它，
-            // 因此硬上限截断供应商分块时需要移除该标记。
-            if (!boundedToken.equals(token) && boundedToken.endsWith("…")) {
-                boundedToken = boundedToken.substring(0, boundedToken.length() - 1);
-            }
-            if (boundedToken.isEmpty()) {
-                truncated.set(true);
-                return true;
-            }
-            fullText.append(boundedToken);
-            handler.onPartialResponse(boundedToken);
-            int total = tokenBudget.count(fullText.toString());
-            // 实际用量随流式增量累计，取消回调先于流任务结束时也能结算到已产生的部分。
-            actualTokens.set(total);
-            if (total >= maxOutputTokens) {
-                truncated.set(true);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private TokenUsage tokenUsage(long input, long output) {
-        if (input < 0 && output < 0) return null;
-        return new TokenUsage(input < 0 ? null : (int) input, output < 0 ? null : (int) output);
-    }
-
-    private void actualTokensFor(TokenUsage usage, AtomicLong input, AtomicLong output) {
-        if (usage == null) return;
-        input.set(usage.inputTokenCount() == null ? 0 : usage.inputTokenCount());
-        output.set(usage.outputTokenCount() == null ? 0 : usage.outputTokenCount());
-    }
-
-    private void recordStreamUsage(String traceId, Purpose purpose, String model,
-                                   AtomicLong input, AtomicLong output, long startedAt,
-                                   String status, AtomicBoolean recorded) {
-        if (!recorded.compareAndSet(false, true)) return;
-        long in = Math.max(0, input.get());
-        long out = Math.max(0, output.get());
-        actualTokensFor(new TokenUsage((int) in, (int) out), input, output);
-        recordUsage(traceId, purpose, model, in, out, System.currentTimeMillis() - startedAt, status);
-    }
-
-    private void closeCancellationRegistration(java.util.concurrent.atomic.AtomicReference<AutoCloseable> registrationRef) {
-        AutoCloseable registration = registrationRef.getAndSet(null);
-        if (registration == null) return;
-        try {
-            registration.close();
-        } catch (Exception ignored) {
-            // 取消清理属于尽力而为。
+            throw error;
         }
     }
 
@@ -464,102 +239,57 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
      * response_format=json_object + 按用途控制重试次数 (背景/判定节点默认单次，
      * 用户可见的抽取/计划保留一次轻量重试)。
      */
-    public String chatJson(Purpose purpose, List<ChatMessage> messages, String traceId) {
-        return chatJson(purpose, messages, traceId, null, defaultMaxAttempts(purpose));
+    public String chatJson(Purpose purpose, List<LlmMessage> messages, String traceId) {
+        return chatJson(purpose, messages, traceId, null, requestPolicy.defaultMaxAttempts(purpose));
     }
 
-    /**
-     * 结构化调用，支持按单次尝试设置超时和重试次数。专家扇出仅做一次短尝试，
-     * 避免外层超时后仍遗留隐藏的第二个供应商请求。
-     */
-    public String chatJson(Purpose purpose, List<ChatMessage> messages, String traceId,
+    /** Provider retries and fallback are isolated in LlmJsonExecutor. */
+    public String chatJson(Purpose purpose, List<LlmMessage> messages, String traceId,
                            Duration requestTimeout, int maxAttempts) {
         if (maxAttempts < 1 || maxAttempts > 2) {
             throw new IllegalArgumentException("maxAttempts must be between 1 and 2");
         }
-        List<ChatMessage> safeMessages = boundedMessages(purpose, messages);
-        long perAttemptEstimate = estimate(purpose, safeMessages);
+        List<ChatMessage> safeMessages = boundedMessages(purpose, LlmMessageMapper.toLangChain(messages));
+        long perAttemptEstimate = requestPolicy.estimate(purpose, safeMessages, budgetPressure);
         long reserved = scaleEstimate(perAttemptEstimate, maxAttempts);
-        // 摘要/抽取是回合后的后台工作，占用后台子预算；其余用途属于用户可见路径。
         boolean background = purpose == Purpose.SUMMARY || purpose == Purpose.EXTRACT;
         LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, background);
         boolean acquired = false;
-        RuntimeException last = null;
-        long actual = 0;
+        java.util.concurrent.atomic.AtomicBoolean settled = new java.util.concurrent.atomic.AtomicBoolean();
+        LlmJsonExecutor.Accounting accounting = new LlmJsonExecutor.Accounting() {
+            @Override
+            public void settle(long actualTokens) {
+                if (settled.compareAndSet(false, true)) {
+                    settleAndRelease(reservation, actualTokens, true);
+                }
+            }
+
+            @Override
+            public void record(String traceId, Purpose purpose, String model,
+                               long inputTokens, long outputTokens, long durationMs, String status) {
+                recordUsage(traceId, purpose, model, inputTokens, outputTokens, durationMs, status);
+            }
+
+            @Override
+            public void calibrate(long estimated, long measured) {
+                requestPolicy.calibrate(estimated, measured);
+            }
+        };
         try {
             concurrency.acquire();
             acquired = true;
-            String model = props.routing().getOrDefault(purpose.name().toLowerCase(), "deepseek-chat");
-            Duration timeout = requestTimeout != null ? requestTimeout : Duration.ofSeconds(timeoutSeconds(purpose));
-            long t0 = System.currentTimeMillis();
-            long failedEstimate = 0;
-            OpenAiChatModel chat = buildJsonModel(props.deepseek(), model, purpose, timeout);
-            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-                try {
-                    ChatResponse resp = chat.chat(safeMessages);
-                    TokenUsage u = resp.tokenUsage();
-                    long measured = usageInput(u) + usageOutput(u);
-                    // 部分 OpenAI 兼容供应商完全不返回用量；不能将整笔预留释放，
-                    // 仿佛该调用没有成本。
-                    if (measured == 0) measured = perAttemptEstimate;
-                    actual = cappedAdd(failedEstimate, measured, reserved);
-                    calibrate(perAttemptEstimate, measured);
-                    recordUsage(traceId, purpose, model,
-                            usageInput(u), usageOutput(u),
-                            System.currentTimeMillis() - t0, "ok");
-                    return resp.aiMessage().text();
-                } catch (RuntimeException ex) {
-                    last = ex;
-                    failedEstimate = cappedAdd(failedEstimate, perAttemptEstimate, reserved);
-                    log.warn("chatJson {} attempt {} failed type={} detail={}", purpose, attempt,
-                            ex.getClass().getSimpleName(), safeErrorMessage(ex));
-                }
+            Duration timeout = requestTimeout != null ? requestTimeout
+                    : Duration.ofSeconds(requestPolicy.timeoutSeconds(purpose));
+            return jsonExecutor.execute(purpose, safeMessages, traceId, timeout, maxAttempts,
+                    perAttemptEstimate, reserved, budgetPressure, accounting);
+        } catch (RuntimeException error) {
+            if (acquired) {
+                accounting.settle(0);
+            } else {
+                settleAndRelease(reservation, 0, false);
             }
-            // 主供应商全部尝试失败后，切到备用供应商做一次调用 (若已配置)。
-            LlmProperties.Fallback fallback = props.fallbackOrDisabled();
-            if (fallback.isConfigured()) {
-                String fallbackModel = fallback.modelFor(purpose.name().toLowerCase(), model);
-                try {
-                    ChatResponse resp = buildJsonModel(fallback.endpoint(), fallbackModel, purpose, timeout)
-                            .chat(safeMessages);
-                    TokenUsage u = resp.tokenUsage();
-                    long measured = usageInput(u) + usageOutput(u);
-                    if (measured == 0) measured = perAttemptEstimate;
-                    actual = cappedAdd(failedEstimate, measured, reserved);
-                    calibrate(perAttemptEstimate, measured);
-                    recordUsage(traceId, purpose, fallbackModel,
-                            usageInput(u), usageOutput(u),
-                            System.currentTimeMillis() - t0, "ok_fallback");
-                    return resp.aiMessage().text();
-                } catch (RuntimeException ex) {
-                    last = ex;
-                    failedEstimate = cappedAdd(failedEstimate, perAttemptEstimate, reserved);
-                    log.warn("chatJson {} fallback failed type={} detail={}", purpose,
-                            ex.getClass().getSimpleName(), safeErrorMessage(ex));
-                }
-            }
-            actual = failedEstimate;
-            recordUsage(traceId, purpose, model, failedEstimate, 0,
-                    System.currentTimeMillis() - t0, "error_estimated");
-            throw last;
-        } finally {
-            settleAndRelease(reservation, actual, acquired);
+            throw error;
         }
-    }
-
-    private OpenAiChatModel buildJsonModel(LlmProperties.Endpoint endpoint, String model,
-                                           Purpose purpose, Duration timeout) {
-        return OpenAiChatModel.builder()
-                .apiKey(endpoint.apiKey())
-                .baseUrl(endpoint.baseUrl())
-                .modelName(model)
-                .temperature(0.0)
-                .responseFormat("json_object")
-                .maxTokens(outputLimit(purpose))
-                // 网关刻意显式定义重试策略；否则 LangChain4j 默认行为会增加隐藏尝试。
-                .maxRetries(0)
-                .timeout(timeout)
-                .build();
     }
 
     /**
@@ -587,7 +317,7 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
                 judgePromptFactory.forEvidence(originalQuery, currentSubQuery, evidence), traceId);
     }
 
-    private String structuredJudge(List<ChatMessage> messages, String traceId) {
+    private String structuredJudge(List<LlmMessage> messages, String traceId) {
         StructuredOutputResult<RetrievalJudgeOutput> result = structuredOutputService.generate(
                 StructuredTask.RETRIEVAL_JUDGE,
                 Purpose.JUDGE,
@@ -622,13 +352,6 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         return value == null || value.isBlank();
     }
 
-    private static String clip(String value, int maxChars) {
-        if (value == null || value.isBlank()) return "";
-        String normalized = value.replaceAll("[\\u0000-\\u001f\\u007f]", " ")
-                .replaceAll("\\s+", " ").trim();
-        return normalized.length() <= maxChars ? normalized : normalized.substring(0, maxChars);
-    }
-
     /**
      * 重排序 (SiliconFlow bge-reranker-v2-m3)。返回与docs等长的相关性分数数组。
      * 失败抛出由调用方降级 (降级矩阵: 重排失败→保持融合排序)。
@@ -636,13 +359,13 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
     public double[] rerank(String query, List<String> docs, String traceId) {
         if (query == null || query.isBlank()) throw new IllegalArgumentException("rerank query must not be blank");
         if (docs == null || docs.isEmpty()) return new double[0];
-        int rerankLimit = tokenLimits().rerankInputTokens();
-        String safeQuery = boundedText(query, Math.max(1, rerankLimit / 4));
+        int rerankLimit = requestPolicy.tokenLimits().rerankInputTokens();
+        String safeQuery = requestPolicy.boundedText(query, Math.max(1, rerankLimit / 4));
         int perDocumentLimit = Math.max(1, (rerankLimit - tokenBudget.count(safeQuery)) / Math.max(1, docs.size()));
         List<String> safeDocs = docs.stream()
-                .map(doc -> boundedText(doc == null ? "" : doc, perDocumentLimit))
+                .map(doc -> requestPolicy.boundedText(doc == null ? "" : doc, perDocumentLimit))
                 .toList();
-        long reserved = estimateRerank(safeQuery, safeDocs);
+        long reserved = requestPolicy.estimateRerank(safeQuery, safeDocs);
         LlmBudgetGuard.Reservation reservation = budgetGuard.reserve(traceId, reserved, false);
         boolean acquired = false;
         long t0 = System.currentTimeMillis();
@@ -673,17 +396,6 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         }
     }
 
-    private long estimateText(String text) {
-        return Math.max(128, (text == null ? 0 : tokenBudget.count(text)) + 128);
-    }
-
-    /** 用最近实测/估算比值的 EMA 校准预留，避免 cl100k 与 DeepSeek 分词的系统性偏差。 */
-    private synchronized void calibrate(long estimated, long measured) {
-        if (estimated <= 0 || measured <= 0) return;
-        double ratio = Math.max(0.5, Math.min(2.0, (double) measured / estimated));
-        reserveCalibration = Math.max(0.8, Math.min(1.5, 0.9 * reserveCalibration + 0.1 * ratio));
-    }
-
     private static long scaleEstimate(long estimate, int attempts) {
         long safeEstimate = Math.max(1, estimate);
         if (attempts <= 1) return safeEstimate;
@@ -698,142 +410,9 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
         return safeLeft + safeRight;
     }
 
-    private static long usageInput(TokenUsage usage) {
-        return usage == null || usage.inputTokenCount() == null
-                ? 0 : Math.max(0, usage.inputTokenCount());
-    }
-
-    private static long usageOutput(TokenUsage usage) {
-        return usage == null || usage.outputTokenCount() == null
-                ? 0 : Math.max(0, usage.outputTokenCount());
-    }
-
-    private long estimate(Purpose purpose, List<ChatMessage> messages) {
-        int input = messages.stream().mapToInt(message -> tokenBudget.count(messageText(message))).sum();
-        long raw = Math.max(256, input + outputLimit(purpose) + 128L);
-        return (long) Math.ceil(raw * reserveCalibration);
-    }
-
+    /** Package-visible compatibility seam for existing request-budget regression tests. */
     List<ChatMessage> boundedMessages(Purpose purpose, List<ChatMessage> messages) {
-        if (messages == null || messages.isEmpty()) return List.of();
-        List<ChatMessage> safe = messages.stream().filter(Objects::nonNull).toList();
-        int max = inputLimit(purpose);
-        int total = safe.stream().mapToInt(message -> tokenBudget.count(messageText(message))).sum();
-        if (total <= max) return safe;
-        if (safe.size() == 1) return List.of(withText(safe.getFirst(), tokenBudget.truncate(messageText(safe.getFirst()), max)));
-
-        int lastIndex = safe.size() - 1;
-        boolean hasSystem = safe.getFirst() instanceof SystemMessage;
-        // PromptAssembler 已执行全局系统上下文规划；应保留其结果，而不能仅因证据
-        // 出现在提示词后部就悄然丢弃。
-        int systemBudget = hasSystem ? Math.min(tokenBudget.count(messageText(safe.getFirst())), Math.max(1, max * 2 / 5)) : 0;
-        // 末条消息按"实际需要"分配 (份额只作为防超长粘贴的上限)：短提问不再预支
-        // 整个份额，剩余预算全部让给历史消息，避免历史被 "…" 腰斩而预算空转。
-        int finalBudget = hasSystem && lastIndex == 0 ? 0
-                : Math.min(tokenBudget.count(messageText(safe.getLast())),
-                        Math.max(1, (int) Math.round(max * finalMessageShare(purpose))));
-        finalBudget = Math.min(finalBudget, Math.max(1, max - systemBudget));
-        int remaining = Math.max(0, max - systemBudget - finalBudget);
-        List<ChatMessage> middle = new ArrayList<>();
-        int middleStart = hasSystem ? 1 : 0;
-        int middleEnd = lastIndex - (finalBudget > 0 ? 1 : 0);
-        for (int i = middleEnd - 1; i >= middleStart && remaining > 0; i--) {
-            String text = messageText(safe.get(i));
-            int take = Math.min(tokenBudget.count(text), remaining);
-            middle.add(0, withText(safe.get(i), tokenBudget.truncate(text, take)));
-            remaining -= take;
-        }
-
-        List<ChatMessage> result = new ArrayList<>();
-        if (hasSystem) {
-            result.add(withText(safe.getFirst(), tokenBudget.truncate(messageText(safe.getFirst()), systemBudget)));
-        }
-        result.addAll(middle);
-        if (finalBudget > 0) {
-            result.add(withText(safe.getLast(), tokenBudget.truncate(messageText(safe.getLast()), finalBudget)));
-        }
-        return result;
-    }
-
-    private String messageText(ChatMessage message) {
-        if (message instanceof SystemMessage system) return system.text();
-        if (message instanceof UserMessage user && user.hasSingleText()) return user.singleText();
-        if (message instanceof AiMessage ai && ai.text() != null) return ai.text();
-        return message.toString();
-    }
-
-    private ChatMessage withText(ChatMessage message, String text) {
-        if (message instanceof SystemMessage) return SystemMessage.from(text);
-        if (message instanceof UserMessage) return UserMessage.from(text);
-        if (message instanceof AiMessage) return AiMessage.from(text);
-        return message;
-    }
-
-    private String boundedText(String text, int maxTokens) {
-        if (text == null || text.isBlank()) return "";
-        return tokenBudget.truncate(text, maxTokens);
-    }
-
-    private LlmProperties.PurposeLimit limitFor(Purpose purpose) {
-        LlmProperties.TokenLimits limits = tokenLimits();
-        return switch (purpose) {
-            case ROUTER -> limits.router();
-            case CHAT -> limits.chat();
-            case EXPERT -> limits.expert();
-            case SUMMARY -> limits.summary();
-            case EXTRACT -> limits.extract();
-            case JUDGE -> limits.judge();
-            case PLAN -> limits.plan();
-            default -> limits.chat();
-        };
-    }
-
-    private LlmProperties.TokenLimits tokenLimits() {
-        return props.tokens() == null ? LlmProperties.TokenLimits.defaults() : props.tokens();
-    }
-
-    private int inputLimit(Purpose purpose) { return limitFor(purpose).inputTokens(); }
-
-    private int outputLimit(Purpose purpose) {
-        int limit = limitFor(purpose).outputTokens();
-        // 预算压力 ELEVATED 及以上时收紧聊天输出，缩短单次调用的占用窗口。
-        if (purpose == Purpose.CHAT && budgetPressure != null) {
-            return Math.min(limit, budgetPressure.chatOutputCap(limit));
-        }
-        return limit;
-    }
-
-    private double finalMessageShare(Purpose purpose) {
-        return switch (purpose) {
-            case CHAT -> 0.55;
-            case ROUTER -> 0.65;
-            default -> 0.75;
-        };
-    }
-
-    private int timeoutSeconds(Purpose purpose) {
-        return switch (purpose) {
-            case ROUTER -> props.timeout().routerSeconds();
-            case SUMMARY -> props.timeout().summarySeconds();
-            case EXPERT -> props.timeout().expertSeconds();
-            default -> props.timeout().chatSeconds();
-        };
-    }
-
-    private int defaultMaxAttempts(Purpose purpose) {
-        return switch (purpose) {
-            // 这些调用要么是后台工作，要么是低成本路由/判断；故障期间重试只会增加
-            // 预算压力和排队时间。
-            case ROUTER, EXPERT, SUMMARY, JUDGE -> 1;
-            default -> 2;
-        };
-    }
-
-    private static long estimateRerank(String query, List<String> docs) {
-        int queryLength = query == null ? 0 : query.length();
-        int documentLength = docs == null ? 0 : docs.stream().filter(java.util.Objects::nonNull)
-                .mapToInt(String::length).sum();
-        return Math.max(128, (queryLength + documentLength) / 2 + 128);
+        return requestPolicy.boundedMessages(purpose, messages, budgetPressure);
     }
 
     private void recordUsage(String traceId, Purpose purpose, String model,

@@ -1,40 +1,44 @@
 package com.tutor.plan;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.contract.Purpose;
-import com.tutor.llm.JsonGenerationGateway;
 import com.tutor.llm.LlmBudgetGuard;
 import com.tutor.llm.structured.PlanOutput;
 import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
 import com.tutor.llm.structured.StructuredTask;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PreDestroy;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
-import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+import static com.tutor.plan.PlanModels.Checkin;
+import static com.tutor.plan.PlanModels.Plan;
+import static com.tutor.plan.PlanModels.PlanGenerationJob;
+import static com.tutor.plan.PlanModels.PlanTask;
+import static com.tutor.plan.PlanModels.PlanTaskDraft;
 
 /**
- * 学习计划闭环 (Phase 3 V4 3.2): LLM 生成周计划 → 落 plans/plan_tasks 表 → checkins 打卡 → 重规划触发
- * 重规划条件: 周完成率 < 60% 或用户反馈过难/过易 (V4 3.2 退出标准)
+ * Learning-plan application service. It coordinates model generation and deterministic plan rules;
+ * PostgreSQL details and durable worker lifecycle live in dedicated adapters.
  */
 @Service
 public class PlanService {
     private static final Logger log = LoggerFactory.getLogger(PlanService.class);
     private static final double REPLAN_THRESHOLD = 0.6;
     private static final int PLAN_HORIZON_DAYS = 7;
-    private static final java.util.Set<String> PLAN_KINDS = java.util.Set.of("learn", "practice", "review");
+    private static final Set<String> PLAN_KINDS = Set.of("learn", "practice", "review");
+    private static final String EVIDENCE_HINT = "提交可运行示例、练习答案或复盘笔记之一。";
 
     private static final String SYS = """
             你是周学习计划生成器。基于用户目标 + 当前技能水平 + 打卡历史, 生成未来 7 天每日任务。
@@ -44,148 +48,137 @@ public class PlanService {
             - 关联具体技能名 (与图谱一致)
             """;
 
-    private final JdbcTemplate jdbc;
-    private final JsonGenerationGateway gateway;
+    private final PlanStore store;
     private final StructuredOutputService structuredOutputService;
-    private final ObjectMapper mapper = new ObjectMapper();
     private volatile LlmBudgetGuard budgetGuard;
-    private final ExecutorService generationExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    private final Semaphore generationSlots = new Semaphore(2);
 
-    public PlanService(JdbcTemplate jdbc, JsonGenerationGateway gateway) {
-        this(jdbc, gateway, new StructuredOutputService(gateway, null));
-    }
-
-    @Autowired
-    public PlanService(JdbcTemplate jdbc, JsonGenerationGateway gateway,
-                       StructuredOutputService structuredOutputService) {
-        this.jdbc = jdbc;
-        this.gateway = gateway;
+    public PlanService(PlanStore store, StructuredOutputService structuredOutputService) {
+        this.store = store;
         this.structuredOutputService = structuredOutputService;
     }
 
-    public record Plan(long id, long userId, String goal, LocalDate weekStart, LocalDate weekEnd, String status) {}
-    public record PlanTask(long id, long planId, LocalDate day, String content, String kind,
-                           int minutes, String evidenceHint) {}
-    public record Checkin(long id, long taskId, String status, String feedback) {}
-    public record PlanGenerationJob(long id, String status, Long planId, String error,
-                                    Instant createdAt, Instant finishedAt) {}
-
-    private record QueuedJob(long id, long userId, String goal, String currentSkills,
-                             String checkinHistory, String traceId, UUID leaseToken) {}
-
-    /** 可选注入：计划生成 trace 归属到用户，使 PLAN 用途消耗计入用户日配额。 */
+    /** Optionally attributes plan-generation usage to a user-level budget. */
     @Autowired(required = false)
-    void setBudgetGuard(LlmBudgetGuard budgetGuard) { this.budgetGuard = budgetGuard; }
+    void setBudgetGuard(LlmBudgetGuard budgetGuard) {
+        this.budgetGuard = budgetGuard;
+    }
 
-    /** 快速入队，HTTP 请求不再同步等待 LLM。 */
+    /** Enqueue quickly so the HTTP request does not wait for the model. */
     public PlanGenerationJob enqueueWeeklyPlan(long userId, String goal, String currentSkills,
                                                String checkinHistory, String traceId) {
         if (budgetGuard != null && traceId != null) {
             try {
                 budgetGuard.attributeTrace(traceId, userId);
-            } catch (RuntimeException e) {
-                // 归属失败不阻塞入队，仅降级为无用户级配额。
-                log.warn("budget attribution failed trace={} type={}", traceId, e.getClass().getSimpleName());
+            } catch (RuntimeException error) {
+                log.warn("budget attribution failed trace={} type={}", traceId,
+                        error.getClass().getSimpleName());
             }
         }
-        long id = jdbc.queryForObject("""
-                INSERT INTO plan_generation_jobs
-                    (user_id, goal, current_skills, checkin_history, trace_id)
-                VALUES (?,?,?,?,?) RETURNING id
-                """, Long.class, userId, goal, currentSkills, checkinHistory, traceId);
+        long id = store.enqueueGeneration(userId, goal, currentSkills, checkinHistory, traceId);
         return generationJob(userId, id);
     }
 
     public PlanGenerationJob generationJob(long userId, long jobId) {
-        return jdbc.query("""
-                SELECT id, status, plan_id, error, created_at, finished_at
-                FROM plan_generation_jobs WHERE id=? AND user_id=?
-                """, (rs, i) -> new PlanGenerationJob(
-                rs.getLong(1), rs.getString(2),
-                rs.getObject(3, Long.class), rs.getString(4),
-                rs.getTimestamp(5).toInstant(),
-                rs.getTimestamp(6) == null ? null : rs.getTimestamp(6).toInstant()),
-                jobId, userId).stream().findFirst().orElseThrow(() ->
-                new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "计划生成任务不存在"));
+        return store.findGenerationJob(userId, jobId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "计划生成任务不存在"));
     }
 
-    /** 从数据库队列领取任务；多个应用实例也不会重复消费同一任务。 */
-    @Scheduled(fixedDelayString = "${plan.generation.poll-ms:500}")
-    public void dispatchPlanGeneration() {
-        if (!generationSlots.tryAcquire()) return;
-        QueuedJob job = claimNextJob();
-        if (job == null) {
-            generationSlots.release();
-            return;
-        }
-        generationExecutor.submit(() -> {
-            try {
-                if (!ownsLease(job)) {
-                    log.info("计划任务租约已失效，跳过旧 worker job={}", job.id());
-                    return;
-                }
-                Plan plan = generateWeeklyPlan(job.userId(), job.goal(), job.currentSkills(),
-                        job.checkinHistory(), job.traceId() == null ? "plan-job-" + job.id() : job.traceId());
-                if (plan == null) {
-                    markFailed(job, "LLM 返回无效计划或调用失败");
-                } else {
-                    jdbc.update("""
-                            UPDATE plan_generation_jobs
-                            SET status='completed', plan_id=?, finished_at=now(), lease_token=NULL, lease_until=NULL
-                            WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                            """, plan.id(), job.id(), job.leaseToken());
-                }
-            } catch (Exception e) {
-                log.error("异步计划生成失败 job={} user={}: {}", job.id(), job.userId(), e.getMessage());
-                markFailed(job, safeError(e));
-            } finally {
-                generationSlots.release();
+    /** Generate and persist a seven-day plan. Returns null on model or validation failure. */
+    public Plan generateWeeklyPlan(long userId, String goal, String currentSkills,
+                                   String checkinHistory, String traceId) {
+        try {
+            StructuredOutputResult<PlanOutput> structured = structuredOutputService.generate(
+                    StructuredTask.PLAN,
+                    Purpose.PLAN,
+                    List.of(
+                            LlmMessage.system(SYS),
+                            LlmMessage.user("目标: " + goal + "\n当前技能: " + currentSkills
+                                    + "\n近期打卡: " + checkinHistory)),
+                    PlanOutput.class,
+                    output -> {
+                        if (output.goalSummary() == null || output.goalSummary().isBlank()
+                                || output.days() == null || output.days().size() != PLAN_HORIZON_DAYS) {
+                            throw new IllegalArgumentException("计划必须包含目标摘要和 7 天任务");
+                        }
+                    },
+                    traceId
+            );
+            if (!structured.success()) return null;
+
+            PlanOutput output = structured.value();
+            String goalSummary = clip(output.goalSummary(), 300);
+            LocalDate monday = startOfWeek(LocalDate.now());
+            List<PlanTaskDraft> tasks = new ArrayList<>(PLAN_HORIZON_DAYS);
+            int taskIndex = 0;
+            for (PlanOutput.Day day : output.days()) {
+                tasks.add(new PlanTaskDraft(
+                        monday.plusDays(taskIndex % PLAN_HORIZON_DAYS),
+                        clip(day.content(), 500),
+                        safeKind(day.kind()),
+                        day.relatedSkills(),
+                        boundedMinutes(day.estimatedMinutes())));
+                taskIndex++;
             }
-        });
+
+            Plan plan = store.saveGeneratedPlan(userId, goalSummary, monday, tasks);
+            log.info("plan 生成 user={} plan={} tasks={}", userId, plan.id(), tasks.size());
+            return plan;
+        } catch (Exception error) {
+            log.error("plan 生成失败 user={}: {}", userId, error.getMessage());
+            return null;
+        }
     }
 
-    private QueuedJob claimNextJob() {
-        return jdbc.query("""
-                WITH next_job AS (
-                    SELECT id FROM plan_generation_jobs
-                    WHERE status='queued'
-                       OR (status='running' AND (lease_until IS NULL OR lease_until < now()))
-                    ORDER BY id
-                    FOR UPDATE SKIP LOCKED LIMIT 1
-                )
-                UPDATE plan_generation_jobs j
-                SET status='running', started_at=now(), error=NULL,
-                    lease_token=?, lease_until=now() + interval '10 minutes'
-                FROM next_job
-                WHERE j.id=next_job.id
-                RETURNING j.id, j.user_id, j.goal, j.current_skills, j.checkin_history, j.trace_id, j.lease_token
-                """, (rs, i) -> new QueuedJob(rs.getLong(1), rs.getLong(2), rs.getString(3),
-                rs.getString(4), rs.getString(5), rs.getString(6), rs.getObject(7, UUID.class)),
-                UUID.randomUUID()).stream().findFirst().orElse(null);
+    public Checkin checkin(long taskId, long userId, String status, String feedback) {
+        if (!store.taskExists(taskId, userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "task 不存在: id=" + taskId);
+        }
+        return store.addCheckin(taskId, userId, status, feedback);
     }
 
-    private void markFailed(QueuedJob job, String error) {
-        jdbc.update("""
-                UPDATE plan_generation_jobs
-                SET status='failed', error=?, finished_at=now(), lease_token=NULL, lease_until=NULL
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, error, job.id(), job.leaseToken());
+    public boolean shouldReplan(long userId) {
+        PlanStore.PlanProgress progress = store.progress(userId);
+        if (progress.total() == 0) return false;
+        double rate = (double) progress.done() / progress.total();
+        if (rate < REPLAN_THRESHOLD) {
+            log.info("触发重规划 user={} rate={} done={}/{}", userId, rate,
+                    progress.done(), progress.total());
+            return true;
+        }
+        return false;
     }
 
-    private boolean ownsLease(QueuedJob job) {
-        Integer active = jdbc.queryForObject("""
-                SELECT count(*) FROM plan_generation_jobs
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, Integer.class, job.id(), job.leaseToken());
-        return active != null && active == 1;
+    public List<PlanTask> todayTasks(long userId) {
+        return store.todayTasks(userId);
     }
 
-    private String safeError(Exception error) {
-        String message = error.getMessage();
-        if (message == null || message.isBlank()) return "计划生成失败";
-        return message.length() > 500 ? message.substring(0, 500) : message;
+    /** Convert verified skill gaps into at most three executable tasks for the current week. */
+    public List<PlanTask> createEvidenceTasks(long userId, String goal, List<String> skillIds) {
+        LocalDate today = LocalDate.now();
+        LocalDate monday = startOfWeek(today);
+        LocalDate sunday = monday.plusDays(6);
+        long planId = store.activePlanIdOrCreate(userId, goal, monday, sunday);
+
+        List<PlanTask> created = new ArrayList<>();
+        int offset = 0;
+        for (String skillId : new LinkedHashSet<>(skillIds).stream().limit(3).toList()) {
+            if (store.hasEvidenceTask(userId, skillId, today, sunday)) continue;
+            LocalDate day = today.plusDays(Math.min(offset++,
+                    Math.max(0, sunday.toEpochDay() - today.toEpochDay())));
+            String display = skillId.replace("skill:", "").replace('-', ' ');
+            created.add(store.addEvidenceTask(
+                    planId,
+                    userId,
+                    day,
+                    skillId,
+                    "完成「" + display + "」的一个针对性练习",
+                    EVIDENCE_HINT));
+        }
+        return created;
+    }
+
+    private LocalDate startOfWeek(LocalDate day) {
+        return day.minusDays(day.getDayOfWeek().getValue() - 1L);
     }
 
     private String clip(String value, int maxChars) {
@@ -200,171 +193,5 @@ public class PlanService {
 
     private int boundedMinutes(int value) {
         return Math.max(5, Math.min(480, value));
-    }
-
-    @PreDestroy
-    void shutdownGenerationExecutor() {
-        generationExecutor.close();
-    }
-
-    /** 生成新周计划: 调 LLM + 解析 + 入库 */
-    public Plan generateWeeklyPlan(long userId, String goal, String currentSkills, String checkinHistory, String traceId) {
-        try {
-            StructuredOutputResult<PlanOutput> structured = structuredOutputService.generate(
-                    StructuredTask.PLAN,
-                    Purpose.PLAN,
-                    List.of(
-                            SystemMessage.from(SYS),
-                            UserMessage.from("目标: " + goal + "\n当前技能: " + currentSkills
-                                    + "\n近期打卡: " + checkinHistory)),
-                    PlanOutput.class,
-                    output -> {
-                        if (output.goalSummary() == null || output.goalSummary().isBlank()
-                                || output.days() == null || output.days().size() != PLAN_HORIZON_DAYS) {
-                            throw new IllegalArgumentException("计划必须包含目标摘要和 7 天任务");
-                        }
-                    },
-                    traceId
-            );
-            if (!structured.success()) return null;
-            PlanOutput output = structured.value();
-            String goalSummary = clip(output.goalSummary(), 300);
-            LocalDate monday = LocalDate.now();
-            while (monday.getDayOfWeek().getValue() != 1) monday = monday.minusDays(1);
-
-            // 写 plans
-            long planId = jdbc.queryForObject(
-                    "INSERT INTO plans (user_id, goal, week_start, week_end, status) " +
-                            "VALUES (?,?,?::date,?::date,?) RETURNING id",
-                    Long.class, userId, goalSummary,
-                    java.sql.Date.valueOf(monday),
-                    java.sql.Date.valueOf(monday.plusDays(6)),
-                    "active");
-
-            // 写 plan_tasks
-            int taskCount = 0;
-            for (PlanOutput.Day dayOutput : output.days()) {
-                LocalDate day = monday.plusDays(taskCount % 7);
-                jdbc.update(
-                        "INSERT INTO plan_tasks (plan_id, user_id, day, content, kind, related_node_ids, estimated_minutes) " +
-                        "VALUES (?,?,?,?,?,?::text[],?)",
-                        planId, userId, java.sql.Date.valueOf(day),
-                        clip(dayOutput.content(), 500),
-                        safeKind(dayOutput.kind()),
-                        toTextArray(dayOutput.relatedSkills()),
-                        boundedMinutes(dayOutput.estimatedMinutes()));
-                taskCount++;
-            }
-            log.info("plan 生成 user={} plan={} tasks={}", userId, planId, taskCount);
-            return new Plan(planId, userId, goalSummary, monday, monday.plusDays(6), "active");
-        } catch (Exception e) {
-            log.error("plan 生成失败 user={}: {}", userId, e.getMessage());
-            return null;
-        }
-    }
-
-    /** 用户打卡 */
-    public Checkin checkin(long taskId, long userId, String status, String feedback) {
-        // 先校验 task 存在 (FK 违反会转 500, 这里预检查返 404)
-        Integer exists = jdbc.queryForObject(
-                "SELECT count(*) FROM plan_tasks WHERE id=? AND user_id=?",
-                Integer.class, taskId, userId);
-        if (exists == null || exists == 0) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND, "task 不存在: id=" + taskId);
-        }
-        long id = jdbc.queryForObject(
-                "INSERT INTO checkins (task_id, user_id, status, feedback) VALUES (?,?,?,?) RETURNING id",
-                Long.class, taskId, userId, status, feedback);
-        return new Checkin(id, taskId, status, feedback);
-    }
-
-    /**
-     * 重规划触发检测: 统计本周完成率, 若 <60% 或本周有"过难"反馈 → 触发重规划
-     * 简化: 返回 boolean 让调用方决定是否调 generateWeeklyPlan
-     */
-    public boolean shouldReplan(long userId) {
-        // 两个统计合并为一次数据库往返，并显式带上 task.user_id 让复合索引生效。
-        Map<String, Long> counts = jdbc.queryForObject("""
-                SELECT
-                  (SELECT count(*) FROM checkins c
-                   JOIN plan_tasks t ON c.task_id=t.id
-                   WHERE c.user_id=? AND t.user_id=? AND c.status='done'
-                     AND t.day BETWEEN (current_date - 7) AND current_date) AS done,
-                  (SELECT count(*) FROM plan_tasks
-                   WHERE user_id=? AND day BETWEEN (current_date - 7) AND current_date) AS total
-                """, (rs, i) -> Map.of("done", rs.getLong(1), "total", rs.getLong(2)),
-                userId, userId, userId);
-        Long done = counts.get("done");
-        Long total = counts.get("total");
-        if (total == null || total == 0) return false;
-        double rate = (double) done / total;
-        // 简化: 只看完成率
-        if (rate < REPLAN_THRESHOLD) {
-            log.info("触发重规划 user={} rate={} done={}/{}", userId, rate, done, total);
-            return true;
-        }
-        return false;
-    }
-
-    /** 拉本周活跃计划的任务, 推送服务用 */
-    public List<PlanTask> todayTasks(long userId) {
-        return jdbc.query(
-                "SELECT id, plan_id, day, content, kind, estimated_minutes, evidence_hint FROM plan_tasks " +
-                        "WHERE user_id=? AND day = current_date ORDER BY id",
-                (rs, i) -> new PlanTask(rs.getLong(1), rs.getLong(2),
-                        rs.getDate(3).toLocalDate(), rs.getString(4), rs.getString(5), rs.getInt(6), rs.getString(7)),
-                userId);
-    }
-
-    /** 将已验证的能力缺口转为本周可执行任务；同技能本周只创建一次。 */
-    public List<PlanTask> createEvidenceTasks(long userId, String goal, List<String> skillIds) {
-        LocalDate today = LocalDate.now();
-        LocalDate monday = today.minusDays(today.getDayOfWeek().getValue() - 1L);
-        LocalDate sunday = monday.plusDays(6);
-        Long planId = jdbc.query("SELECT id FROM plans WHERE user_id=? AND status='active' AND week_start=?::date " +
-                        "ORDER BY id DESC LIMIT 1", (rs, i) -> rs.getLong(1), userId, java.sql.Date.valueOf(monday))
-                .stream().findFirst().orElseGet(() -> jdbc.queryForObject(
-                        "INSERT INTO plans (user_id, goal, week_start, week_end, status) VALUES (?,?,?,?, 'active') RETURNING id",
-                        Long.class, userId, goal, java.sql.Date.valueOf(monday), java.sql.Date.valueOf(sunday)));
-        List<PlanTask> created = new ArrayList<>();
-        int offset = 0;
-        for (String skillId : skillIds.stream().distinct().limit(3).toList()) {
-            Integer exists = jdbc.queryForObject("SELECT count(*) FROM plan_tasks WHERE user_id=? AND " +
-                            "related_node_ids @> ?::text[] AND day BETWEEN ?::date AND ?::date", Integer.class,
-                    userId, toTextArray(List.of(skillId)), java.sql.Date.valueOf(today), java.sql.Date.valueOf(sunday));
-            if (exists != null && exists > 0) continue;
-            LocalDate day = today.plusDays(Math.min(offset++, Math.max(0, sunday.toEpochDay() - today.toEpochDay())));
-            String display = skillId.replace("skill:", "").replace('-', ' ');
-            PlanTask task = jdbc.queryForObject("""
-                    INSERT INTO plan_tasks (plan_id, user_id, day, content, kind, related_node_ids, estimated_minutes, evidence_hint)
-                    VALUES (?,?,?,?,?,?::text[],?,?)
-                    RETURNING id, plan_id, day, content, kind, estimated_minutes, evidence_hint
-                    """, (rs, i) -> new PlanTask(rs.getLong(1), rs.getLong(2), rs.getDate(3).toLocalDate(),
-                    rs.getString(4), rs.getString(5), rs.getInt(6), rs.getString(7)),
-                    planId, userId, java.sql.Date.valueOf(day), "完成「" + display + "」的一个针对性练习", "practice",
-                    toTextArray(List.of(skillId)), 45, "提交可运行示例、练习答案或复盘笔记之一。");
-            created.add(task);
-        }
-        return created;
-    }
-
-    private String toTextArray(com.fasterxml.jackson.databind.JsonNode arr) {
-        if (arr == null || !arr.isArray()) return "{}";
-        StringBuilder sb = new StringBuilder("{");
-        boolean first = true;
-        int count = 0;
-        for (var item : arr) {
-            if (count++ >= 20) break;
-            if (!first) sb.append(',');
-            sb.append('"').append(clip(item.asText(), 120).replace("\"", "\\\"")).append('"');
-            first = false;
-        }
-        return sb.append('}').toString();
-    }
-
-    private String toTextArray(List<String> values) {
-        return "{" + values.stream().map(value -> "\"" + value.replace("\"", "\\\"") + "\"")
-                .collect(java.util.stream.Collectors.joining(",")) + "}";
     }
 }

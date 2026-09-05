@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import com.tutor.memory.BigramSimilarity;
 import com.tutor.memory.external.Mem0CircuitBreaker;
 import com.tutor.memory.external.Mem0Client;
 import com.tutor.memory.local.EpisodeRecall;
@@ -13,10 +12,7 @@ import com.tutor.memory.local.FactStore;
 import com.tutor.memory.policy.MemoryConsentService;
 import com.tutor.memory.external.MemorySyncOutbox;
 
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -27,10 +23,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class LongTermMemoryService {
     private static final Logger log = LoggerFactory.getLogger(LongTermMemoryService.class);
-    private static final int MAX_RECALL = 5;
-    private static final double RECENCY_WEIGHT = 0.15D;
-    private static final double NEAR_DUPLICATE_THRESHOLD = 0.88D;
-
     private final EpisodeRecall localRecall;
     private final Mem0Client mem0;
     private final MemoryConsentService consent;
@@ -38,7 +30,7 @@ public class LongTermMemoryService {
     private final TransactionTemplate transactions;
     private final MemorySyncOutbox outbox;
     private final FactStore factStore;
-    private final double recencyDecayDays;
+    private final MemoryMergePolicy mergePolicy;
 
     public LongTermMemoryService(EpisodeRecall localRecall, Mem0Client mem0,
                                  MemoryConsentService consent, Mem0CircuitBreaker breaker,
@@ -52,7 +44,7 @@ public class LongTermMemoryService {
         this.transactions = transactions;
         this.outbox = outbox;
         this.factStore = factStore;
-        this.recencyDecayDays = Math.max(1D, recencyDecayDays);
+        this.mergePolicy = new MemoryMergePolicy(recencyDecayDays);
     }
 
     public record RecallResult(List<EpisodeStore.Episode> episodes, boolean degraded) {}
@@ -62,7 +54,7 @@ public class LongTermMemoryService {
         List<EpisodeStore.Episode> local;
         boolean localDegraded = false;
         try {
-            local = safeEpisodes(localRecall.recall(userId, query, traceId));
+            local = mergePolicy.safeEpisodes(localRecall.recall(userId, query, traceId));
         } catch (RuntimeException e) {
             // 记忆是增强能力；数据库、embedding 或连接池异常都不能阻断主对话。
             log.warn("本地情景记忆召回失败，继续无记忆对话 user={} trace={}: {}",
@@ -84,7 +76,7 @@ public class LongTermMemoryService {
         }
 
         try {
-            List<EpisodeStore.Episode> remote = safeEpisodes(mem0.search(userId, query, traceId)).stream()
+            List<EpisodeStore.Episode> remote = mergePolicy.safeEpisodes(mem0.search(userId, query, traceId)).stream()
                     .filter(episode -> {
                         if (episode.id() == 0L) return true;
                         if (!localRecall.isActiveById(episode.id(), userId)) return false;
@@ -95,21 +87,12 @@ public class LongTermMemoryService {
                     })
                     .toList();
             breaker.success();
-            return new RecallResult(merge(local, remote), localDegraded);
+            return new RecallResult(mergePolicy.merge(local, remote), localDegraded);
         } catch (RuntimeException e) {
             breaker.failure();
             log.warn("Mem0 召回失败，降级本地情节记忆 user={} trace={}: {}", userId, traceId, e.getMessage());
             return new RecallResult(local, true);
         }
-    }
-
-    private List<EpisodeStore.Episode> safeEpisodes(List<EpisodeStore.Episode> episodes) {
-        if (episodes == null || episodes.isEmpty()) return List.of();
-        return episodes.stream()
-                .filter(episode -> episode != null
-                        && episode.summary() != null
-                        && !episode.summary().isBlank())
-                .toList();
     }
 
     /**
@@ -157,45 +140,4 @@ public class LongTermMemoryService {
         });
     }
 
-    private List<EpisodeStore.Episode> merge(List<EpisodeStore.Episode> local,
-                                                     List<EpisodeStore.Episode> remote) {
-        LinkedHashMap<String, EpisodeStore.Episode> unique = new LinkedHashMap<>();
-        add(unique, local);
-        add(unique, remote);
-        return unique.values().stream()
-                .sorted(Comparator.comparingDouble(this::rankScore).reversed())
-                .limit(MAX_RECALL)
-                .toList();
-    }
-
-    /**
-     * 排序 = 相关度 + recency 衰减 + 未决事项加权。
-     * recency 用指数衰减 exp(-ageDays/τ)：近期记忆更能代表用户当前状态，
-     * 且无法从语义相似度推断"新旧事实谁生效"。
-     */
-    private double rankScore(EpisodeStore.Episode episode) {
-        double relevance = Double.isFinite(episode.relevance())
-                ? Math.clamp(episode.relevance(), 0D, 1D) : 0D;
-        double unresolvedBonus = episode.openItems() == null || episode.openItems().isEmpty() ? 0D : 0.05D;
-        return relevance + RECENCY_WEIGHT * recencyFactor(episode.createdAt()) + unresolvedBonus;
-    }
-
-    private double recencyFactor(Instant createdAt) {
-        if (createdAt == null) return 1.0D;
-        long ageDays = Math.max(0L, Duration.between(createdAt, Instant.now()).toDays());
-        return Math.exp(-(double) ageDays / recencyDecayDays);
-    }
-
-    private static void add(LinkedHashMap<String, EpisodeStore.Episode> target,
-                            List<EpisodeStore.Episode> episodes) {
-        if (episodes == null) return;
-        for (EpisodeStore.Episode episode : episodes) {
-            if (episode == null || episode.summary() == null || episode.summary().isBlank()) continue;
-            String key = BigramSimilarity.canonical(episode.summary());
-            if (target.keySet().stream().noneMatch(existing ->
-                    BigramSimilarity.similarity(existing, key) >= NEAR_DUPLICATE_THRESHOLD)) {
-                target.putIfAbsent(key, episode);
-            }
-        }
-    }
 }

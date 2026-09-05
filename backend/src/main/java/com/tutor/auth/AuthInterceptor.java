@@ -49,6 +49,11 @@ public class AuthInterceptor implements HandlerInterceptor {
             AuthContext.set(DEV_USER_ID);
             return true;
         }
+        if (path.equals("/error")) {
+            // Spring 的 ERROR dispatch 会以原始 URI=/error 重新过一遍拦截器; 若这里要求 token,
+            // 任何业务端点的 500 都会被改写成 401, 客户端再也看不到真实错误状态。
+            return true;
+        }
         String auth = req.getHeader("Authorization");
         String token = null;
         if (auth != null && auth.startsWith("Bearer ")) {

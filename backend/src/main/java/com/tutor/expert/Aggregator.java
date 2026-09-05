@@ -6,11 +6,9 @@ import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Purpose;
 import com.tutor.llm.StreamingGenerationGateway;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import com.tutor.llm.LlmMessage;
+import com.tutor.llm.LlmStreamHandler;
+import com.tutor.llm.LlmStreamResult;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -80,7 +78,7 @@ public class Aggregator {
             user.append(" (低于阈值").append(CONFIDENCE_THRESHOLD).append(", 若确实无法给出可靠方案请输出CLARIFY行)");
         }
 
-        List<ChatMessage> messages = List.of(SystemMessage.from(SYS), UserMessage.from(user.toString()));
+        List<LlmMessage> messages = List.of(LlmMessage.system(SYS), LlmMessage.user(user.toString()));
         java.util.concurrent.atomic.AtomicBoolean emitted = new java.util.concurrent.atomic.AtomicBoolean();
         AggregateEvents resilientEvents = new AggregateEvents() {
             @Override public void onToken(String token) {
@@ -145,7 +143,7 @@ public class Aggregator {
     }
 
     /** 前缀缓冲: 攒够前缀长度或流结束才判定是否CLARIFY, 之后正常透传 */
-    static class ClarifyDetectingHandler implements StreamingChatResponseHandler {
+    static class ClarifyDetectingHandler implements LlmStreamHandler {
         private final AggregateEvents events;
         private final StringBuilder buffer = new StringBuilder();
         private final StringBuilder full = new StringBuilder();
@@ -157,7 +155,7 @@ public class Aggregator {
         }
 
         @Override
-        public void onPartialResponse(String token) {
+        public void onToken(String token) {
             full.append(token);
             if (decided) {
                 if (!clarified) events.onToken(token);
@@ -174,9 +172,9 @@ public class Aggregator {
         }
 
         @Override
-        public void onCompleteResponse(ChatResponse response) {
+        public void onComplete(LlmStreamResult response) {
             String text = full.toString().strip();
-            boolean truncated = response.finishReason() == dev.langchain4j.model.output.FinishReason.LENGTH;
+            boolean truncated = response.truncated();
             if (!decided) { // 极短输出, 收尾时判定
                 clarified = text.startsWith(CLARIFY_PREFIX);
                 if (!clarified) events.onToken(text);

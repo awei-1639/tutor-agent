@@ -14,6 +14,9 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
 const BASE = process.env.MEMORY_EVAL_BASE_URL || 'http://localhost:8180';
+// /internal 免鉴权是最初约定；部分部署只放行了旧端点，这里支持携带注册用户的
+// tutor_access cookie 走通用鉴权分支，保证新端点在两种环境下都可达。
+const COOKIE = process.env.MEMORY_EVAL_COOKIE || '';
 const CI_MODE = process.argv.includes('--ci');
 const SMOKE = process.argv.includes('--smoke');
 // 记忆是增强能力: 排序错误可用阈值兜底, 但失效事实回流与无关注入是正确性问题, 阈值为 0。
@@ -35,7 +38,10 @@ async function post(path, body) {
     try {
       const res = await fetch(BASE + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(COOKIE ? { Cookie: COOKIE } : {}),
+        },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(90_000),
       });
@@ -54,6 +60,15 @@ async function post(path, body) {
 // 每个评测进程使用独立的种子用户，避免与库中真实用户或其他评测互串。
 const SEED_USER_BASE = 990_000 + (process.pid % 1_000);
 
+// 播种/召回端点按 Java 记录的 camelCase 绑定 (与 /internal/retrieve 的 topK 一致)；
+// 评测集内部用 snake_case 便于阅读，在此转换。字段名不匹配时 @NotNull 校验会失败，
+// Spring 转发 /error 后又走一遍拦截器，报出的是 401/403 而不是 400，极难定位。
+const toSeedEpisode = episode => ({
+  summary: episode.summary,
+  topics: episode.topics ?? [],
+  ageDays: episode.age_days ?? 0,
+});
+
 // --- 播种 ---
 const seededUsers = new Map();
 let seedOffset = 0;
@@ -61,8 +76,8 @@ for (const [key] of Object.entries(testset.scenarios)) {
   const userId = SEED_USER_BASE + seedOffset++;
   const seed = testset.scenarios[key];
   const result = await post('/internal/memory-seed', {
-    user_id: userId,
-    episodes: seed.episodes ?? [],
+    userId,
+    episodes: (seed.episodes ?? []).map(toSeedEpisode),
     facts: seed.facts ?? [],
   });
   seededUsers.set(key, { userId, seed });
@@ -91,7 +106,7 @@ for (const c of cases) {
   if (!scenario) throw new Error(`unknown scenario ${c.scenario}`);
   const start = Date.now();
   const res = await post('/internal/memory-recall', {
-    user_id: scenario.userId, query: c.query, top_k: c.top_k ?? 5,
+    userId: scenario.userId, query: c.query, topK: c.top_k ?? 5,
   });
   latencies.push(Date.now() - start);
   const record = { id: c.id, type: c.type, query: c.query, ...{} };

@@ -12,8 +12,8 @@ import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.policy.MemoryAdmissionPolicy;
 import com.tutor.resume.PiiMasker;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,12 +50,17 @@ public class EpisodeSummarizer {
     private final ObjectMapper mapper = new ObjectMapper();
     private final StructuredOutputService structuredOutputService;
     private final FactExtractionService factExtraction;
+    private final com.tutor.memory.policy.MemoryImportanceGate importanceGate;
+    private final boolean importanceGateEnabled;
+    /** 单次抽取的源窗口上限；窗口填满后门控不能再"等累积", 否则会永久卡在同一批消息上。 */
+    static final int MAX_WINDOW_MESSAGES = 30;
 
     public EpisodeSummarizer(JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
                              EpisodeStore store, ConversationStore conversations,
                              EpisodeCommitter committer, MemoryAdmissionPolicy admission) {
         this(jsonGateway, embeddingGateway, store, conversations, committer, admission,
-                DEFAULT_MIN_NEW_MESSAGES, new StructuredOutputService(jsonGateway, null), null);
+                DEFAULT_MIN_NEW_MESSAGES, new StructuredOutputService(jsonGateway, null), null,
+                new com.tutor.memory.policy.MemoryImportanceGate(), true);
     }
 
     public EpisodeSummarizer(JsonGenerationGateway jsonGateway, EmbeddingGateway embeddingGateway,
@@ -63,7 +68,8 @@ public class EpisodeSummarizer {
                              EpisodeCommitter committer, MemoryAdmissionPolicy admission,
                              @Value("${memory.episode.min-new-messages:12}") int minNewMessages) {
         this(jsonGateway, embeddingGateway, store, conversations, committer, admission,
-                minNewMessages, new StructuredOutputService(jsonGateway, null), null);
+                minNewMessages, new StructuredOutputService(jsonGateway, null), null,
+                new com.tutor.memory.policy.MemoryImportanceGate(), true);
     }
 
     @Autowired
@@ -72,7 +78,9 @@ public class EpisodeSummarizer {
                              EpisodeCommitter committer, MemoryAdmissionPolicy admission,
                              @Value("${memory.episode.min-new-messages:12}") int minNewMessages,
                              StructuredOutputService structuredOutputService,
-                             FactExtractionService factExtraction) {
+                             FactExtractionService factExtraction,
+                             com.tutor.memory.policy.MemoryImportanceGate importanceGate,
+                             @Value("${memory.episode.importance-gate-enabled:true}") boolean importanceGateEnabled) {
         this.jsonGateway = jsonGateway;
         this.embeddingGateway = embeddingGateway;
         this.store = store;
@@ -82,6 +90,8 @@ public class EpisodeSummarizer {
         this.minNewMessages = Math.max(2, minNewMessages);
         this.structuredOutputService = structuredOutputService;
         this.factExtraction = factExtraction;
+        this.importanceGate = importanceGate;
+        this.importanceGateEnabled = importanceGateEnabled;
     }
 
     /**
@@ -100,7 +110,7 @@ public class EpisodeSummarizer {
     private void maybeSummarizeInternal(long conversationId, long userId, String traceId, long expectedGeneration) {
         try {
             long watermark = conversations.episodeUptoMsgId(conversationId);
-            List<ConversationStore.Msg> msgs = conversations.messagesAfter(conversationId, watermark, 30);
+            List<ConversationStore.Msg> msgs = conversations.messagesAfter(conversationId, watermark, MAX_WINDOW_MESSAGES);
             // 仅摘要新完成的轮次，避免反复为同一会话窗口计算 Embedding。
             if (msgs.size() < minNewMessages) return;
 
@@ -113,12 +123,22 @@ public class EpisodeSummarizer {
                      .append('\n');
             }
             if (convo.isEmpty()) return;
+            // 重要性门控：无显著信号的窗口不烧 LLM。窗口未满时不推进水位线, 等后续消息累积再试；
+            // 窗口已满则必须推进, 否则纯闲聊满 30 条后每次都读到同一批消息, 该会话记忆永久停摆。
+            if (importanceGateEnabled && !importanceGate.hasSalientSignal(convo.toString())) {
+                if (msgs.size() >= MAX_WINDOW_MESSAGES) {
+                    conversations.advanceEpisodeWatermark(conversationId, msgs.getLast().id);
+                    log.info("episode 跳过整窗(无显著信号, 窗口已满) conv={} upto={} trace={}",
+                            conversationId, msgs.getLast().id, traceId);
+                }
+                return;
+            }
 
             String safeConversation = PiiMasker.mask(convo.toString()).masked();
             StructuredOutputResult<EpisodeSummaryOutput> structured = structuredOutputService.generate(
                     StructuredTask.EPISODE_SUMMARY,
                     Purpose.SUMMARY,
-                    List.of(SystemMessage.from(SYS), UserMessage.from(safeConversation)),
+                    List.of(LlmMessage.system(SYS), LlmMessage.user(safeConversation)),
                     EpisodeSummaryOutput.class,
                     output -> {
                         if (output.summary() == null || output.summary().isBlank()

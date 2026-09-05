@@ -9,8 +9,8 @@ import com.tutor.llm.structured.SummaryOutput;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.policy.MemoryAdmissionPolicy;
 import com.tutor.resume.PiiMasker;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -91,7 +91,7 @@ public class SummaryFolder {
             StructuredOutputResult<SummaryOutput> structured = structuredOutputService.generate(
                     StructuredTask.SUMMARY_FOLDER,
                     Purpose.SUMMARY,
-                    List.of(SystemMessage.from(SYS), UserMessage.from(safePrompt)),
+                    List.of(LlmMessage.system(SYS), LlmMessage.user(safePrompt)),
                     SummaryOutput.class,
                     output -> {
                         if (output.summary() == null || output.summary().isBlank()) {

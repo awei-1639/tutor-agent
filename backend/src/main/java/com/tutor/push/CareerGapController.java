@@ -27,7 +27,7 @@ public class CareerGapController {
     public record AddTasksRequest(long jobId, @NotEmpty List<String> skillIds) {}
 
     @org.springframework.web.bind.annotation.PostMapping("/career/gaps/tasks")
-    public List<com.tutor.plan.PlanService.PlanTask> addTasks(@Valid @org.springframework.web.bind.annotation.RequestBody AddTasksRequest request) {
+    public List<com.tutor.plan.PlanModels.PlanTask> addTasks(@Valid @org.springframework.web.bind.annotation.RequestBody AddTasksRequest request) {
         Long userId = AuthContext.currentUserId();
         if (userId == null) throw new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.UNAUTHORIZED, "未认证");

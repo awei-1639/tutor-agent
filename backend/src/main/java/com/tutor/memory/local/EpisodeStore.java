@@ -23,6 +23,7 @@ public class EpisodeStore {
     private final String encKeyId;
     private final String previousEncKey;
     private final String previousEncKeyId;
+    private final EpisodeSearchStore searchStore;
 
     public EpisodeStore(JdbcTemplate jdbc) {
         this(jdbc, "", "v1", "", "");
@@ -43,6 +44,8 @@ public class EpisodeStore {
         this.encKeyId = normalizeKeyId(encKeyId, "v1");
         this.previousEncKey = previousEncKey == null ? "" : previousEncKey;
         this.previousEncKeyId = previousEncKeyId == null ? "" : previousEncKeyId.trim();
+        this.searchStore = new EpisodeSearchStore(jdbc, this.encKey, this.encKeyId,
+                this.previousEncKey, this.previousEncKeyId);
     }
 
     public record Episode(long id, long userId, Long conversationId,
@@ -141,27 +144,11 @@ public class EpisodeStore {
 
     /** 向量相似检索 topK (同用户范围) */
     public List<Episode> searchByEmbedding(long userId, float[] queryVec, int topK) {
-        String vec = com.tutor.retrieval.vector.VectorStore.toVectorLiteral(queryVec);
-        String summary = summaryColumn();
-        String sql = "SELECT id, user_id, conversation_id, " + summary + ", topics, open_items, " +
-                "1 - (embedding <=> ?::vector) AS relevance, remote_memory_id, created_at " +
-                "FROM episodes WHERE user_id = ? AND status='active' AND embedding IS NOT NULL " +
-                "AND (expires_at IS NULL OR expires_at > now()) " +
-                "AND 1 - (embedding <=> ?::vector) >= ? " +
-                "ORDER BY embedding <=> ?::vector LIMIT ?";
-        return encKey.isBlank()
-                ? jdbc.query(sql, this::mapEpisode, vec, userId, vec, 0.50, vec, topK)
-                : jdbc.query(sql, this::mapEpisode, queryArgs(vec, userId, vec, 0.50, vec, topK));
+        return searchStore.searchByEmbedding(userId, queryVec, topK);
     }
 
-    /** 按用户取最近 N 条 (无向量检索时降级) */
     public List<Episode> recentByUser(long userId, int limit) {
-        String sql = "SELECT id, user_id, conversation_id, " + summaryColumn() + ", topics, open_items, remote_memory_id, created_at " +
-                "FROM episodes WHERE user_id = ? AND status='active' " +
-                "AND (expires_at IS NULL OR expires_at > now()) ORDER BY created_at DESC LIMIT ?";
-        return encKey.isBlank()
-                ? jdbc.query(sql, this::mapRecentEpisode, userId, limit)
-                : jdbc.query(sql, this::mapRecentEpisode, queryArgs(userId, limit));
+        return searchStore.recentByUser(userId, limit);
     }
 
     public void deleteByUser(long userId) {
@@ -170,39 +157,13 @@ public class EpisodeStore {
 
     /** 用户最近有效记忆中的未决事项（按记忆新旧去重取前 N），用于新会话开场主动提醒。 */
     public List<String> openItemsByUser(long userId, int limit) {
-        List<String> rows = jdbc.query("""
-                SELECT open_items FROM episodes
-                WHERE user_id = ? AND status='active' AND (expires_at IS NULL OR expires_at > now())
-                ORDER BY created_at DESC LIMIT 20
-                """, (rs, i) -> rs.getString(1), userId);
-        List<String> result = new ArrayList<>();
-        for (String row : rows) {
-            for (String item : parsePgTextArray(row)) {
-                String value = item.trim();
-                if (!value.isEmpty() && !result.contains(value)) result.add(value);
-                if (result.size() >= limit) return result;
-            }
-        }
-        return result;
+        return searchStore.openItemsByUser(userId, limit);
     }
 
     public List<ManagedEpisode> activeByUser(long userId, int limit) {
-        String sql = """
-                SELECT id, %s, topics, open_items, created_at, expires_at
-                FROM episodes
-                WHERE user_id=? AND status='active' AND (expires_at IS NULL OR expires_at > now())
-                ORDER BY created_at DESC LIMIT ?
-                """.formatted(summaryColumn());
-        return encKey.isBlank() ? jdbc.query(sql, (rs, i) -> new ManagedEpisode(rs.getLong(1), rs.getString(2),
-                parsePgTextArray(rs.getString(3)), parsePgTextArray(rs.getString(4)),
-                rs.getTimestamp(5).toInstant(), rs.getTimestamp(6) == null ? null : rs.getTimestamp(6).toInstant()),
-                userId, limit) : jdbc.query(sql, (rs, i) -> new ManagedEpisode(rs.getLong(1), rs.getString(2),
-                parsePgTextArray(rs.getString(3)), parsePgTextArray(rs.getString(4)),
-                rs.getTimestamp(5).toInstant(), rs.getTimestamp(6) == null ? null : rs.getTimestamp(6).toInstant()),
-                queryArgs(userId, limit));
+        return searchStore.activeByUser(userId, limit);
     }
 
-    /** 用户只能删除自己的有效本地记忆。 */
     public boolean deleteByIdForUser(long id, long userId) {
         return jdbc.update("""
                 WITH deleted AS (
@@ -216,15 +177,9 @@ public class EpisodeStore {
 
     /** 查询远端副本标识；仅返回当前用户的有效本地记忆。 */
     public java.util.Optional<String> remoteMemoryIdById(long id, long userId) {
-        return jdbc.query("""
-                SELECT remote_memory_id FROM episodes
-                WHERE id=? AND user_id=? AND status='active'
-                  AND (expires_at IS NULL OR expires_at > now())
-                """, (rs, i) -> rs.getString(1), id, userId)
-                .stream().filter(value -> value != null && !value.isBlank()).findFirst();
+        return searchStore.remoteMemoryIdById(id, userId);
     }
 
-    /** 将经过归属校验的 Mem0 远端 UUID 回写到本地权威记录。 */
     public void recordRemoteMemoryId(long id, long userId, String remoteMemoryId) {
         if (!com.tutor.memory.RemoteMemoryId.isValid(remoteMemoryId)) return;
         jdbc.update("""
@@ -235,74 +190,11 @@ public class EpisodeStore {
 
     /** 远程副本回填前确认本地权威记录仍然有效。 */
     public boolean isActiveById(long id, long userId) {
-        Integer count = jdbc.queryForObject("""
-                SELECT count(*) FROM episodes
-                WHERE id=? AND user_id=? AND status='active'
-                  AND (expires_at IS NULL OR expires_at > now())
-                """, Integer.class, id, userId);
-        return count != null && count > 0;
-    }
-
-    private String summaryColumn() {
-        if (encKey.isBlank()) return "summary";
-        if (!hasPreviousKey()) {
-            return """
-                    CASE
-                        WHEN summary_encrypted IS NOT NULL AND summary_encryption_key_id=?
-                            THEN pgp_sym_decrypt(summary_encrypted, ?)
-                        ELSE summary
-                    END
-                    """;
-        }
-        return """
-                CASE
-                    WHEN summary_encrypted IS NOT NULL AND summary_encryption_key_id=?
-                        THEN pgp_sym_decrypt(summary_encrypted, ?)
-                    WHEN summary_encrypted IS NOT NULL AND summary_encryption_key_id=?
-                        THEN pgp_sym_decrypt(summary_encrypted, ?)
-                    ELSE summary
-                END
-                """;
-    }
-
-    private Object[] queryArgs(Object... tail) {
-        if (encKey.isBlank()) return tail;
-        List<Object> args = new ArrayList<>(4 + tail.length);
-        args.add(encKeyId);
-        args.add(encKey);
-        if (hasPreviousKey()) {
-            args.add(previousEncKeyId);
-            args.add(previousEncKey);
-        }
-        Collections.addAll(args, tail);
-        return args.toArray();
-    }
-
-    private boolean hasPreviousKey() {
-        return !previousEncKey.isBlank() && !previousEncKeyId.isBlank()
-                && !previousEncKeyId.equals(encKeyId);
+        return searchStore.isActiveById(id, userId);
     }
 
     private static String normalizeKeyId(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value.trim();
-    }
-
-    private Episode mapEpisode(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-        return new Episode(rs.getLong(1), rs.getLong(2),
-                rs.getObject(3) == null ? null : rs.getLong(3), rs.getString(4),
-                parsePgTextArray(rs.getString(5)), parsePgTextArray(rs.getString(6)), rs.getDouble(7),
-                rs.getString(8), toInstant(rs.getTimestamp(9)));
-    }
-
-    private Episode mapRecentEpisode(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-        return new Episode(rs.getLong(1), rs.getLong(2),
-                rs.getObject(3) == null ? null : rs.getLong(3), rs.getString(4),
-                parsePgTextArray(rs.getString(5)), parsePgTextArray(rs.getString(6)), 0D,
-                rs.getString(7), toInstant(rs.getTimestamp(8)));
-    }
-
-    private static Instant toInstant(java.sql.Timestamp timestamp) {
-        return timestamp == null ? null : timestamp.toInstant();
     }
 
     private static String toPgTextArrayLiteral(List<String> items) {
@@ -320,21 +212,5 @@ public class EpisodeStore {
         return values.stream().map(value -> PiiMasker.mask(value == null ? "" : value).masked()).toList();
     }
 
-    private static List<String> parsePgTextArray(String pg) {
-        if (pg == null || pg.length() < 2) return List.of();
-        String inner = pg.substring(1, pg.length() - 1);
-        if (inner.isEmpty()) return List.of();
-        // 简化解析: 支持基础逗号分隔 + 双引号转义
-        java.util.List<String> out = new java.util.ArrayList<>();
-        StringBuilder cur = new StringBuilder();
-        boolean inQuote = false;
-        for (int i = 0; i < inner.length(); i++) {
-            char c = inner.charAt(i);
-            if (c == '"' && (i == 0 || inner.charAt(i - 1) != '\\')) inQuote = !inQuote;
-            else if (c == ',' && !inQuote) { out.add(cur.toString()); cur.setLength(0); }
-            else cur.append(c);
-        }
-        if (cur.length() > 0) out.add(cur.toString());
-        return out;
-    }
+
 }

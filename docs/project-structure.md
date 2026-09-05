@@ -53,6 +53,16 @@ com.tutor/
 └─ config        Spring 配置、健康检查和基础设施装配
 ```
 
+当前已落地的职责边界示例：
+
+```text
+chat/internal  ──> eval/InternalMemorySeedService
+push            ──> NotificationStore
+memory/external ──> MemorySyncJobStore
+memory/local    ──> FactPersistenceStore + FactPolicy
+interview       ──> *JobStore + *Worker + application facade
+```
+
 ### 放置规则
 
 - 只服务一个业务能力的类，放在对应模块；

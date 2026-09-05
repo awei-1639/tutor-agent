@@ -140,6 +140,7 @@ memory:
     metrics-refresh-ms: ${MEMORY_SYNC_METRICS_REFRESH_MS:10000}
   episode:
     min-new-messages: ${MEMORY_EPISODE_MIN_NEW_MESSAGES:12}
+    importance-gate-enabled: ${MEMORY_EPISODE_IMPORTANCE_GATE_ENABLED:true}
   mem0:
     enabled: ${MEM0_ENABLED:false}
     base-url: ${MEM0_BASE_URL:https://api.mem0.ai}

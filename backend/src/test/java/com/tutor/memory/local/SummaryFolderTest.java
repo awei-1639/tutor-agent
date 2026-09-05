@@ -1,10 +1,10 @@
 package com.tutor.memory.local;
 
 import com.tutor.contract.Purpose;
+import com.tutor.llm.LlmMessage;
 import com.tutor.llm.LlmGateway;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.SummaryFolder;
-import dev.langchain4j.data.message.ChatMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -98,7 +98,7 @@ class SummaryFolderTest {
 
         folder.maybeFold(2L, "t");
 
-        ArgumentCaptor<List<ChatMessage>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<LlmMessage>> captor = ArgumentCaptor.forClass(List.class);
         verify(gateway).chatJson(eq(Purpose.SUMMARY), captor.capture(), anyString(), isNull(), eq(1));
         assertThat(captor.getValue().toString()).contains("旧摘要");
     }

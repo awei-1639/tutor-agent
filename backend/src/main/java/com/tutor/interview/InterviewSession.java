@@ -24,7 +24,6 @@ import java.time.Instant;
 public class InterviewSession {
     private static final int DEFAULT_MAIN_QUESTION_LIMIT = 5;
 
-    private final JdbcTemplate jdbc;
     private final InterviewLlmService interviewer;
     private final InterviewSessionRepository sessions;
     private final InterviewReportService reports;
@@ -32,17 +31,23 @@ public class InterviewSession {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Autowired
-    public InterviewSession(JdbcTemplate jdbc, InterviewLlmService interviewer, InterviewSessionRepository sessions,
+    public InterviewSession(InterviewLlmService interviewer, InterviewSessionRepository sessions,
                             InterviewReportService reports, PlanService plans) {
-        this.jdbc = jdbc;
         this.interviewer = interviewer;
         this.sessions = sessions;
         this.reports = reports;
     }
 
+    /** Compatibility constructor retained for database-focused integration tests. */
+    public InterviewSession(JdbcTemplate jdbc, InterviewLlmService interviewer,
+                            InterviewSessionRepository sessions, InterviewReportService reports,
+                            PlanService plans) {
+        this(interviewer, sessions, reports, plans);
+    }
+
     /** Convenience constructor retained for focused tests with a mock gateway. */
     public InterviewSession(JdbcTemplate jdbc, JsonGenerationGateway gateway, PlanService plans) {
-        this(jdbc, new InterviewLlmService(gateway), new InterviewSessionRepository(jdbc),
+        this(new InterviewLlmService(gateway), new InterviewSessionRepository(jdbc),
                 new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans), plans);
     }
 
@@ -77,18 +82,10 @@ public class InterviewSession {
         String blueprintId = UUID.randomUUID().toString();
         QuestionSpec firstSpec = generateQuestion(topic, role, jd, type, level, 1, traceId, priorPrompts(retestOf));
 
-        jdbc.update("""
-                INSERT INTO interview_blueprints
-                  (id, user_id, target_role, topic, skill_ids, round_plan, job_description, interview_type, difficulty, duration_minutes)
-                VALUES (?, ?, ?, ?, ?::text[], ?::jsonb, ?, ?, ?, ?)
-                """, blueprintId, userId, role, topic, toTextArray(topicPlan.skillIds()),
+        sessions.insertBlueprint(blueprintId, userId, role, topic, topicPlan.skillIds(),
                 blueprintJson(role, topicPlan.skillIds(), type, level, duration), jd, type, level, duration);
-
-        jdbc.update("""
-                INSERT INTO interview_sessions
-                  (id, user_id, target_role, topic, status, current_question_sequence, main_question_count, blueprint_id, skill_ids, retest_of, deadline_at)
-                VALUES (?, ?, ?, ?, 'IN_PROGRESS', 1, 1, ?, ?::text[], ?, now() + (? * interval '1 minute'))
-                """, sessionId, userId, role, topic, blueprintId, toTextArray(topicPlan.skillIds()), retestOf, duration);
+        sessions.insertSession(sessionId, userId, role, topic, blueprintId,
+                topicPlan.skillIds(), retestOf, duration);
         insertQuestion(sessionId, 1, "MAIN", firstSpec.question(), topicPlan.primarySkill(), contractJson(firstSpec));
         return new InterviewMessage(sessionId, "IN_PROGRESS", "面试主题: " + topic + "\n\n问题 1: " + firstSpec.question());
     }
@@ -172,15 +169,7 @@ public class InterviewSession {
 
     public SessionView session(long userId, String sessionId) {
         SessionRow session = findSession(userId, sessionId);
-        List<TranscriptTurn> transcript = new ArrayList<>();
-        jdbc.query("""
-                SELECT prompt, answer FROM interview_questions
-                WHERE session_id=? ORDER BY sequence
-                """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
-            transcript.add(new TranscriptTurn("ai", rs.getString(1)));
-            String answer = rs.getString(2);
-            if (answer != null) transcript.add(new TranscriptTurn("me", answer));
-        }, sessionId);
+        List<TranscriptTurn> transcript = sessions.transcript(sessionId);
         return new SessionView(session.id(), session.status(), session.targetRole(), session.topic(),
                 session.mainQuestionCount(), session.deadlineAt(), transcript);
     }
@@ -218,44 +207,18 @@ public class InterviewSession {
         if ("IN_PROGRESS".equals(session.status())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "请在面试结束后再反馈评分准确性");
         }
-        jdbc.update("""
-                INSERT INTO interview_feedback (user_id, session_id, rating, reason)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT (user_id, session_id) DO UPDATE SET rating=EXCLUDED.rating, reason=EXCLUDED.reason, updated_at=now()
-                """, userId, sessionId, rating, reason == null ? "" : reason.trim());
+        sessions.recordFeedback(userId, sessionId, rating, reason);
     }
 
     /** Recent sessions are deliberately owner-scoped; reports never need a global admin lookup. */
     public List<HistoryItem> history(long userId, int limit) {
-        return jdbc.query("""
-                SELECT s.id, s.target_role, COALESCE(b.interview_type, 'technical'), COALESCE(b.difficulty, 'MID'),
-                       s.status, count(q.id), COALESCE(avg(q.score), 0), s.created_at, s.completed_at, s.retest_of,
-                       CASE WHEN s.status='COMPLETED' AND s.retest_of IS NOT NULL THEN source.avg_score END
-                FROM interview_sessions s
-                LEFT JOIN interview_blueprints b ON b.id=s.blueprint_id
-                LEFT JOIN interview_questions q ON q.session_id=s.id AND q.score IS NOT NULL
-                LEFT JOIN LATERAL (
-                    SELECT avg(score) AS avg_score FROM interview_questions WHERE session_id=s.retest_of AND score IS NOT NULL
-                ) source ON true
-                WHERE s.user_id=?
-                GROUP BY s.id, b.interview_type, b.difficulty, source.avg_score
-                ORDER BY s.created_at DESC
-                LIMIT ?
-                """, (rs, i) -> {
-                    double sourceAverage = rs.getDouble(11);
-                    Double delta = rs.wasNull() ? null : rs.getDouble(7) - sourceAverage;
-                    return new HistoryItem(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4),
-                            rs.getString(5), rs.getInt(6), rs.getDouble(7), rs.getTimestamp(8).toInstant(),
-                            rs.getTimestamp(9) == null ? null : rs.getTimestamp(9).toInstant(), rs.getString(10), delta);
-                }, userId, limit);
+        return sessions.history(userId, limit);
     }
 
     private TopicPlan resolveTopic(String targetRole, String jobDescription) {
         List<String> skills = new ArrayList<>();
         try {
-            jdbc.query("SELECT unnest(requires_raw) FROM jobs WHERE title LIKE ? LIMIT 3",
-                    (org.springframework.jdbc.core.RowCallbackHandler) rs -> skills.add(rs.getString(1)),
-                    "%" + targetRole + "%");
+            skills.addAll(sessions.requiredSkillsForRole(targetRole));
         } catch (Exception ignored) {
             // Jobs are an enhancement, not a prerequisite for starting an interview.
         }
@@ -323,9 +286,7 @@ public class InterviewSession {
     }
 
     private List<String> priorPrompts(String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) return List.of();
-        return jdbc.query("SELECT prompt FROM interview_questions WHERE session_id=? ORDER BY sequence",
-                (rs, i) -> rs.getString(1), sessionId);
+        return sessions.priorPrompts(sessionId);
     }
 
     private List<String> priorPrompts(String currentSessionId, String sourceSessionId) {
@@ -337,11 +298,6 @@ public class InterviewSession {
     private String normalizeSkill(String value) {
         String trimmed = value == null ? "" : value.trim();
         return trimmed.startsWith("skill:") ? trimmed : "skill:" + trimmed;
-    }
-
-    private String toTextArray(List<String> values) {
-        return "{" + values.stream().map(value -> "\"" + value.replace("\"", "\\\"") + "\"")
-                .collect(java.util.stream.Collectors.joining(",")) + "}";
     }
 
     private int mainQuestionLimit(int durationMinutes) {

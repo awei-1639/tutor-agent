@@ -7,8 +7,8 @@ import com.tutor.llm.structured.CitationGuardOutput;
 import com.tutor.llm.structured.StructuredOutputResult;
 import com.tutor.llm.structured.StructuredOutputService;
 import com.tutor.llm.structured.StructuredTask;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import com.tutor.llm.LlmMessage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -102,7 +102,7 @@ public class CitationGuard {
             StructuredOutputResult<CitationGuardOutput> structured = structuredOutputService.generate(
                     StructuredTask.CITATION_GUARD,
                     Purpose.JUDGE,
-                    List.of(SystemMessage.from(SYS), UserMessage.from(prompt)),
+                    List.of(LlmMessage.system(SYS), LlmMessage.user(prompt)),
                     CitationGuardOutput.class,
                     output -> {
                         if (output.claims() == null || output.claims().isEmpty()) {

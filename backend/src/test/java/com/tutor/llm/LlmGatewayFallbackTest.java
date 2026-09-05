@@ -51,7 +51,7 @@ class LlmGatewayFallbackTest {
                     propertiesWithFallback(baseUrl(primary), baseUrl(fallback), true), jdbc, budgetGuard, concurrency);
 
             String result = gateway.chatJson(Purpose.EXPERT,
-                    List.of(SystemMessage.from("system"), UserMessage.from("q")), "trace", null, 1);
+                    List.of(LlmMessage.system("system"), LlmMessage.user("q")), "trace", null, 1);
 
             assertThat(result).contains("ok");
             assertThat(primaryHits.get()).isEqualTo(1);
@@ -73,7 +73,7 @@ class LlmGatewayFallbackTest {
                     propertiesWithFallback(baseUrl(primary), baseUrl(fallback), false), jdbc, budgetGuard, concurrency);
 
             assertThatThrownBy(() -> gateway.chatJson(Purpose.EXPERT,
-                    List.of(SystemMessage.from("system"), UserMessage.from("q")), "trace", null, 1))
+                    List.of(LlmMessage.system("system"), LlmMessage.user("q")), "trace", null, 1))
                     .isInstanceOf(RuntimeException.class);
 
             assertThat(primaryHits.get()).isEqualTo(1);

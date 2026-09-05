@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -30,10 +31,11 @@ public class PushService {
     private static final Logger log = LoggerFactory.getLogger(PushService.class);
     private static final String CRON_LOCK = "push-scheduled-run";
 
-    private final JdbcTemplate jdbc;
+    private final PushJobStore jobs;
     private final ProfileService profileService;
     private final SkillAlignService alignService;
     private final ScheduledTaskLock taskLock;
+    private final NotificationStore notifications;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${push.match-threshold:0.65}") double matchThreshold;
@@ -42,17 +44,18 @@ public class PushService {
     @Value("${push.max-per-run:5}") int maxPerRun;
 
     @Autowired
-    public PushService(JdbcTemplate jdbc, ProfileService profileService, SkillAlignService alignService,
-                       ScheduledTaskLock taskLock) {
-        this.jdbc = jdbc;
+    public PushService(PushJobStore jobs, ProfileService profileService, SkillAlignService alignService,
+                       ScheduledTaskLock taskLock, NotificationStore notifications) {
+        this.jobs = jobs;
         this.profileService = profileService;
         this.alignService = alignService;
         this.taskLock = taskLock;
+        this.notifications = notifications;
     }
 
     /** 单实例/测试构造器：无锁存储时始终作为 leader 执行。 */
     public PushService(JdbcTemplate jdbc, ProfileService profileService, SkillAlignService alignService) {
-        this(jdbc, profileService, alignService, alwaysLeader(jdbc));
+        this(new PushJobStore(jdbc), profileService, alignService, alwaysLeader(jdbc), new NotificationStore(jdbc));
     }
 
     private static ScheduledTaskLock alwaysLeader(JdbcTemplate jdbc) {
@@ -74,7 +77,7 @@ public class PushService {
     private void runScheduledBatch() {
         try {
             int released = releaseAvailableJobs();
-            List<Long> userIds = jdbc.queryForList("SELECT id FROM users ORDER BY id", Long.class);
+            List<Long> userIds = jobs.userIds();
             int processed = 0;
             for (Long userId : userIds) {
                 try {
@@ -92,10 +95,7 @@ public class PushService {
     }
 
     private int releaseAvailableJobs() {
-        return jdbc.update("""
-                UPDATE jobs SET released = TRUE, fetched_at = now()
-                WHERE id IN (SELECT id FROM jobs WHERE NOT released ORDER BY id LIMIT ?)
-                """, releaseBatch);
+        return jobs.releaseAvailableJobs(releaseBatch);
     }
 
     /** 返回当前用户本次运行摘要 (also served by /internal/push-run) */
@@ -127,14 +127,7 @@ public class PushService {
         List<String> profileIds = aligned.values().stream().filter(x -> x != null).distinct().toList();
 
         // 候选岗位
-        record Candidate(long id, String nodeId, String title, String company, String city,
-                         String salary, List<String> requires) {}
-        List<Candidate> candidates = jdbc.query("""
-                SELECT id, node_id, title, company, city, salary, requires_raw FROM jobs
-                WHERE released AND id NOT IN (SELECT job_id FROM push_tasks WHERE user_id = ? AND job_id IS NOT NULL)
-                """, (rs, i) -> new Candidate(rs.getLong(1), rs.getString(2), rs.getString(3),
-                rs.getString(4), rs.getString(5), rs.getString(6),
-                List.of((String[]) rs.getArray(7).getArray())), uid);
+        List<PushJobStore.Candidate> candidates = jobs.availableCandidates(uid);
         if (candidates.isEmpty()) return Map.of("released", released, "pushed", 0, "reason", "no_new_jobs");
 
         Set<String> profileIdSet = new HashSet<>(profileIds);
@@ -142,18 +135,15 @@ public class PushService {
                 .filter(r -> !profileIdSet.contains(r)).distinct().toList();
         Set<String> speedupables = alignService.speedupables(profileIds, allMissing);
 
-        List<String> resumeVec = jdbc.query(
-                "SELECT embedding::text FROM resumes WHERE user_id=? ORDER BY id DESC LIMIT 1",
-                (rs, i) -> rs.getString(1), uid);
-        boolean hasResume = !resumeVec.isEmpty();
+        Optional<String> resumeEmbedding = jobs.latestResumeEmbedding(uid);
+        boolean hasResume = resumeEmbedding.isPresent();
 
         List<Map<String, Object>> pushed = new ArrayList<>();
-        var scored = new ArrayList<Map.Entry<Candidate, MatchScorer.MatchResult>>();
-        for (Candidate c : candidates) {
+        var scored = new ArrayList<Map.Entry<PushJobStore.Candidate, MatchScorer.MatchResult>>();
+        for (PushJobStore.Candidate c : candidates) {
             Double sim = null;
             if (hasResume) {
-                sim = jdbc.queryForObject("SELECT 1 - (embedding <=> ?::vector) FROM jobs WHERE id=?",
-                        Double.class, resumeVec.get(0), c.id());
+                sim = jobs.similarity(resumeEmbedding.orElseThrow(), c.id());
             }
             MatchScorer.MatchResult r = MatchScorer.score(c.requires(), profileIdSet, speedupables, sim);
             if (MatchScorer.shouldPush(r, hasResume, matchThreshold, coldCoverageThreshold)) {
@@ -162,7 +152,7 @@ public class PushService {
         }
         scored.sort((a, b) -> Double.compare(b.getValue().score(), a.getValue().score()));
         for (var e : scored.stream().limit(maxPerRun).toList()) {
-            Candidate c = e.getKey();
+            PushJobStore.Candidate c = e.getKey();
             MatchScorer.MatchResult r = e.getValue();
             try {
                 String payload = mapper.writeValueAsString(Map.ofEntries(
@@ -173,16 +163,11 @@ public class PushService {
                         Map.entry("coverage", Math.round(r.coverage() * 100) / 100.0),
                         Map.entry("matched", r.matched()), Map.entry("speedup", r.speedup()),
                         Map.entry("missing", r.missing())));
-                int inserted = jdbc.update("""
-                        INSERT INTO push_tasks (user_id, job_id, status) VALUES (?,?,'sent')
-                        ON CONFLICT (user_id, job_id) WHERE job_id IS NOT NULL DO NOTHING
-                        """, uid, c.id());
-                if (inserted == 0) continue; // 与定时/手动并发时，已由另一轮推送成功领取。
-                jdbc.update("INSERT INTO notifications (user_id, type, payload) VALUES (?,'job_push',?::jsonb)", uid, payload);
+                if (!jobs.claimPush(uid, c.id())) continue; // 与定时/手动并发时，已由另一轮推送成功领取。
+                notifications.add(uid, "job_push", payload);
                 pushed.add(Map.of("title", c.title(), "score", r.score()));
             } catch (Exception ex) {
-                jdbc.update("INSERT INTO push_tasks (user_id, job_id, status, retry_count, error) VALUES (?,?,'failed',0,?)",
-                        uid, c.id(), ex.getMessage());
+                jobs.recordFailure(uid, c.id(), ex.getMessage());
                 log.error("推送失败 job={}", c.id(), ex);
             }
         }
@@ -193,13 +178,9 @@ public class PushService {
 
     /** 引导消息去重: 存在未读引导则不重复发 */
     private void guideOnce(long uid, String text) {
-        Integer unreadGuides = jdbc.queryForObject(
-                "SELECT count(*) FROM notifications WHERE user_id=? AND type='guide' AND NOT read",
-                Integer.class, uid);
-        if (unreadGuides != null && unreadGuides > 0) return;
+        if (notifications.hasUnreadGuide(uid)) return;
         try {
-            jdbc.update("INSERT INTO notifications (user_id, type, payload) VALUES (?,'guide',?::jsonb)",
-                    uid, mapper.writeValueAsString(Map.of("text", text)));
+            notifications.add(uid, "guide", mapper.writeValueAsString(Map.of("text", text)));
         } catch (Exception ignored) {}
     }
 }
