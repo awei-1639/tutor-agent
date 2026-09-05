@@ -19,7 +19,7 @@ import java.util.UUID;
  * rendering code.</p>
  */
 @Repository
-final class InterviewCompletionJobStore {
+class InterviewCompletionJobStore {
     private final JdbcTemplate jdbc;
 
     record Job(long id, long userId, String sessionId, UUID leaseToken) {}

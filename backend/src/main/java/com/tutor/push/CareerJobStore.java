@@ -10,7 +10,7 @@ import java.util.Map;
 
 /** Owns released-job SQL and row mapping for the career-gap use case. */
 @Repository
-final class CareerJobStore {
+class CareerJobStore {
     private final JdbcTemplate jdbc;
 
     CareerJobStore(JdbcTemplate jdbc) {

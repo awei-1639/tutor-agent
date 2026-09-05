@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /** SQL boundary for durable interview-answer jobs and their fencing tokens. */
 @Repository
-final class InterviewTurnJobStore {
+class InterviewTurnJobStore {
     private final JdbcTemplate jdbc;
 
     record ClaimedJob(String id, long userId, String sessionId, String answer, String requestId,

@@ -11,7 +11,7 @@ import java.util.UUID;
 
 /** SQL boundary for durable chat-turn admission, leases, and terminal states. */
 @Repository
-final class ChatTurnJobStore {
+class ChatTurnJobStore {
     private static final String ACTIVE = "status IN ('ACCEPTED', 'RUNNING')";
     private static final long LEASE_SECONDS = 120;
     private static final int MAX_ATTEMPTS = 3;

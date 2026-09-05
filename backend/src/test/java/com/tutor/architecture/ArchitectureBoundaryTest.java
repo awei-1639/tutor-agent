@@ -1,6 +1,7 @@
 package com.tutor.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
@@ -30,6 +31,7 @@ public class ArchitectureBoundaryTest {
         llmPortsDoNotDependOnProviderSdk.check(classes);
         memoryDoesNotDependOnChatApi.check(classes);
         memoryConsentServiceDoesNotOwnPersistence.check(classes);
+        repositoryBeansAreNotFinal.check(classes);
     }
 
     public static final ArchRule retrievalDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.retrieval..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.chat..");
@@ -47,4 +49,9 @@ public class ArchitectureBoundaryTest {
     public static final ArchRule llmPortsDoNotDependOnProviderSdk = noClasses().that().areInterfaces().and().resideInAnyPackage("com.tutor.llm..").should().dependOnClassesThat().resideInAnyPackage("dev.langchain4j..");
     public static final ArchRule memoryDoesNotDependOnChatApi = noClasses().that().resideInAnyPackage("com.tutor.memory..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.chat..", "com.tutor.chat.api..");
     public static final ArchRule memoryConsentServiceDoesNotOwnPersistence = noClasses().that().haveSimpleName("MemoryConsentService").should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..");
+    // Spring Boot 的 PersistenceExceptionTranslationPostProcessor 会为每个 @Repository bean 生成
+    // CGLIB 代理; final 的 Repository 会让应用启动直接失败(且单测不加载完整上下文, 只有真实启动才暴露)。
+    public static final ArchRule repositoryBeansAreNotFinal = noClasses()
+            .that().areAnnotatedWith("org.springframework.stereotype.Repository")
+            .should().haveModifier(JavaModifier.FINAL);
 }

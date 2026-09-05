@@ -13,7 +13,7 @@ import java.util.Map;
 
 /** Owns profile persistence SQL, JSON mapping, generation fencing, and event rows. */
 @Repository
-public final class ProfileStore {
+public class ProfileStore {
     private static final Logger log = LoggerFactory.getLogger(ProfileStore.class);
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper = new ObjectMapper();

@@ -8,7 +8,7 @@ import java.util.Optional;
 
 /** SQL boundary for job release, candidate selection, and push-task idempotency. */
 @Repository
-final class PushJobStore {
+class PushJobStore {
     private final JdbcTemplate jdbc;
 
     record Candidate(long id, String nodeId, String title, String company, String city,
