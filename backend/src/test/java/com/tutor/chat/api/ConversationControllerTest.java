@@ -1,6 +1,6 @@
 package com.tutor.chat.api;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.chat.api.ConversationController;
 import com.tutor.memory.local.ConversationStore;
 import org.junit.jupiter.api.AfterEach;

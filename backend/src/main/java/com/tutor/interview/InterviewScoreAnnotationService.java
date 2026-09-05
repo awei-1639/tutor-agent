@@ -1,6 +1,6 @@
 package com.tutor.interview;
 
-import com.tutor.admin.AdminService;
+import com.tutor.identity.admin.AdminService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

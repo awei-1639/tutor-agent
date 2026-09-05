@@ -1,7 +1,7 @@
 package com.tutor.chat.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.chat.application.ChatService;
 import com.tutor.chat.application.ChatModels;
 import com.tutor.chat.application.ChatTurnService;

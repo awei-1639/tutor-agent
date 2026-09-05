@@ -23,7 +23,7 @@ import com.tutor.memory.application.FactRecallService;
 import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.policy.MemoryConsentService;
-import com.tutor.profile.ProfileService;
+import com.tutor.identity.profile.ProfileService;
 import com.tutor.retrieval.agentic.AgenticRetriever;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public class ChatService {
                        ProfileService profileService, IntentRouter router,
                        com.tutor.expert.RoutingPolicy routingPolicy,
                        ExpertRunner expertRunner, Aggregator aggregator, TraceRecorder trace,
-                       com.tutor.resume.ResumeService resumeService,
+                       com.tutor.identity.resume.ResumeService resumeService,
                        LongTermMemoryService longTermMemory,
                        com.tutor.context.sections.EpisodeSection episodeSection,
                        FactRecallService factRecall,
@@ -78,7 +78,7 @@ public class ChatService {
                        ProfileService profileService, IntentRouter router,
                        com.tutor.expert.RoutingPolicy routingPolicy,
                        ExpertRunner expertRunner, Aggregator aggregator, TraceRecorder trace,
-                       com.tutor.resume.ResumeService resumeService,
+                       com.tutor.identity.resume.ResumeService resumeService,
                        LongTermMemoryService longTermMemory,
                        com.tutor.context.sections.EpisodeSection episodeSection,
                        FactRecallService factRecall,

@@ -1,7 +1,7 @@
 package com.tutor.push;
 
-import com.tutor.profile.ProfileService;
-import com.tutor.profile.SkillAlignService;
+import com.tutor.identity.profile.ProfileService;
+import com.tutor.identity.profile.SkillAlignService;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 

@@ -23,7 +23,7 @@ import com.tutor.llm.LlmMessage;
 import com.tutor.llm.LlmStreamHandler;
 import com.tutor.llm.StreamingGenerationGateway;
 import com.tutor.memory.local.ConversationStore;
-import com.tutor.resume.ResumeService;
+import com.tutor.identity.resume.ResumeService;
 import com.tutor.tool.ToolCallLoop;
 import com.tutor.tool.ToolExecutionContext;
 import org.slf4j.Logger;

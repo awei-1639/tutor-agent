@@ -11,7 +11,7 @@ import com.tutor.llm.structured.StructuredTask;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.policy.MemoryAdmissionPolicy;
-import com.tutor.resume.PiiMasker;
+import com.tutor.identity.resume.PiiMasker;
 import com.tutor.llm.LlmMessage;
 
 import org.slf4j.Logger;

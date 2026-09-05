@@ -19,8 +19,8 @@ import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.EpisodeSummarizer;
 import com.tutor.memory.local.SummaryFolder;
 import com.tutor.memory.policy.MemoryConsentService;
-import com.tutor.profile.ProfileService;
-import com.tutor.resume.ResumeService;
+import com.tutor.identity.profile.ProfileService;
+import com.tutor.identity.resume.ResumeService;
 import com.tutor.retrieval.agentic.AgenticRetriever;
 import com.tutor.retrieval.fusion.FusedRetriever;
 

@@ -1,12 +1,12 @@
 package com.tutor.memory.policy;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.memory.external.MemorySyncOutbox;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.FactStore;
-import com.tutor.profile.ProfileService;
+import com.tutor.identity.profile.ProfileService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

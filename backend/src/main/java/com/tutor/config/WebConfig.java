@@ -1,7 +1,7 @@
 package com.tutor.config;
 
-import com.tutor.auth.AuthInterceptor;
-import com.tutor.auth.CsrfInterceptor;
+import com.tutor.identity.auth.AuthInterceptor;
+import com.tutor.identity.auth.CsrfInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;

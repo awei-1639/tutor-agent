@@ -1,6 +1,6 @@
 package com.tutor.push;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

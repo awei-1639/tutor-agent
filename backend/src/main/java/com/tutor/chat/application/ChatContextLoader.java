@@ -1,12 +1,12 @@
 package com.tutor.chat.application;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.chat.application.ChatModels.TurnContext;
 import com.tutor.llm.BudgetExhausted;
 import com.tutor.llm.LlmBudgetGuard;
 import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.policy.MemoryConsentService;
-import com.tutor.profile.ProfileService;
+import com.tutor.identity.profile.ProfileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

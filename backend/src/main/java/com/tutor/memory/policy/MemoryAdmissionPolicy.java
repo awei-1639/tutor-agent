@@ -1,6 +1,6 @@
 package com.tutor.memory.policy;
 
-import com.tutor.resume.PiiMasker;
+import com.tutor.identity.resume.PiiMasker;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

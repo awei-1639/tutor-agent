@@ -1,6 +1,6 @@
 package com.tutor.push;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;

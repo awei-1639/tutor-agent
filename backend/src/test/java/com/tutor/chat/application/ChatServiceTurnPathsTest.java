@@ -1,6 +1,6 @@
 package com.tutor.chat.application;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
 import com.tutor.llm.LlmStreamHandler;

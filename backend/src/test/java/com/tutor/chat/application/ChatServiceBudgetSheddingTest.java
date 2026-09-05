@@ -1,6 +1,6 @@
 package com.tutor.chat.application;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.contract.Intent;
 import com.tutor.expert.IntentRouter;
 import com.tutor.llm.BudgetExhausted;

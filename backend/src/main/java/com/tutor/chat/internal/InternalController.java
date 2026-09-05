@@ -2,7 +2,7 @@ package com.tutor.chat.internal;
 
 import com.tutor.expert.IntentRouter;
 import com.tutor.expert.RoutingPolicy;
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.eval.InternalMemorySeedService;
 import com.tutor.memory.application.FactRecallService;
 import com.tutor.memory.application.LongTermMemoryService;

@@ -1,6 +1,6 @@
 package com.tutor.chat.api;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.chat.api.ChatController;
 import com.tutor.chat.application.ChatService;
 import com.tutor.chat.application.ChatTurnEvents;

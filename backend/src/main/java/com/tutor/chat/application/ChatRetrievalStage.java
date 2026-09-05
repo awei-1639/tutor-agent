@@ -1,6 +1,6 @@
 package com.tutor.chat.application;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.chat.application.ChatModels.RetrievedContext;
 import com.tutor.chat.application.ChatModels.TurnContext;
 import com.tutor.chat.support.TraceRecorder;

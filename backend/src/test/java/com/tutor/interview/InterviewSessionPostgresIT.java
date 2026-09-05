@@ -1,9 +1,9 @@
 package com.tutor.interview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.admin.AdminService;
-import com.tutor.auth.AuthService;
-import com.tutor.auth.JwtService;
+import com.tutor.identity.admin.AdminService;
+import com.tutor.identity.auth.AuthService;
+import com.tutor.identity.auth.JwtService;
 import com.tutor.contract.Purpose;
 import com.tutor.llm.LlmGateway;
 import com.tutor.plan.PlanService;

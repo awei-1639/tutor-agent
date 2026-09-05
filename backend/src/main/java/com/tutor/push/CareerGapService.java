@@ -1,7 +1,7 @@
 package com.tutor.push;
 
-import com.tutor.profile.ProfileService;
-import com.tutor.profile.SkillAlignService;
+import com.tutor.identity.profile.ProfileService;
+import com.tutor.identity.profile.SkillAlignService;
 import com.tutor.plan.PlanModels;
 import com.tutor.plan.PlanService;
 import org.springframework.stereotype.Service;

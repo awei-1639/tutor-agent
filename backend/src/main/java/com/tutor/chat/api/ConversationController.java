@@ -1,6 +1,6 @@
 package com.tutor.chat.api;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.memory.local.ConversationStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;

@@ -1,6 +1,6 @@
 package com.tutor.chat.feedback;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.chat.feedback.MessageFeedbackController;
 import com.tutor.chat.feedback.MessageFeedbackService;
 import org.junit.jupiter.api.AfterEach;

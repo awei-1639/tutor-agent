@@ -1,11 +1,11 @@
 package com.tutor.memory.policy;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.memory.external.MemorySyncOutbox;
 import com.tutor.memory.local.ConversationStore;
-import com.tutor.profile.ProfileService;
+import com.tutor.identity.profile.ProfileService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;

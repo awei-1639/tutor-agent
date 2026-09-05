@@ -1,6 +1,6 @@
 package com.tutor.memory.policy;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.memory.application.LongTermMemoryService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;

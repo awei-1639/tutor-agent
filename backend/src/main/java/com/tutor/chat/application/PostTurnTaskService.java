@@ -4,7 +4,7 @@ import com.tutor.memory.application.LongTermMemoryService;
 import com.tutor.memory.local.EpisodeSummarizer;
 import com.tutor.memory.local.SummaryFolder;
 import com.tutor.memory.policy.MemoryConsentService;
-import com.tutor.profile.ProfileService;
+import com.tutor.identity.profile.ProfileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

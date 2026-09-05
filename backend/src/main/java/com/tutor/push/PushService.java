@@ -1,10 +1,10 @@
 package com.tutor.push;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.profile.ProfileService;
-import com.tutor.profile.SkillAlignService;
+import com.tutor.identity.profile.ProfileService;
+import com.tutor.identity.profile.SkillAlignService;
 import com.tutor.scheduling.ScheduledTaskLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

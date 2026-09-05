@@ -1,6 +1,6 @@
 package com.tutor.memory.local;
 
-import com.tutor.resume.PiiMasker;
+import com.tutor.identity.resume.PiiMasker;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;

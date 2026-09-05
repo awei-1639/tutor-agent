@@ -1,6 +1,6 @@
 package com.tutor.chat.application;
 
-import com.tutor.auth.AuthContext;
+import com.tutor.identity.auth.AuthContext;
 import com.tutor.chat.application.ChatService;
 import com.tutor.chat.support.TraceRecorder;
 import com.tutor.context.PromptAssembler;
@@ -18,7 +18,7 @@ import com.tutor.memory.local.ConversationStore;
 import com.tutor.memory.local.EpisodeSummarizer;
 import com.tutor.memory.local.SummaryFolder;
 import com.tutor.memory.policy.MemoryConsentService;
-import com.tutor.profile.ProfileService;
+import com.tutor.identity.profile.ProfileService;
 import com.tutor.retrieval.agentic.AgenticRetriever;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -58,7 +58,7 @@ class ChatServiceTest {
         ExpertRunner expertRunner = mock(ExpertRunner.class);
         Aggregator aggregator = mock(Aggregator.class);
         TraceRecorder trace = mock(TraceRecorder.class);
-        com.tutor.resume.ResumeService resumes = mock(com.tutor.resume.ResumeService.class);
+        com.tutor.identity.resume.ResumeService resumes = mock(com.tutor.identity.resume.ResumeService.class);
         SummaryFolder summaryFolder = mock(SummaryFolder.class);
         EpisodeSummarizer episodeSummarizer = mock(EpisodeSummarizer.class);
         LongTermMemoryService longTermMemory = mock(LongTermMemoryService.class);

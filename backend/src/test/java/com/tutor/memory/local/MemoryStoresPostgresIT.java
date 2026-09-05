@@ -1,7 +1,7 @@
 package com.tutor.memory.local;
 
 import com.tutor.memory.policy.MemoryConsentStore;
-import com.tutor.resume.PiiMasker;
+import com.tutor.identity.resume.PiiMasker;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;

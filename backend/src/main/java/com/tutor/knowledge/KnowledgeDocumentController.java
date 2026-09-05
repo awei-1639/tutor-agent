@@ -1,6 +1,6 @@
 package com.tutor.knowledge;
 
-import com.tutor.admin.AdminService;
+import com.tutor.identity.admin.AdminService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

@@ -1,6 +1,6 @@
 package com.tutor.memory.local;
 
-import com.tutor.resume.PiiMasker;
+import com.tutor.identity.resume.PiiMasker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;

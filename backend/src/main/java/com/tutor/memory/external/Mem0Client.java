@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.config.Mem0Properties;
 import com.tutor.memory.local.EpisodeStore;
 import com.tutor.memory.policy.MemoryAdmissionPolicy;
-import com.tutor.resume.PiiMasker;
+import com.tutor.identity.resume.PiiMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

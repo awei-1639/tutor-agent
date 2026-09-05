@@ -1,7 +1,7 @@
 package com.tutor.llm.structured;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tutor.resume.PiiMasker;
+import com.tutor.identity.resume.PiiMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
