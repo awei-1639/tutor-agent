@@ -1,4 +1,4 @@
-package com.tutor.eval;
+package com.tutor.evaluation.eval;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

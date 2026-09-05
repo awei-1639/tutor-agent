@@ -1,4 +1,4 @@
-package com.tutor.eval;
+package com.tutor.evaluation.eval;
 
 import com.tutor.llm.EmbeddingGateway;
 import com.tutor.conversation.memory.local.EpisodeStore;

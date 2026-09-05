@@ -3,7 +3,7 @@ package com.tutor.conversation.chat.internal;
 import com.tutor.agent.expert.IntentRouter;
 import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.identity.auth.AuthContext;
-import com.tutor.eval.InternalMemorySeedService;
+import com.tutor.evaluation.eval.InternalMemorySeedService;
 import com.tutor.conversation.memory.application.FactRecallService;
 import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.conversation.memory.local.FactStore;

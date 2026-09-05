@@ -1,4 +1,4 @@
-package com.tutor.eval;
+package com.tutor.evaluation.eval;
 
 import java.util.ArrayList;
 import java.util.Comparator;
