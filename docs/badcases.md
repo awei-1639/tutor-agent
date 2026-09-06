@@ -288,6 +288,13 @@ P50=4105ms  P95=5605ms  max=8497ms
 
 ## Badcase 09：facet 指标不达标，且改 prompt 让它更糟
 
+> **2026-09-06 复测更新**：在当前 master 上用 `scripts/check-router-accuracy.sh` 复测同一
+> 30 条标注集——Accuracy **96.7%**(29/30)、**Facet Exact-Match 93.3%**、领域内误判越界
+> **0%**。facet 指标已越过 85% 阈值(Badcase 06/07 的修复与后续
+> "encode facet stacking and empty-facet rules" 的 prompt 修正生效)，rag-eval 翻阻断式
+> 门禁的质量前提已满足，剩余动作仅为阈值标定与 embedding 抖动确认。复测唯一错分:
+> 「面试官问我为什么转行，该怎么回答比较好」期望 interview 实际 chat。
+
 ### 现象
 
 30 条路由集上 facet Exact-Match 66.7%（阈值 85%）、Macro-F1 0.754（阈值 0.80）。
