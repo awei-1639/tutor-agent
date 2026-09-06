@@ -70,6 +70,17 @@ set -a
 # shellcheck disable=SC1091
 . "$ROOT/.env"
 set +a
+# .env.eval (可选, 已 gitignore): 评测专用的模型/预算覆盖, 例如把 DEEPSEEK_BASE_URL
+# 指到 SiliconFlow 免费层或本地 Ollama 并配 LLM_MODEL_*。它覆盖 .env 的同名值;
+# 脚本必需的内部端点/预算/缓存开关在它之后设置, 不会被覆盖文件破坏。
+# 切换模型后评测基线需要显式重标定, 不要混在功能改动里悄悄切。
+if [ -f "$ROOT/.env.eval" ]; then
+  echo "==> 加载评测覆盖文件 .env.eval"
+  set -a
+  # shellcheck disable=SC1091
+  . "$ROOT/.env.eval"
+  set +a
+fi
 export INTERNAL_ENDPOINTS_ENABLED=true
 # 本地评测：node 可能是 Windows 侧的，跨 WSL2 边界访问后端时来源地址非 127.0.0.1，
 # 会被 /internal 的 loopback 检查挡成 404。评测是纯本地开发工具，显式放开。

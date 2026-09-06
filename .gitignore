@@ -1,4 +1,5 @@
 .env
+.env.eval
 target/
 *.class
 *.log
