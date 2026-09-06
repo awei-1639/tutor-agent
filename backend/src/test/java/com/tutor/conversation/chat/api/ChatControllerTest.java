@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -84,7 +85,9 @@ class ChatControllerTest {
                 .andExpect(request().asyncStarted());
         mvc.perform(post("/chat").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isTooManyRequests());
-        verify(service).turn(any(), anyString(), any(ChatTurnEvents.class), any(CancellationToken.class));
+        // chat() 在虚拟线程上异步调用 turn(); asyncStarted 返回时它可能尚未执行,
+        // 立即 verify 会与调度竞态 (CI 上偶发零交互), 必须等待调用落地。
+        verify(service, timeout(5000)).turn(any(), anyString(), any(ChatTurnEvents.class), any(CancellationToken.class));
         verifyNoMoreInteractions(service);
     }
 
