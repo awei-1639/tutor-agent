@@ -207,13 +207,16 @@ llm:
     api-key: ${SILICONFLOW_API_KEY:}
     base-url: ${SILICONFLOW_BASE_URL:https://api.siliconflow.cn/v1}
   routing:
-    chat: deepseek-chat
-    router: deepseek-chat        # 轻任务候选: 切至更廉价模型后跑评估回归
-    expert: deepseek-chat
-    summary: deepseek-chat
-    extract: deepseek-chat
-    judge: deepseek-chat
-    plan: deepseek-chat
+    # 模型名可用环境变量逐 purpose 覆盖: 把 DEEPSEEK_BASE_URL 指到任意
+    # OpenAI 兼容端点 (SiliconFlow 免费层 / Ollama) 后, 再配对应模型名即可,
+    # 例如 LLM_MODEL_ROUTER=THUDM/glm-4-9b-chat。换模型后必须重标定评测基线。
+    chat: ${LLM_MODEL_CHAT:deepseek-chat}
+    router: ${LLM_MODEL_ROUTER:deepseek-chat}   # 轻任务候选: 切至更廉价模型后跑评估回归
+    expert: ${LLM_MODEL_EXPERT:deepseek-chat}
+    summary: ${LLM_MODEL_SUMMARY:deepseek-chat}
+    extract: ${LLM_MODEL_EXTRACT:deepseek-chat}
+    judge: ${LLM_MODEL_JUDGE:deepseek-chat}
+    plan: ${LLM_MODEL_PLAN:deepseek-chat}
     embed: BAAI/bge-m3
   # 主供应商全部尝试失败后的备用出口，默认关闭 (保持单供应商行为)。
   # 仅承接非流式结构化调用 (router/expert/judge/extract/plan)；流式聊天已发出的
