@@ -80,6 +80,10 @@ export INTERNAL_ENDPOINTS_LOOPBACK_ONLY=false
 # 只在评测后端进程内提高限额, 生产配置不动。
 export LLM_BUDGET_DAILYTOKENLIMIT="${LLM_BUDGET_DAILYTOKENLIMIT:-20000000}"
 export LLM_USER_DAILY_TOKEN_LIMIT="${LLM_USER_DAILY_TOKEN_LIMIT:-20000000}"
+# 检索评测的三种模式对同一测集各打一遍 /internal/retrieve, 每次都触发一次
+# 路由 LLM。评测进程内开启路由决策缓存 (同 query 只路由一次), 省约 2/3 的
+# 路由 token; 生产配置默认关闭, 行为不变。
+export TUTOR_RETRIEVAL_ROUTE_CACHE_ENABLED=true
 export JWT_SECRET="${JWT_SECRET:-agent-local-eval-secret-32-bytes-minimum-2026}"
 java -jar "$JAR" >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID="$!"
