@@ -52,22 +52,13 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest req) {
-        try {
-            AuthService.AuthResult r = auth.register(req.email(), req.password(), req.name());
-            return authenticated(r);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
+        // IllegalArgumentException → 400 由全局异常处理统一映射
+        return authenticated(auth.register(req.email(), req.password(), req.name()));
     }
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest req) {
-        try {
-            AuthService.AuthResult r = auth.login(req.email(), req.password());
-            return authenticated(r);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
-        }
+        return authenticatedOrUnauthorized(() -> auth.login(req.email(), req.password()));
     }
 
     /** 开发环境单字段 name 登录，自动创建开发账号。 */
@@ -93,8 +84,17 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, Object>> refresh(@CookieValue(value = "tutor_refresh", required = false) String refreshToken) {
+        return authenticatedOrUnauthorized(() -> auth.refresh(refreshToken));
+    }
+
+    /**
+     * 认证失败必须是 401, 而全局异常处理对 IllegalArgumentException 的默认是 400。
+     * 这个差异是端点语义而非横切规则, 因此保留在此显式声明, 不下沉到全局处理器。
+     */
+    private ResponseEntity<Map<String, Object>> authenticatedOrUnauthorized(
+            java.util.function.Supplier<AuthService.AuthResult> action) {
         try {
-            return authenticated(auth.refresh(refreshToken));
+            return authenticated(action.get());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
         }

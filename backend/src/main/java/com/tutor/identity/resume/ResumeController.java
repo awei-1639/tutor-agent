@@ -5,11 +5,7 @@ import com.tutor.platform.config.RequestTraceFilter;
 import com.tutor.agent.tool.ToolExecutionContext;
 import com.tutor.agent.tool.ToolExecutor;
 import com.tutor.agent.tool.ToolInputs;
-import com.tutor.agent.tool.ToolExecutionException;
 import org.slf4j.MDC;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,25 +31,5 @@ public class ResumeController {
         String key = idempotencyKey == null || idempotencyKey.isBlank() ? traceId : idempotencyKey;
         return (Map<String, Object>) toolExecutor.execute("resume_upload", new ToolInputs.ResumeUpload(file),
                 new ToolExecutionContext(traceId, "resume", AuthContext.requireUserId(), key, false));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> badRequest(IllegalArgumentException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Map<String, String>> serverErr(IllegalStateException e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
-    }
-
-    @ExceptionHandler(ToolExecutionException.class)
-    public ResponseEntity<Map<String, String>> toolError(ToolExecutionException e) {
-        HttpStatus status = switch (e.code()) {
-            case "INVALID_INPUT" -> HttpStatus.BAD_REQUEST;
-            case "TIMEOUT" -> HttpStatus.GATEWAY_TIMEOUT;
-            default -> HttpStatus.INTERNAL_SERVER_ERROR;
-        };
-        return ResponseEntity.status(status).body(Map.of("error", e.getMessage()));
     }
 }

@@ -103,6 +103,16 @@ Off by default (`CHAT_TOOL_LOOP_ENABLED=false`). `ToolCallLoop` runs a strict-JS
 
 JWT in the HttpOnly `tutor_access` cookie (`AuthInterceptor`) plus CSRF double-submit on authenticated writes (`CsrfInterceptor`), both registered in `WebConfig` on `/**`. `/auth/*`, `/healthz`, `/readyz` skip auth; `/internal/*` requires `INTERNAL_ENDPOINTS_ENABLED` and is loopback-only by default, returning 404 otherwise. Business endpoints must never fall back to `DEV_USER_ID`. New endpoints have to preserve user scoping, request-size limits, and non-leaking error messages.
 
+### Error handling
+
+REST exceptions funnel through `platform/config/ApiExceptionHandler` (`@RestControllerAdvice`), which maps them to `{message, error, path, traceId}`. Field order matters: the front-end `backendDetail()` reads `message` before `error`, and `toUserMessage()` falls back to status-code copy when `message` is absent. Rules encoded there — do not re-implement them per-Controller:
+
+- **4xx** returns the business message; **5xx** returns a generic string and logs detail internally. Spring Boot's `server.error.*` defaults to `never`, so this is the only path that decides what escapes.
+- Exceptions with a machine-readable code extend `platform/config/CodedException`; status comes from the code table and unregistered codes fall back to 500, so a new code can never leak as 4xx. It is an abstract class rather than an interface because `@ExceptionHandler` only accepts `Class<? extends Throwable>`, and as a platform type it keeps the advice from depending on business packages.
+- **SSE is deliberately excluded — by `response.isCommitted()`, not by endpoint declaration.** Once a streaming response is committed, its status code can no longer change, so the advice rethrows and the container closes the connection; mid-stream errors are reported by `ChatTurnEvents.onError` emitting an SSE `error` event. Never "simplify" this away — writing JSON to a committed stream silently breaks the client parser. Conversely, exceptions thrown inside an SSE handler *before* streaming starts (rate limits, bad params, 501) hit an uncommitted response and get the normal JSON, which the front-end handles by status code (`api.ts` `if (!res.ok || !res.body)`).
+- Three Controller try-catches are intentional and must stay: `AuthController.authenticatedOrUnauthorized` (auth failure is 401 while the global default for `IllegalArgumentException` is 400), `AuthController.devLogin` (swallows to fall back to login — routing, not error handling), and `ChatController.send` (client disconnect inside an async thread, unreachable by the advice).
+- Per-endpoint failure metrics use `@TrackedOperation(counter=…, operation=…)` on the handler; the advice derives `result` from the status (429 → `rate_limited`, else `failure`) so one request is never double-counted. Keep tag values explicit in annotations instead of deriving them from method names — renaming a method would otherwise silently break dashboards.
+
 ### Frontend
 
 `src/pages/*` are route pages, `src/components` holds only genuinely cross-page UI, and **all** backend access plus SSE parsing lives in `src/lib/api.ts` — do not re-implement cookie, CSRF, SSE, or error-formatting logic in a page. Markdown is rendered through `src/lib/markdown.ts` (marked + DOMPurify); `frontend/e2e/security.spec.ts` is the regression for that.

@@ -71,14 +71,15 @@ export function toUserMessage(error: unknown, fallback = '操作失败，请稍�
     if (error.status === 400) {
       if (error.path.includes('/admin/documents')) return error.detail ?? '仅支持 PDF、DOCX、TXT、Markdown，且文件不能超过大小限制。';
       if (error.path.includes('/resumes')) return error.detail ?? '仅支持 PDF、DOCX、TXT、Markdown，且简历文本不能过短。';
-      if (error.path.includes('/auth/register')) return '注册信息不完整或格式不正确，请检查后重试。';
-      return '提交的信息不符合要求，请检查后重试。';
+      if (error.path.includes('/auth/register')) return error.detail ?? '注册信息不完整或格式不正确，请检查后重试。';
+      if (error.path.includes('/interview')) return error.detail ?? '面试请求不符合要求，请检查后重试。';
+      return error.detail ?? '提交的信息不符合要求，请检查后重试。';
     }
     if (error.status === 401) {
-      if (error.path.includes('/auth/login')) return '邮箱或密码不正确，请重试。';
-      if (error.path.includes('/auth/register')) return '注册请求未通过验证，请刷新页面后重试。';
+      if (error.path.includes('/auth/login')) return error.detail ?? '邮箱或密码不正确，请重试。';
+      if (error.path.includes('/auth/register')) return error.detail ?? '注册请求未通过验证，请刷新页面后重试。';
       if (error.path.includes('/auth/dev-login')) return '开发登录暂未启用，请使用邮箱注册或登录。';
-      return '登录状态已失效，请重新登录。';
+      return error.detail ?? '登录状态已失效，请重新登录。';
     }
     if (error.status === 403 && error.path.startsWith('/admin')) return '当前账号没有管理员权限。';
     if (error.status === 403) return '页面验证已过期，请刷新页面后重试。';

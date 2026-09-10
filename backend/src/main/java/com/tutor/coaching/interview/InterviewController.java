@@ -1,6 +1,7 @@
 package com.tutor.coaching.interview;
 
 import com.tutor.identity.auth.AuthContext;
+import com.tutor.platform.config.TrackedOperation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Max;
@@ -40,11 +41,11 @@ public class InterviewController {
                                   @Size(max = 1000) String reason) {}
 
     @PostMapping("/open")
+    @TrackedOperation(counter = "tutor.interview.requests", operation = "open")
     public ResponseEntity<InterviewSession.InterviewMessage> open(@Valid @RequestBody OpenRequest req,
             @RequestHeader(value = "X-Trace-Id", required = false) String traceId) {
         long userId = currentUserId();
         if (!rateLimiter.tryAcquireOpen(userId)) {
-            metrics.request("open", "rate_limited");
             enforce(false, "创建面试请求过于频繁，请稍后再试");
         }
         Timer.Sample timer = metrics.startTimer();
@@ -53,19 +54,16 @@ public class InterviewController {
                     req.difficulty(), req.durationMinutes(), traceIdOrDefault(traceId));
             metrics.request("open", "success");
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
-        } catch (RuntimeException ex) {
-            metrics.request("open", "failure");
-            throw ex;
         } finally { metrics.stop(timer, "open"); }
     }
 
     @PostMapping("/{sessionId}/answer")
+    @TrackedOperation(counter = "tutor.interview.requests", operation = "answer")
     public ResponseEntity<?> answer(@PathVariable @NotBlank String sessionId,
             @Valid @RequestBody AnswerRequest req,
             @RequestHeader(value = "X-Trace-Id", required = false) String traceId) {
         long userId = currentUserId();
         if (!rateLimiter.tryAcquireAnswer(userId)) {
-            metrics.request("answer", "rate_limited");
             enforce(false, "提交回答过于频繁，请稍后再试");
         }
         Timer.Sample timer = metrics.startTimer();
@@ -73,9 +71,6 @@ public class InterviewController {
             InterviewTurnService.TurnJob result = turns.submit(userId, sessionId, req.answer(), req.requestId(), traceIdOrDefault(traceId));
             metrics.request("answer", result.status().toLowerCase(java.util.Locale.ROOT));
             return ResponseEntity.accepted().body(result);
-        } catch (RuntimeException ex) {
-            metrics.request("answer", "failure");
-            throw ex;
         } finally { metrics.stop(timer, "answer"); }
     }
 
@@ -93,11 +88,11 @@ public class InterviewController {
     }
 
     @PostMapping("/{sessionId}/retest")
+    @TrackedOperation(counter = "tutor.interview.requests", operation = "retest")
     public ResponseEntity<InterviewSession.InterviewMessage> retest(@PathVariable @NotBlank String sessionId,
             @RequestHeader(value = "X-Trace-Id", required = false) String traceId) {
         long userId = currentUserId();
         if (!rateLimiter.tryAcquireOpen(userId)) {
-            metrics.request("retest", "rate_limited");
             enforce(false, "复测创建请求过于频繁，请稍后再试");
         }
         Timer.Sample timer = metrics.startTimer();
@@ -105,13 +100,11 @@ public class InterviewController {
             InterviewSession.InterviewMessage result = sessions.retest(userId, sessionId, traceIdOrDefault(traceId));
             metrics.request("retest", "success");
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
-        } catch (RuntimeException ex) {
-            metrics.request("retest", "failure");
-            throw ex;
         } finally { metrics.stop(timer, "retest"); }
     }
 
     @PostMapping("/{sessionId}/cancel")
+    @TrackedOperation(counter = "tutor.interview.requests", operation = "cancel")
     public InterviewSession.InterviewMessage cancel(@PathVariable @NotBlank String sessionId) {
         long userId = currentUserId();
         Timer.Sample timer = metrics.startTimer();
@@ -119,9 +112,6 @@ public class InterviewController {
             InterviewSession.InterviewMessage result = sessions.cancel(userId, sessionId);
             metrics.request("cancel", result.status().toLowerCase(java.util.Locale.ROOT));
             return result;
-        } catch (RuntimeException ex) {
-            metrics.request("cancel", "failure");
-            throw ex;
         } finally { metrics.stop(timer, "cancel"); }
     }
 

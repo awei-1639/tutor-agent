@@ -1,17 +1,15 @@
 package com.tutor.agent.tool;
 
-public class ToolExecutionException extends RuntimeException {
-    private final String code;
+import com.tutor.platform.config.CodedException;
+
+/** 工具执行失败。继承 {@link CodedException} 后由全局异常处理统一映射状态码。 */
+public class ToolExecutionException extends CodedException {
 
     public ToolExecutionException(String code, String message) {
-        super(message);
-        this.code = code;
+        super(code, message);
     }
 
     public ToolExecutionException(String code, String message, Throwable cause) {
-        super(message, cause);
-        this.code = code;
+        super(code, message, cause);
     }
-
-    public String code() { return code; }
 }
