@@ -1,0 +1,45 @@
+# 告警规则 — 由 Prometheus evaluation 定期求值; 通知渠道需另接 Alertmanager (可选)。
+groups:
+  - name: tutor-availability
+    rules:
+      - alert: TutorBackendDown
+        expr: up{job="tutor-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "后端抓取目标失联"
+          description: "Prometheus 连续 2 分钟无法抓取 tutor-backend ({{ $labels.instance }})。"
+
+      - alert: TutorHttp5xxRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5..",application="personal-ai-tutor"}[5m]))
+          / sum(rate(http_server_requests_seconds_count{application="personal-ai-tutor"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HTTP 5xx 占比超过 5%"
+          description: "最近 5 分钟 5xx 错误率 {{ $value | humanizePercentage }}。"
+
+  - name: tutor-llm
+    rules:
+      - alert: TutorLlmBudgetRejections
+        expr: increase(tutor_llm_budget_rejected_total[15m]) > 10
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM 预算拒绝激增"
+          description: "15 分钟内预算拒绝 {{ $value }} 次 (kind={{ $labels.kind }}), 检查日预算/轮次预算配置。"
+
+      - alert: TutorLlmErrorRateHigh
+        expr: |
+          sum(rate(tutor_llm_calls_total{status!="ok"}[5m]))
+          / sum(rate(tutor_llm_calls_total[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM 调用错误率超过 10%"
+          description: "最近 10 分钟 LLM 调用失败率 {{ $value | humanizePercentage }}, 检查 Provider 可用性与降级日志。"

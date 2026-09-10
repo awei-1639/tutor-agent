@@ -1,0 +1,93 @@
+{
+  "uid": "tutor-llm-01",
+  "title": "Tutor · LLM 与服务观测",
+  "tags": ["tutor", "llm"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "purpose",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(tutor_llm_calls_total, purpose)",
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "抓取状态",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "targets": [{ "expr": "up{job=\"tutor-backend\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "mappings": [
+        { "type": "value", "options": { "1": { "text": "UP", "color": "green" }, "0": { "text": "DOWN", "color": "red" } } }
+      ] } }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "LLM 调用速率 (按用途/状态)",
+      "gridPos": { "x": 4, "y": 0, "w": 10, "h": 8 },
+      "targets": [{ "expr": "sum by (purpose, status) (rate(tutor_llm_calls_total{purpose=~\"$purpose\"}[5m]))", "legendFormat": "{{purpose}} {{status}}", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "LLM Token 消耗 (input/output, 每秒)",
+      "gridPos": { "x": 14, "y": 0, "w": 10, "h": 8 },
+      "targets": [
+        { "expr": "sum by (direction) (rate(tutor_llm_tokens_total{purpose=~\"$purpose\", direction=\"input\"}[5m]))", "legendFormat": "in {{purpose}}", "refId": "A" },
+        { "expr": "sum by (direction) (rate(tutor_llm_tokens_total{purpose=~\"$purpose\", direction=\"output\"}[5m]))", "legendFormat": "out {{purpose}}", "refId": "B" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "LLM Token 累计 (按用途, 5m 窗口增量)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [{ "expr": "sum by (purpose) (increase(tutor_llm_tokens_total{purpose=~\"$purpose\"}[5m]))", "legendFormat": "{{purpose}}", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "预算拒绝 (15m 增量)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [{ "expr": "sum by (kind) (increase(tutor_llm_budget_rejected_total[15m]))", "legendFormat": "{{kind}}", "refId": "A" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "HTTP 请求速率 (按状态码)",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "targets": [{ "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"personal-ai-tutor\"}[5m]))", "legendFormat": "{{status}}", "refId": "A" }]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "HTTP 延迟 P95 / P50",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"personal-ai-tutor\"}[5m])))", "legendFormat": "P95", "refId": "A" },
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"personal-ai-tutor\"}[5m])))", "legendFormat": "P50", "refId": "B" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "JVM 堆内存 / Hikari 活跃连接",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
+      "targets": [
+        { "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "heap used", "refId": "A" },
+        { "expr": "hikaricp_connections_active", "legendFormat": "hikari active", "refId": "B" }
+      ]
+    }
+  ]
+}

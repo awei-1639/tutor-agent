@@ -21,19 +21,33 @@ public class AuthInterceptor implements HandlerInterceptor {
     private final JwtService jwt;
     private final boolean internalEndpointsEnabled;
     private final boolean internalEndpointsLoopbackOnly;
+    private final String metricsScrapeToken;
 
     public AuthInterceptor(JwtService jwt,
                            @Value("${tutor.internal.enabled:false}") boolean internalEndpointsEnabled,
                            @Value("${tutor.internal.loopback-only:true}") boolean internalEndpointsLoopbackOnly) {
+        this(jwt, internalEndpointsEnabled, internalEndpointsLoopbackOnly, "");
+    }
+
+    public AuthInterceptor(JwtService jwt,
+                           @Value("${tutor.internal.enabled:false}") boolean internalEndpointsEnabled,
+                           @Value("${tutor.internal.loopback-only:true}") boolean internalEndpointsLoopbackOnly,
+                           @Value("${tutor.metrics.scrape-token:}") String metricsScrapeToken) {
         this.jwt = jwt;
         this.internalEndpointsEnabled = internalEndpointsEnabled;
         this.internalEndpointsLoopbackOnly = internalEndpointsLoopbackOnly;
+        this.metricsScrapeToken = metricsScrapeToken == null ? "" : metricsScrapeToken.trim();
     }
 
     @Override
     public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler) throws Exception {
         addSecurityHeaders(res);
         String path = req.getRequestURI();
+        if (path.equals("/actuator/prometheus") && !metricsScrapeToken.isBlank()
+                && ("Bearer " + metricsScrapeToken).equals(req.getHeader("Authorization"))) {
+            // Prometheus 抓取令牌认证; 指标端点不建立用户上下文, 令牌未配置时维持 401 行为
+            return true;
+        }
         if (path.startsWith("/internal")) {
             if (!internalEndpointsEnabled || (internalEndpointsLoopbackOnly && !isLoopback(req.getRemoteAddr()))) {
                 res.setStatus(404);

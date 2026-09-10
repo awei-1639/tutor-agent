@@ -1,5 +1,6 @@
 .env
 .env.eval
+ops/monitoring/scrape-token
 target/
 *.class
 *.log

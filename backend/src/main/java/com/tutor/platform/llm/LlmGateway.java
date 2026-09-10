@@ -13,6 +13,7 @@ import com.tutor.platform.llm.structured.StructuredTask;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.ChatMessage;
 import jakarta.annotation.PreDestroy;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,14 +52,20 @@ public class LlmGateway implements EmbeddingGateway, JsonGenerationGateway, Stre
 
     public LlmGateway(LlmProperties props, JdbcTemplate jdbc, LlmBudgetGuard budgetGuard,
                       LlmConcurrencyGate concurrency) {
-        this(props, jdbc, budgetGuard, concurrency, null);
+        this(props, jdbc, budgetGuard, concurrency, null, null);
+    }
+
+    public LlmGateway(LlmProperties props, JdbcTemplate jdbc, LlmBudgetGuard budgetGuard,
+                      LlmConcurrencyGate concurrency, StructuredOutputRecorder structuredOutputRecorder) {
+        this(props, jdbc, budgetGuard, concurrency, structuredOutputRecorder, null);
     }
 
     @Autowired
     public LlmGateway(LlmProperties props, JdbcTemplate jdbc, LlmBudgetGuard budgetGuard,
-                      LlmConcurrencyGate concurrency, StructuredOutputRecorder structuredOutputRecorder) {
+                      LlmConcurrencyGate concurrency, StructuredOutputRecorder structuredOutputRecorder,
+                      MeterRegistry meterRegistry) {
         this.props = props;
-        this.usageRecorder = new LlmUsageRecorder(jdbc);
+        this.usageRecorder = new LlmUsageRecorder(jdbc, meterRegistry);
         this.budgetGuard = budgetGuard;
         this.concurrency = concurrency;
         this.requestPolicy = new LlmRequestPolicy(props, tokenBudget);

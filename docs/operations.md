@@ -155,3 +155,24 @@ Episode 重要性门控：`MEMORY_EPISODE_IMPORTANCE_GATE_ENABLED`（默认开�
 同步 Outbox 暴露 `tutor.memory.sync.backlog`（待处理、退避中和处理中任务数）与 `tutor.memory.sync.failed`（终态失败任务数）两个低基数指标，默认每 10 秒刷新，可通过 `MEMORY_SYNC_METRICS_REFRESH_MS` 调整。生产环境应对失败数和持续增长的积压配置告警。
 
 OSS Bucket 还必须配置 CORS，允许前端站点对签名 URL 发起 `PUT`，至少放行 `Content-Type` 请求头并暴露 `ETag` 响应头；不要把 AccessKey 或 STS 长期凭证下发到浏览器。签名会在 15 分钟后失效，未完成的普通/分片会话由后台清理；同时建议配置 OSS 生命周期规则，自动终止长期未完成的 Multipart Upload，覆盖应用进程在创建会话后立即崩溃的极端情况。
+
+## 监控栈（Prometheus + Grafana）
+
+`docker-compose.monitoring.yml` 提供 Prometheus 抓取与 Grafana 仪表盘，覆盖健康探针、LLM token/预算指标、HTTP 延迟与 JVM：
+
+```bash
+# 1. .env 配置抓取令牌（后端与 ops/monitoring/scrape-token 文件需同值）
+TUTOR_METRICS_SCRAPE_TOKEN=local-dev-metrics-scrape-token
+# 2. 启动（叠加在基础依赖之上；后端用 java -jar 或 docker-compose.local 均可）
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.monitoring.yml up -d prometheus grafana
+# 3. 面板 http://localhost:3000 (Tutor · LLM 与服务观测), 抓取目标 http://localhost:9090/targets
+```
+
+- 指标来源：`tutor_llm_calls_total` / `tutor_llm_tokens_total{purpose,model,direction}`（LlmUsageRecorder），
+  `tutor_llm_budget_rejected_total{kind}`（LlmBudgetMetrics），`http_server_requests_seconds_*`，JVM/Hikari 自动暴露；
+- 抓取认证：`/actuator/prometheus` 默认 401，配置 `TUTOR_METRICS_SCRAPE_TOKEN` 后接受 `Bearer` 令牌；
+  `ops/monitoring/scrape-token` 已 gitignore，生产环境必须替换默认值；
+- 告警规则在 `ops/monitoring/alerts.yml`（后端失联、5xx 占比、预算拒绝激增、LLM 错误率），
+  通知渠道需另接 Alertmanager 或 Grafana 告警；
+- 链路追踪：`GenAiTelemetry` 按 OTel GenAI 语义约定打 span，配置 `OTEL_EXPORTER_OTLP_ENDPOINT`
+  指向 Jaeger/Tempo 即激活（默认 no-op 零开销）。

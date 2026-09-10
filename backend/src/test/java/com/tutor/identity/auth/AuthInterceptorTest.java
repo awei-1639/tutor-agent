@@ -14,7 +14,7 @@ import static org.mockito.Mockito.*;
 
 class AuthInterceptorTest {
     private final JwtService jwt = mock(JwtService.class);
-    private final AuthInterceptor interceptor = new AuthInterceptor(jwt, true, true);
+    private final AuthInterceptor interceptor = new AuthInterceptor(jwt, true, true, "");
 
     @AfterEach
     void clearContext() {
@@ -105,7 +105,7 @@ class AuthInterceptorTest {
 
     @Test
     void productionCanDisableInternalEndpoints() throws Exception {
-        AuthInterceptor productionInterceptor = new AuthInterceptor(jwt, false, true);
+        AuthInterceptor productionInterceptor = new AuthInterceptor(jwt, false, true, "");
         HttpServletRequest request = request("/internal/push-run", null);
         HttpServletResponse response = mock(HttpServletResponse.class);
 
@@ -123,6 +123,29 @@ class AuthInterceptorTest {
         assertThat(interceptor.preHandle(request, response, new Object())).isFalse();
         verify(response).setStatus(404);
         verifyNoInteractions(jwt);
+    }
+
+    @Test
+    void prometheusScrapeWithConfiguredTokenIsAccepted() throws Exception {
+        AuthInterceptor tokenInterceptor = new AuthInterceptor(jwt, true, true, "scrape-secret");
+        HttpServletRequest request = request("/actuator/prometheus", "Bearer scrape-secret");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+
+        assertThat(tokenInterceptor.preHandle(request, response, new Object())).isTrue();
+        verifyNoInteractions(jwt);
+        assertThat(AuthContext.currentUserId()).isNull();
+    }
+
+    @Test
+    void prometheusScrapeWithWrongOrMissingTokenIsRejected() throws Exception {
+        AuthInterceptor tokenInterceptor = new AuthInterceptor(jwt, true, true, "scrape-secret");
+        HttpServletResponse response = responseWithWriter();
+        // 显式打桩: 本机 Mockito 环境下未打桩的 Long 返回 0 而非 null, 会把非法 token 误判为合法
+        when(jwt.parse(anyString())).thenReturn(null);
+
+        assertThat(tokenInterceptor.preHandle(request("/actuator/prometheus", "Bearer wrong"), response, new Object())).isFalse();
+        assertThat(tokenInterceptor.preHandle(request("/actuator/prometheus", null), responseWithWriter(), new Object())).isFalse();
+        assertThat(interceptor.preHandle(request("/actuator/prometheus", "Bearer scrape-secret"), responseWithWriter(), new Object())).isFalse();
     }
 
     private static HttpServletRequest request(String path, String authorization) {
