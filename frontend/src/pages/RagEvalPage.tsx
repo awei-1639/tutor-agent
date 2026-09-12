@@ -64,17 +64,17 @@ export default function RagEvalPage() {
   const compare = modes[compareMode];
 
   return (
-    <div className="h-full flex overflow-hidden bg-[#fbfcfe]">
+    <div className="h-full flex overflow-hidden">
       <HistoryPanel runs={runs.data ?? []} selectedId={selectedId} onSelect={setSelectedId} />
       <main className="flex-1 min-w-0 overflow-y-auto">
         <div className="max-w-[1440px] mx-auto px-7 py-7 lg:px-10">
           <header className="flex flex-wrap items-end justify-between gap-5 mb-7">
             <div>
-              <div className="flex items-center gap-2 text-xs font-medium text-ink-500 mb-2">
+              <div className="editorial-kicker mb-2">
                 <FlaskIcon /> <span>RAG Evaluation</span>
               </div>
-              <h1 className="text-[28px] leading-tight font-semibold tracking-tight text-ink-900">检索质量评测</h1>
-              <p className="text-sm text-ink-500 mt-2">真实调用当前检索管线，按 Gold 节点计算 Recall、MRR，并保留每条失败用例。</p>
+              <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">检索质量评测</h1>
+              <p className="mt-2 text-sm leading-6 text-ink-500">真实调用当前检索管线，按 Gold 节点计算 Recall、MRR，并保留每条失败用例。</p>
             </div>
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-2 text-xs text-ink-500 border border-ink-200 bg-white rounded-lg px-3 py-2">
@@ -163,7 +163,7 @@ function MetricCards({ aggregate, topK }: { aggregate: EvalAggregate; topK: numb
     ['案例通过率', formatPct(aggregate.hitAtK), aggregate.hitAtKCi95 ? `95% CI ${formatPct(aggregate.hitAtKCi95.lower)}–${formatPct(aggregate.hitAtKCi95.upper)}` : `${aggregate.passed} / ${aggregate.n} 命中至少一个 Gold`, 'text-ink-900'],
     ['P95 延迟', formatMs(aggregate.p95Ms), `${aggregate.errors} 条执行异常`, 'text-ink-900'],
   ];
-  return <div className="grid grid-cols-2 xl:grid-cols-4 gap-px bg-ink-200 border border-ink-200 rounded-xl overflow-hidden mb-5">{cards.map(([label, value, hint, tone]) => <div key={label} className="bg-white px-5 py-5"><div className="text-xs font-medium text-ink-500">{label}</div><div className={`text-[30px] font-semibold tracking-tight mt-3 ${tone}`}>{value}</div><div className="text-[11px] text-ink-500 mt-1">{hint}</div></div>)}</div>;
+  return <div className="grid grid-cols-2 xl:grid-cols-4 gap-px bg-ink-200 border border-ink-200 rounded-xl overflow-hidden mb-5">{cards.map(([label, value, hint, tone]) => <div key={label} className="bg-white px-5 py-5"><div className="text-xs font-medium text-ink-500">{label}</div><div className={`font-serif text-[30px] font-bold tracking-[-.02em] mt-3 ${tone}`}>{value}</div><div className="text-[11px] text-ink-500 mt-1">{hint}</div></div>)}</div>;
 }
 
 function QualityGate({ gate }: { gate?: EvalQualityGate }) {

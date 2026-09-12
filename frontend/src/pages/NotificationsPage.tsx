@@ -15,11 +15,12 @@ export default function NotificationsPage() {
   const items: Notif[] = data ?? [];
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6">
-      <div className="max-w-3xl mx-auto space-y-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink-900">推送</h1>
-          <p className="text-sm text-ink-500 mt-1">岗位匹配 / 学习任务 / 系统消息</p>
+    <div className="h-full overflow-y-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto space-y-5">
+        <div className="border-b editorial-rule pb-6">
+          <div className="editorial-kicker mb-2">Inbox / Updates</div>
+          <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">推送</h1>
+          <p className="mt-2 text-sm leading-6 text-ink-500">岗位匹配 / 学习任务 / 系统消息</p>
         </div>
 
         {items.length === 0 ? (
@@ -27,7 +28,7 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-2">
             {items.map(n => (
-              <div key={n.id} className={`card p-4 ${n.read ? '' : 'border-l-4 border-l-accent-500'}`}>
+              <div key={n.id} className={`card p-4 pl-[18px] ${n.read ? '' : 'border-l-[3px] border-l-accent-500'}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">

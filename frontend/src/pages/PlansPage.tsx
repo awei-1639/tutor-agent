@@ -49,13 +49,13 @@ export default function PlansPage() {
   return (
     <div className="h-full overflow-y-auto px-6 py-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex items-end justify-between border-b border-ink-200 pb-6">
+        <div className="flex items-end justify-between border-b editorial-rule pb-6">
           <div>
             <div className="editorial-kicker mb-2">Planning / This week</div>
-            <h1 className="workspace-heading text-3xl text-ink-900">学习计划</h1>
-            <p className="text-sm text-ink-500 mt-1">基于目标 + 当前技能 + 打卡历史生成</p>
+            <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">学习计划</h1>
+            <p className="mt-2 text-sm leading-6 text-ink-500">基于目标 + 当前技能 + 打卡历史生成</p>
           </div>
-          <button onClick={() => setShowNew(!showNew)} className="px-4 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-md text-sm font-medium">
+          <button onClick={() => setShowNew(!showNew)} className="px-4 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg text-sm font-medium shadow-sm">
             {showNew ? '取消' : '生成新计划'}
           </button>
         </div>
@@ -111,7 +111,7 @@ export default function PlansPage() {
           ) : (
             <div className="space-y-2">
               {tasks.map((t: PlanTask) => (
-                <div key={t.id} className="flex items-center gap-3 p-3 border border-ink-100 rounded-md">
+                <div key={t.id} className="ref-card flex items-center gap-3 p-3.5 pl-[18px]">
                   <span className={`px-2 py-0.5 text-xs rounded ${KIND_COLOR[t.kind] ?? 'bg-ink-100 text-ink-700'}`}>
                     {KIND_LABEL[t.kind] ?? t.kind}
                   </span>

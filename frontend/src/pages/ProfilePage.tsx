@@ -67,10 +67,10 @@ export default function ProfilePage() {
   return (
     <div className="h-full overflow-y-auto px-6 py-8">
       <div className="max-w-5xl mx-auto space-y-8">
-        <div className="border-b border-ink-200 pb-6">
+        <div className="border-b editorial-rule pb-6">
           <div className="editorial-kicker mb-2">Profile / Evidence</div>
-          <h1 className="workspace-heading text-3xl text-ink-900">个人画像</h1>
-          <p className="text-sm text-ink-500 mt-1">基于对话/简历/打卡自动抽取，每日 4 点衰减。"✓" 关键字段确认 → 置信度锁 0.9</p>
+          <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">个人画像</h1>
+          <p className="mt-2 text-sm leading-6 text-ink-500">基于对话/简历/打卡自动抽取，每日 4 点衰减。"✓" 关键字段确认 → 置信度锁 0.9</p>
         </div>
 
         <section className="card p-5">
@@ -119,10 +119,10 @@ export default function ProfilePage() {
           ) : gaps.length === 0 ? (
             <div className="text-sm text-ink-500">暂时没有可对照的岗位。先补充目标岗位或上传简历，让系统建立技能证据。</div>
           ) : <div className="space-y-3">
-            {gaps.map((gap: CareerGapCard) => <div key={gap.jobId} className="rounded-lg border border-ink-100 p-3.5">
+            {gaps.map((gap: CareerGapCard) => <div key={gap.jobId} className="ref-card p-4 pl-[18px]">
               <div className="flex items-start justify-between gap-3">
                 <div><div className="text-sm font-medium text-ink-900">{gap.title}</div><div className="text-xs text-ink-500 mt-0.5">{[gap.company, gap.city].filter(Boolean).join(' · ')}</div></div>
-                <div className="text-sm font-semibold text-accent-700">{Math.round(gap.coverage * 100)}% 覆盖</div>
+                <div className="font-serif text-xl font-bold tracking-[-.01em] text-accent-600">{Math.round(gap.coverage * 100)}<span className="text-[13px] font-normal text-ink-400">% 覆盖</span></div>
               </div>
               <GapLine label="已具备" values={gap.matched} tone="text-emerald-700" />
               <GapLine label="可速成" values={gap.speedup} tone="text-accent-700" />

@@ -21,11 +21,12 @@ export default function ResumePage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6">
+    <div className="h-full overflow-y-auto px-6 py-8">
       <div className="max-w-3xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink-900">简历上传</h1>
-          <p className="text-sm text-ink-500 mt-1">支持 PDF / DOCX / TXT / Markdown，≤5MB。上传后自动脱敏（手机/邮箱/身份证）+ LLM 结构化</p>
+        <div className="border-b editorial-rule pb-6">
+          <div className="editorial-kicker mb-2">Resume / Parsing</div>
+          <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">简历上传</h1>
+          <p className="mt-2 text-sm leading-6 text-ink-500">支持 PDF / DOCX / TXT / Markdown，≤5MB。上传后自动脱敏（手机/邮箱/身份证）+ LLM 结构化</p>
         </div>
 
         <div className="card p-6">
@@ -56,8 +57,8 @@ export default function ResumePage() {
         {result && (
           <div className="card p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-ink-900">结构化结果</h2>
-              <span className="text-xs text-ink-500">resume #{result.resume_id} · 已脱敏 {result.masked_pii_count} 处</span>
+              <h2 className="font-serif text-xl font-bold tracking-[-.01em] text-ink-900">结构化结果</h2>
+              <span className="font-mono text-[11px] text-ink-400">resume #{result.resume_id} · 已脱敏 {result.masked_pii_count} 处</span>
             </div>
             {result.structured.summary && <p className="text-sm text-ink-700">{result.structured.summary}</p>}
             {result.structured.skills && result.structured.skills.length > 0 && (

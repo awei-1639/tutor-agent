@@ -130,13 +130,13 @@ export default function AdminPage() {
   const pageCount = Math.max(1, Math.ceil(total / 12));
 
   return (
-    <div className="h-full overflow-y-auto bg-[#f7f8fa]">
+    <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-[1400px] px-8 py-8">
         <div className="flex items-start justify-between gap-4 mb-7">
           <div>
-            <div className="text-xs uppercase tracking-[.16em] text-ink-400">Operations console</div>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink-900">管理端</h1>
-            <p className="mt-2 text-sm text-ink-500">集中查看用户状态、RAG 评测运行和关键操作审计。</p>
+            <div className="editorial-kicker mb-2">Operations console</div>
+            <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">管理端</h1>
+            <p className="mt-2 text-sm leading-6 text-ink-500">集中查看用户状态、RAG 评测运行和关键操作审计。</p>
           </div>
           <button onClick={() => void reload()} className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-700 hover:border-ink-300">刷新数据</button>
         </div>
@@ -228,7 +228,7 @@ function UserRow({ user, busy, onAction }: { user: AdminUser; busy: boolean; onA
 
 function Metric({ label, value, tone = 'default' }: { label: string; value: number; tone?: string }) {
   const colors: Record<string, string> = { default: 'text-ink-900', green: 'text-emerald-700', amber: 'text-amber-700', rose: 'text-rose-700' };
-  return <div className="rounded-xl border border-ink-200 bg-white px-5 py-4"><div className="text-xs text-ink-500">{label}</div><div className={`mt-2 text-2xl font-semibold ${colors[tone] || colors.default}`}>{value}</div></div>;
+  return <div className="glass-panel rounded-[13px] px-5 py-4 transition hover:-translate-y-0.5 hover:shadow-md"><div className="text-[11px] tracking-[.04em] text-ink-500">{label}</div><div className={`mt-2 font-serif text-[26px] font-bold tracking-[-.02em] leading-none ${colors[tone] || colors.default}`}>{value}</div></div>;
 }
 
 function StatusCard({ label, value }: { label: string; value: string }) {
