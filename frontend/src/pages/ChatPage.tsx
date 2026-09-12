@@ -31,7 +31,7 @@ function sourceStatusLabel(status?: string): string {
 function CiteHover({ cite, x, y }: { cite: Citation; x: number; y: number }) {
   const sourceUrl = safeSourceUrl(cite.source_url);
   return (
-    <div className="fixed z-50 max-w-md bg-ink-900 text-ink-50 text-xs px-3.5 py-3 rounded-lg shadow-lift pointer-events-auto"
+    <div className="fixed z-50 max-w-md bg-ink-900 text-ink-50 text-xs px-3.5 py-3 rounded-lg shadow-pop pointer-events-auto"
          style={{ left: x + 12, top: y + 12 }}>
       <div className="font-semibold mb-1.5 flex items-center gap-2">
         <span className="text-accent-400">{cite.sid}</span>
@@ -61,20 +61,18 @@ function ReferencePanel({ citations, pinnedKey, onPin, onClose }: {
   const pinned = citations.find(c => c.key === pinnedKey) ?? citations[0];
   const sourceUrl = safeSourceUrl(pinned?.source_url);
   return (
-    <aside className="w-80 border-l border-ink-100 bg-ink-50/50 flex flex-col">
-      <div className="px-4 py-3 border-b border-ink-100 flex items-center justify-between bg-white">
-        <div className="text-sm font-semibold text-ink-900">参考材料</div>
+    <aside className="w-80 border-l editorial-rule bg-[#faf9f5] flex flex-col">
+      <div className="px-4 py-3 border-b editorial-rule flex items-center justify-between glass-bar">
+        <div className="font-serif text-[15px] font-bold text-ink-900">参考材料 <span className="font-mono text-[11px] font-normal text-ink-500">{citations.length}</span></div>
         <button onClick={onClose} className="text-xs text-ink-500 hover:text-ink-900">关闭</button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {citations.length === 0 && <div className="text-xs text-ink-500 py-4 text-center">本次回答未引用材料</div>}
         {citations.map(c => (
           <button key={c.key} onClick={() => onPin(c.key)}
-                  className={`w-full text-left p-2.5 rounded-md border transition ${
-                    pinnedKey === c.key ? 'bg-white border-accent-500 shadow-soft' : 'bg-white border-ink-100 hover:border-ink-300'
-                  }`}>
+                  className={`ref-card w-full text-left p-2.5 pl-3.5 ${pinnedKey === c.key ? 'active' : ''}`}>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-[10px] font-medium text-accent-600">{c.sid}</span>
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${pinnedKey === c.key ? 'bg-accent-500 text-white' : 'bg-accent-50 text-accent-600'}`}>{c.sid}</span>
               <span className="text-xs font-medium text-ink-900 truncate">{c.title}</span>
             </div>
             <div className="text-[10px] text-ink-500 truncate">{c.node_id}</div>
@@ -82,7 +80,7 @@ function ReferencePanel({ citations, pinnedKey, onPin, onClose }: {
         ))}
       </div>
       {pinned && (
-        <div className="border-t border-ink-100 bg-white p-4 max-h-72 overflow-y-auto">
+        <div className="border-t editorial-rule bg-white p-4 max-h-72 overflow-y-auto">
           <div className="text-xs text-ink-500 mb-1">详情</div>
           <div className="text-sm font-semibold text-ink-900 mb-1">{pinned.title}</div>
           <div className="text-xs text-ink-500 mb-3">{pinned.node_id} · {pinned.type}</div>
@@ -376,7 +374,7 @@ export default function ChatPage() {
       {/* 左侧会话列表 (Qwen 风格: 分组 + 时间) */}
       <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r editorial-rule bg-[#f8f7f3] flex flex-col transition-all overflow-hidden`}>
         <div className="px-4 py-5 border-b editorial-rule shrink-0">
-          <button onClick={newChat} className="w-full px-3.5 py-2.5 bg-[#3155d9] hover:bg-[#2747c2] text-white rounded-sm text-sm font-semibold flex items-center justify-center gap-2 transition">
+          <button onClick={newChat} className="w-full px-3.5 py-2.5 bg-ink-900 hover:bg-black text-[#f2f1ec] rounded-[10px] text-sm font-semibold flex items-center justify-center gap-2 transition shadow-sm hover:shadow-md hover:-translate-y-px">
             <span className="text-lg leading-none">+</span><span>开启新对话</span>
           </button>
         </div>
@@ -387,9 +385,10 @@ export default function ChatPage() {
               <div className="space-y-0.5">
                 {g.items.map(c => (
                   <button key={c.id} onClick={() => loadConv(c.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition ${
-                            convId === c.id ? 'bg-accent-50 text-accent-700 font-medium shadow-soft' : 'text-ink-700 hover:bg-white/85'
+                          className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center ${
+                            convId === c.id ? 'bg-white text-ink-900 font-medium shadow-sm' : 'text-ink-700 hover:bg-white/85'
                           }`}>
+                    {convId === c.id && <span className="conv-current-dot" aria-hidden="true" />}
                     <div className="truncate text-xs">{c.title || '(无标题)'}</div>
                   </button>
                 ))}
@@ -412,13 +411,13 @@ export default function ChatPage() {
              }
            }}>
         {/* 顶部固定: 标题 + 上下滚动提示 */}
-        <header className="shrink-0 px-7 py-5 border-b editorial-rule bg-[#f8f7f3] flex items-center justify-between">
+        <header className="shrink-0 px-7 py-4 border-b editorial-rule glass-bar flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(o => !o)} className="text-ink-500 hover:text-accent-600 hover:bg-white p-2 rounded-lg transition" title={sidebarOpen ? '折叠历史' : '展开历史'}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <div>
-              <div className="editorial-kicker mb-1">当前工作区</div><div className="text-base font-semibold tracking-[-.02em] text-ink-900">
+              <div className="editorial-kicker mb-1">当前工作区</div><div className="font-serif text-[15.5px] font-semibold tracking-[-.012em] text-ink-900">
                 {convId ? `对话 #${convId}` : '新对话'}
               </div>
               <div className="text-xs text-ink-500 mt-1">你的专属成长教练 · 每条建议均可溯源</div>
@@ -456,25 +455,30 @@ export default function ChatPage() {
             )}
             {messages.length === 0 && (
             <div className="text-center mt-24 space-y-6 text-ink-500">
-                <div className="mx-auto h-16 w-16 rounded-2xl bg-[#211950] text-white text-2xl font-semibold shadow-[0_16px_34px_rgba(45,32,113,.25)] flex items-center justify-center">T</div>
-                <div><div className="text-3xl font-semibold tracking-[-.035em] text-ink-900">今天，想向前走哪一步？</div><div className="text-sm mt-3">从一个问题开始，让学习和求职变得更清晰。</div></div>
+                <div className="mx-auto h-16 w-16 rounded-2xl brand-mark text-2xl flex items-center justify-center">T</div>
+                <div><div className="font-serif text-3xl font-semibold tracking-[-.025em] text-ink-900">今天，想向前走哪一步？</div><div className="text-sm mt-3">从一个问题开始，让学习和求职变得更清晰。</div></div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left max-w-2xl mx-auto pt-2">
                   {['帮我制定本周学习计划', '我适合什么技术岗位？', '推荐一个可做的实战项目'].map(prompt => (
-                    <button key={prompt} onClick={() => setInput(prompt)} className="glass-panel rounded-xl p-3.5 text-xs text-ink-700 hover:text-accent-700 hover:-translate-y-0.5 transition text-left">{prompt}<span className="block mt-2 text-accent-500 text-sm">↗</span></button>
+                    <button key={prompt} onClick={() => setInput(prompt)} className="glass-panel rounded-xl p-3.5 text-xs text-ink-700 hover:text-accent-600 hover:-translate-y-0.5 hover:shadow-md transition text-left">{prompt}<span className="block mt-2 text-accent-500 text-sm">↗</span></button>
                   ))}
                 </div>
               </div>
             )}
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                  m.role === 'user' ? 'bg-accent-600 text-white shadow-soft' : 'bg-white border border-ink-100 text-ink-900 shadow-soft'
-                }`}>
-                  {m.role === 'user' ? (
+                {m.role === 'user' ? (
+                  <div className="max-w-[78%] rounded-[15px_15px_5px_15px] px-[17px] py-3 bg-ink-900 text-[#efeeea] text-sm leading-[1.7] shadow-[0_1px_3px_rgba(26,25,23,.18)]">
                     <div className="whitespace-pre-wrap break-words">{m.content}</div>
-                  ) : (
-                    <div className="prose-chat" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(i)) }} />
-                  )}
+                  </div>
+                ) : (
+                <div className="w-full max-w-[92%] text-ink-900">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="brand-mark h-[23px] w-[23px] rounded-[7px] flex items-center justify-center text-xs">T</div>
+                    <span className="text-[11px] font-bold text-ink-500 tracking-[.12em] uppercase">成长教练</span>
+                  </div>
+                  <div className="pl-8">
+                    <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(i)) }} />
+                    {streaming && i === messages.length - 1 && !m.locked && <span className="stream-caret" aria-hidden="true" />}
                   {m.clarify && (
                     <div className="mt-2 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">
                       ❓ 追问: {m.clarify}
@@ -522,27 +526,38 @@ export default function ChatPage() {
                       ))}
                     </div>
                   )}
+                  </div>
                 </div>
+                )}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="border-t editorial-rule bg-[#f8f7f3] px-7 py-6">
-          <div className="max-w-3xl mx-auto flex gap-3 items-end">
+        <div className="border-t editorial-rule glass-bar px-7 py-5">
+          <div className="max-w-3xl mx-auto composer px-3.5 pt-3 pb-2.5">
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder="输入你的问题，Enter 发送 / Shift+Enter 换行"
               rows={1}
-              className="flex-1 resize-none px-4 py-3.5 border border-ink-200 bg-white shadow-none rounded-sm focus:outline-none focus:ring-2 focus:ring-[#3155d9]/20 focus:border-[#3155d9] max-h-32 transition"
+              className="w-full resize-none px-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-sm leading-[1.6] max-h-32 placeholder:text-[#a5a49c]"
             />
-            {streaming ? (
-              <button onClick={stop} className="px-5 py-3.5 bg-ink-200 hover:bg-ink-300 text-ink-700 rounded-xl font-medium transition">停止</button>
-            ) : (
-              <button onClick={() => send()} disabled={!input.trim()} className="px-5 py-3.5 bg-[#3155d9] hover:bg-[#2747c2] disabled:bg-ink-200 text-white rounded-sm font-medium transition">发送</button>
-            )}
+            <div className="flex items-center mt-2">
+              <span className="text-[10.5px] text-[#a5a49c] font-mono select-none">Enter 发送 · Shift+Enter 换行</span>
+              {streaming ? (
+                <button onClick={stop} title="停止生成" aria-label="停止生成"
+                  className="ml-auto h-[31px] w-[31px] rounded-[9px] bg-[#b3403a] hover:bg-[#a03530] text-white grid place-items-center transition hover:-translate-y-px hover:shadow-[0_3px_10px_rgba(179,64,58,.35)]">
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect width="12" height="12" rx="2.5" /></svg>
+                </button>
+              ) : (
+                <button onClick={() => send()} disabled={!input.trim()} title="发送" aria-label="发送"
+                  className="ml-auto h-[31px] w-[31px] rounded-[9px] bg-ink-900 hover:bg-black disabled:bg-ink-200 text-[#f2f1ec] grid place-items-center transition hover:-translate-y-px hover:shadow-[0_3px_10px_rgba(26,25,23,.25)]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

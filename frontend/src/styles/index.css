@@ -4,39 +4,59 @@
 
 :root {
   color-scheme: light;
-  --canvas: #f1f0eb;
-  --ink: #181817;
-  --muted: #74736d;
-  --signal: #3155d9;
+  --canvas: #f2f1ec;
+  --paper: #faf9f5;
+  --ink: #1a1917;
+  --muted: #83827b;
+  --faint: #a5a49c;
+  --signal: #2f4fd4;
+  --signal-deep: #2440b4;
+  --signal-soft: rgba(47, 79, 212, .08);
+  --signal-ring: rgba(47, 79, 212, .22);
+  --line: #dcdad1;
+  --hairline: #e7e5dd;
+  --shadow-sm: 0 1px 2px rgba(26,25,23,.05);
+  --shadow-md: 0 2px 6px rgba(26,25,23,.05), 0 8px 24px rgba(26,25,23,.06);
+  --shadow-pop: 0 4px 12px rgba(26,25,23,.08), 0 16px 48px rgba(26,25,23,.12);
 }
 html, body, #root { height: 100%; }
 body {
   font-feature-settings: 'cv02', 'cv03', 'cv11';
-  color: #18181b;
+  color: #1a1917;
   background: var(--canvas);
 }
 
-::selection { background: rgba(49, 85, 217, .18); }
+::selection { background: rgba(47, 79, 212, .18); }
 
+/* v2: 全站纸纹底噪 (极淡, 肉眼几乎不可察, 提供纸的物质感) */
 .app-shell {
-  background: transparent;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.018 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* v2: 侧栏微渐变 + 右侧边缘发丝光 */
 .app-sidebar {
-  background: #181817;
+  background: linear-gradient(180deg, #1d1c1a 0%, #171614 100%);
   box-shadow: none;
+  position: relative;
+}
+.app-sidebar::after {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.06), transparent);
 }
 
+/* v2: 品牌方块双色渐变 + 内高光 */
 .brand-mark {
-  background: #3155d9;
-  color: #171717;
-  box-shadow: none;
+  background: linear-gradient(145deg, #4565e6, #2f4fd4);
+  color: #fff;
+  font-family: Georgia, 'Songti SC', 'SimSun', serif;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 2px 8px rgba(47,79,212,.35);
 }
 
 .glass-panel {
-  background: #f8f7f3;
-  border: 1px solid #d9d8d1;
-  box-shadow: none;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
 }
 
 .workspace-heading {
@@ -48,40 +68,93 @@ body {
   color: #71717a;
   transition: color 140ms ease, background-color 140ms ease;
 }
-.quiet-button:hover { color: #18181b; background: #f4f4f5; }
+.quiet-button:hover { color: #1a1917; background: #efede5; }
 
-/* 卡片悬停 */
-.card { @apply bg-white border border-ink-100 rounded-xl transition; }
-.card:hover { @apply border-ink-300; }
+/* v2: 卡片悬停统一 translateY(-1px) + 阴影升级 */
+.card { @apply bg-white border border-ink-100 rounded-xl transition; box-shadow: var(--shadow-sm); }
+.card:hover { @apply border-ink-300; transform: translateY(-1px); box-shadow: var(--shadow-md); }
 
-.editorial-rule { border-color: #d4d3cc; }
-.editorial-kicker { color: #3155d9; letter-spacing: .16em; text-transform: uppercase; font-size: 10px; font-weight: 700; }
-
-/* 引用标号 */
-.cite-ref {
-  @apply inline-block px-1.5 py-0.5 mx-0.5 text-xs font-medium text-accent-700 bg-accent-50 rounded cursor-pointer;
-  vertical-align: baseline;
+.editorial-rule { border-color: var(--line); }
+/* v2: kicker 前置短横线 (杂志栏目标记) */
+.editorial-kicker {
+  color: var(--signal); letter-spacing: .16em; text-transform: uppercase;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
 }
-.cite-ref:hover { @apply bg-accent-500 text-white; }
+.editorial-kicker::before { content: ""; width: 18px; height: 1.5px; background: currentColor; flex-shrink: 0; }
+/* 侧栏内的 kicker 用弱化色, 不带横线 */
+.app-sidebar .editorial-kicker { color: rgba(255,255,255,.35); }
+.app-sidebar .editorial-kicker::before { display: none; }
+
+/* v2: 引用标号 — 等宽字体, 悬停实心填充 */
+.cite-ref {
+  display: inline-block; padding: 1px 6px; margin: 0 2px; font-size: 11px; font-weight: 700;
+  color: var(--signal); background: var(--signal-soft); border-radius: 5px; cursor: pointer;
+  vertical-align: baseline; transition: all .12s ease;
+  font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+  border: 1px solid transparent;
+}
+.cite-ref:hover { background: var(--signal); color: #fff; box-shadow: 0 1px 5px rgba(47,79,212,.35); }
+
+/* v2: 流式打字机光标 */
+.stream-caret {
+  display: inline-block; width: 8px; height: 17px; background: var(--signal);
+  vertical-align: -3px; margin-left: 2px; border-radius: 2px;
+  animation: caret-blink 1s step-end infinite;
+}
+@keyframes caret-blink { 50% { opacity: 0; } }
+
+/* v2: 引用面板卡片 — 左侧信号色条 + 激活色环 */
+.ref-card {
+  background: #fff; border: 1px solid var(--line); border-radius: 11px; position: relative;
+  cursor: pointer; transition: all .16s ease; box-shadow: var(--shadow-sm); overflow: hidden;
+}
+.ref-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--signal); opacity: 0; transition: opacity .16s ease;
+}
+.ref-card:hover { border-color: #b8b6ab; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.ref-card.active { border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-ring), var(--shadow-md); }
+.ref-card.active::before { opacity: 1; }
+
+/* v2: 会话列表当前项 — 信号色微光圆点 */
+.conv-current-dot {
+  display: inline-block; width: 4px; height: 4px; border-radius: 99px; flex-shrink: 0;
+  background: var(--signal); margin-right: 8px; box-shadow: 0 0 6px rgba(69,101,230,.8);
+}
+
+/* v2: 顶栏/输入区毛玻璃 */
+.glass-bar {
+  background: rgba(250,249,245,.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* v2: 输入框容器 — 聚焦整体浮起 */
+.composer {
+  background: #fff; border: 1px solid var(--line); border-radius: 15px;
+  transition: all .18s ease; box-shadow: var(--shadow-sm);
+}
+.composer:focus-within { border-color: #b8b6ab; box-shadow: var(--shadow-md); }
 
 /* Markdown 渲染基础样式 */
 .prose-chat h1 { @apply text-xl font-semibold mt-4 mb-2; }
 .prose-chat h2 { @apply text-lg font-semibold mt-3 mb-2; }
 .prose-chat h3 { @apply text-base font-semibold mt-2 mb-1; }
-.prose-chat p { @apply my-2 leading-relaxed; }
+.prose-chat p { @apply my-2; line-height: 1.8; }
 .prose-chat ul { @apply list-disc list-inside my-2; }
 .prose-chat ol { @apply list-decimal list-inside my-2; }
 .prose-chat code { @apply px-1 py-0.5 bg-ink-100 rounded text-sm font-mono; }
 .prose-chat pre { @apply bg-ink-900 text-ink-50 p-3 rounded my-2 overflow-x-auto; }
 .prose-chat pre code { @apply bg-transparent text-ink-50 p-0; }
-.prose-chat blockquote { @apply border-l border-ink-300 pl-3 my-2 text-ink-700; }
+.prose-chat blockquote { @apply border-l-2 border-ink-300 pl-3 my-2 text-ink-700; }
 
 .login-shell {
-  background: #f1f0eb;
+  background: var(--canvas);
 }
 
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(49, 85, 217, .24); outline-offset: 2px; }
-* { scrollbar-width: thin; scrollbar-color: #a1a1aa transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(47, 79, 212, .24); outline-offset: 2px; }
+* { scrollbar-width: thin; scrollbar-color: #b1b0a8 transparent; }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: #a1a1aa; border: 2px solid transparent; border-radius: 999px; background-clip: content-box; }
+*::-webkit-scrollbar-thumb { background: #b1b0a8; border: 2px solid transparent; border-radius: 999px; background-clip: content-box; }

@@ -34,9 +34,9 @@ export default function Layout() {
       <aside id="app-navigation" className={`app-sidebar fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 -translate-x-full flex-col overflow-hidden text-white transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${mobileNavOpen ? 'translate-x-0' : ''}`}>
         <div className="px-4 py-5 border-b border-white/10 relative">
           <div className="flex items-center gap-3">
-            <div className="brand-mark h-8 w-8 rounded-sm flex items-center justify-center text-sm font-black text-white">T</div>
+            <div className="brand-mark h-8 w-8 rounded-[9px] flex items-center justify-center text-[15px] font-bold">T</div>
             <div>
-              <div className="text-[13px] font-semibold tracking-tight">学习与求职助手</div>
+              <div className="font-serif text-[15px] text-[#efeeea] tracking-[.01em]">学习与求职助手</div>
               <div className="text-[10px] text-white/45 mt-0.5">个人成长工作台</div>
             </div>
           </div>
@@ -50,7 +50,7 @@ export default function Layout() {
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
-                  isActive ? 'bg-[#3155d9] text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                  isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                 }`}
               >
               <NavIcon name={n.icon} />
@@ -65,7 +65,7 @@ export default function Layout() {
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
-                    isActive ? 'bg-[#3155d9] text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                    isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                   }`}
               >
                 <NavIcon name="admin" />
@@ -76,7 +76,7 @@ export default function Layout() {
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
-                    isActive ? 'bg-[#3155d9] text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                    isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                   }`}
               >
                 <NavIcon name="knowledge" />
@@ -87,7 +87,7 @@ export default function Layout() {
         </nav>
         <div className="p-4 border-t border-white/10 relative">
           <div className="flex items-center gap-2.5 rounded-md bg-white/6 p-2">
-            <div className="h-7 w-7 rounded-md bg-white/15 flex items-center justify-center text-[11px] font-bold">{(name || 'U').slice(0, 1).toUpperCase()}</div>
+            <div className="h-7 w-7 rounded-full bg-white/15 flex items-center justify-center text-[11px] font-bold">{(name || 'U').slice(0, 1).toUpperCase()}</div>
             <div className="min-w-0 flex-1">
               <div className="text-xs text-white font-medium truncate">{name || '用户'}</div>
               <div className="text-[10px] text-white/40 mt-0.5">ID · {getUserId()}</div>
