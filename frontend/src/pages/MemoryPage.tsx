@@ -60,10 +60,11 @@ export default function MemoryPage() {
   return (
     <div className="h-full overflow-y-auto px-5 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-3xl">
-        <header className="border-b border-ink-100 pb-6">
+        <header className="border-b editorial-rule pb-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-ink-900">跨会话记忆</h1>
+              <div className="editorial-kicker mb-2">你的第二大脑</div>
+              <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">跨会话记忆</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-500">这些内容仅用于让后续对话更贴合你的学习与求职目标。删除不会移除聊天记录、会话摘要或个人画像。</p>
             </div>
             <button type="button" onClick={() => setClearOpen(true)} disabled={data.length === 0} className="min-h-11 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40">清除全部</button>
@@ -84,7 +85,22 @@ export default function MemoryPage() {
           </div>}
         </header>
 
-        <section className="border-b border-ink-100 py-6">
+        <section className="flex flex-wrap gap-3 border-b editorial-rule py-5" aria-label="记忆概览">
+          <div className="glass-panel rounded-[13px] px-5 py-4 min-w-32 transition hover:-translate-y-0.5 hover:shadow-md">
+            <div className="font-serif text-[26px] font-bold tracking-[-.02em] leading-none text-ink-900">{data.length}<em className="not-italic text-[13px] font-normal text-[#a5a49c] ml-1">条</em></div>
+            <div className="mt-1.5 text-[11px] text-ink-500 tracking-[.04em]">跨会话记忆</div>
+          </div>
+          <div className="glass-panel rounded-[13px] px-5 py-4 min-w-32 transition hover:-translate-y-0.5 hover:shadow-md">
+            <div className="font-serif text-[26px] font-bold tracking-[-.02em] leading-none text-ink-900">{facts.length}<em className="not-italic text-[13px] font-normal text-[#a5a49c] ml-1">条</em></div>
+            <div className="mt-1.5 text-[11px] text-ink-500 tracking-[.04em]">长期事实</div>
+          </div>
+          <div className="glass-panel rounded-[13px] px-5 py-4 min-w-32 transition hover:-translate-y-0.5 hover:shadow-md">
+            <div className={`font-serif text-[26px] font-bold tracking-[-.02em] leading-none ${consent?.enabled ? 'text-accent-600' : 'text-ink-500'}`}>{consent?.enabled ? '开' : '关'}</div>
+            <div className="mt-1.5 text-[11px] text-ink-500 tracking-[.04em]">云端长期记忆</div>
+          </div>
+        </section>
+
+        <section className="border-b editorial-rule py-6">
           <div className="flex items-start justify-between gap-5">
             <div className="min-w-0">
               <h2 className="text-base font-semibold text-ink-900">云端长期记忆</h2>
@@ -113,28 +129,28 @@ export default function MemoryPage() {
               <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-ink-500">当你明确说明长期目标、偏好或经验后，系统会先经过安全筛选，再保存为可管理的记忆。</p>
             </div>
           )}
-          {!isLoading && data.length > 0 && <div className="divide-y divide-ink-100">
+          {!isLoading && data.length > 0 && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {data.map(memory => <MemoryRow key={memory.id} memory={memory} onDelete={() => setRemoving(memory)} />)}
           </div>}
         </section>
 
-        <section className="border-t border-ink-100 py-6" aria-live="polite">
+        <section className="border-t editorial-rule py-6" aria-live="polite">
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-ink-900">长期事实</h2>
+            <h2 className="font-serif text-lg font-bold text-ink-900">长期事实</h2>
             <p className="mt-1 text-sm leading-6 text-ink-500">从你的对话中提炼的稳定目标、偏好与技能水平，回答时会优先参考。与上面的记忆相互独立，可单独删除。</p>
           </div>
           {factsLoading && <div className="py-8 text-center text-sm text-ink-500">正在读取长期事实…</div>}
           {!factsLoading && facts.length === 0 && (
             <div className="py-8 text-center text-sm text-ink-500">还没有长期事实。多聊聊你的目标与偏好，它们会随对话逐步沉淀。</div>
           )}
-          {!factsLoading && facts.length > 0 && <div className="divide-y divide-ink-100">
+          {!factsLoading && facts.length > 0 && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {facts.map(fact => <FactRow key={fact.id} fact={fact} onDelete={() => setRemovingFact(fact)} />)}
           </div>}
         </section>
       </div>
 
       {removing && <div className="fixed inset-0 z-[60] flex items-end bg-ink-900/35 p-4 sm:items-center sm:justify-center" role="presentation">
-        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="memory-delete-title">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-pop" role="dialog" aria-modal="true" aria-labelledby="memory-delete-title">
           <h2 id="memory-delete-title" className="text-lg font-semibold text-ink-900">删除这条记忆？</h2>
           <p className="mt-2 text-sm leading-6 text-ink-600">删除后，它不会再用于后续对话的跨会话上下文。此操作不会删除原始聊天记录。</p>
           <p className="mt-3 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-700">{removing.summary}</p>
@@ -148,7 +164,7 @@ export default function MemoryPage() {
         </div>
       </div>}
       {consentToggle !== null && consent && <div className="fixed inset-0 z-[60] flex items-end bg-ink-900/35 p-4 sm:items-center sm:justify-center" role="presentation">
-        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-pop" role="dialog" aria-modal="true" aria-labelledby="consent-title">
           {consentToggle ? (
             <>
               <h2 id="consent-title" className="text-lg font-semibold text-ink-900">开启云端长期记忆？</h2>
@@ -171,7 +187,7 @@ export default function MemoryPage() {
         </div>
       </div>}
       {removingFact && <div className="fixed inset-0 z-[60] flex items-end bg-ink-900/35 p-4 sm:items-center sm:justify-center" role="presentation">
-        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="fact-delete-title">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-pop" role="dialog" aria-modal="true" aria-labelledby="fact-delete-title">
           <h2 id="fact-delete-title" className="text-lg font-semibold text-ink-900">删除这条长期事实？</h2>
           <p className="mt-2 text-sm leading-6 text-ink-600">删除后，它不会再用于后续对话。相似的事实可能在之后的对话中重新沉淀。</p>
           <p className="mt-3 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-700">{removingFact.factText}</p>
@@ -185,7 +201,7 @@ export default function MemoryPage() {
         </div>
       </div>}
       {clearOpen && <div className="fixed inset-0 z-[60] flex items-end bg-ink-900/35 p-4 sm:items-center sm:justify-center" role="presentation">
-        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="memory-clear-title">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-pop" role="dialog" aria-modal="true" aria-labelledby="memory-clear-title">
           <h2 id="memory-clear-title" className="text-lg font-semibold text-ink-900">清除全部跨会话记忆？</h2>
           <p className="mt-2 text-sm leading-6 text-ink-600">所有本地跨会话记忆与长期事实将立即删除。若你曾启用云端记忆，云端删除会在后台继续处理；聊天记录、会话摘要和个人画像不会被删除。</p>
           {clear.isError && <p className="mt-3 text-sm text-red-700">{toUserMessage(clear.error)}</p>}
@@ -208,30 +224,32 @@ const FACT_LABELS: Record<string, string> = {
 };
 
 function FactRow({ fact, onDelete }: { fact: UserFact; onDelete: () => void }) {
-  return <article className="py-5 first:pt-0">
-    <div className="flex items-start justify-between gap-5">
+  return <article className="ref-card group p-4 pl-[18px]">
+    <div className="flex items-start justify-between gap-4">
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-6 text-ink-800">{fact.factText}</p>
+        <p className="text-sm leading-[1.7] text-ink-800">{fact.factText}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-accent-50 px-2.5 py-1 text-xs font-medium text-accent-700">{FACT_LABELS[fact.category] ?? fact.category}</span>
-          <span className="text-xs text-ink-400">更新于 {formatDate(fact.updatedAt)}</span>
+          <span className="font-mono text-[11px] text-ink-400">更新于 {formatDate(fact.updatedAt)}</span>
         </div>
       </div>
-      <button type="button" onClick={onDelete} className="min-h-11 shrink-0 px-2 text-sm text-ink-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/30">删除</button>
+      <button type="button" onClick={onDelete} aria-label="删除这条事实"
+        className="shrink-0 rounded-lg px-2 py-1.5 text-xs text-ink-400 opacity-0 transition hover:bg-red-50 hover:text-red-700 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/30 group-hover:opacity-100">删除</button>
     </div>
   </article>;
 }
 
 function MemoryRow({ memory, onDelete }: { memory: ManagedMemory; onDelete: () => void }) {
-  return <article className="py-5 first:pt-0">
-    <div className="flex items-start justify-between gap-5">
+  return <article className="ref-card group p-4 pl-[18px]">
+    <div className="flex items-start justify-between gap-4">
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-6 text-ink-800">{memory.summary}</p>
+        <p className="text-sm leading-[1.7] text-ink-800">{memory.summary}</p>
         {memory.topics.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{memory.topics.map(topic => <span key={topic} className="rounded-full bg-accent-50 px-2.5 py-1 text-xs font-medium text-accent-700">{topic}</span>)}</div>}
         {memory.openItems.length > 0 && <p className="mt-3 text-xs leading-5 text-ink-500">待继续：{memory.openItems.join('、')}</p>}
-        <p className="mt-3 text-xs text-ink-400">记录于 {formatDate(memory.createdAt)}{memory.expiresAt ? ` · 将于 ${formatDate(memory.expiresAt)} 自动过期` : ''}</p>
+        <p className="mt-3 font-mono text-[11px] text-ink-400">记录于 {formatDate(memory.createdAt)}{memory.expiresAt ? ` · 将于 ${formatDate(memory.expiresAt)} 自动过期` : ''}</p>
       </div>
-      <button type="button" onClick={onDelete} className="min-h-11 shrink-0 px-2 text-sm text-ink-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/30">删除</button>
+      <button type="button" onClick={onDelete} aria-label="删除这条记忆"
+        className="shrink-0 rounded-lg px-2 py-1.5 text-xs text-ink-400 opacity-0 transition hover:bg-red-50 hover:text-red-700 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/30 group-hover:opacity-100">删除</button>
     </div>
   </article>;
 }

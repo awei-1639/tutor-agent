@@ -306,7 +306,8 @@ export default function InterviewPage() {
     <div className="h-full overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
       <div className="max-w-3xl mx-auto space-y-5">
         <div>
-          <h1 className="text-2xl font-semibold text-ink-900">模拟面试</h1>
+          <div className="editorial-kicker mb-2">面试训练场</div>
+          <h1 className="font-serif text-[28px] font-semibold tracking-[-.02em] text-ink-900">模拟面试</h1>
           <p className="text-sm text-ink-500 mt-1">基于目标岗位技能出题，AI 评分、追问和复盘。刷新页面后可恢复进行中的面试。</p>
         </div>
 
@@ -356,7 +357,7 @@ export default function InterviewPage() {
                 className="mt-1 w-full px-3 py-2 text-base sm:text-sm border border-ink-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500" />
             </label>
             <button onClick={start} disabled={loading || !role.trim() || !isValidDuration(durationMinutes)}
-              className="min-h-11 px-4 py-2 bg-accent-500 hover:bg-accent-600 disabled:bg-ink-200 text-white rounded-md text-sm font-medium">
+              className="min-h-11 px-4 py-2 bg-ink-900 hover:bg-black disabled:bg-ink-200 text-[#f2f1ec] rounded-[10px] text-sm font-medium transition hover:-translate-y-px hover:shadow-md">
               {loading ? '准备中…' : '开始面试'}
             </button>
           </div>
@@ -391,18 +392,29 @@ export default function InterviewPage() {
 
         {transcript.length > 0 && (
           <div className="space-y-3">
-            {remainingSeconds != null && <div className={`text-sm font-medium ${remainingSeconds === 0 ? 'text-red-600' : 'text-ink-600'}`}>
+            {remainingSeconds != null && <div className={`font-mono text-sm font-medium ${remainingSeconds === 0 ? 'text-red-600' : 'text-ink-600'}`}>
               剩余时间：{formatRemaining(remainingSeconds)}{remainingSeconds === 0 ? '，请结束面试查看复盘。' : ''}
             </div>}
-            <div role="log" aria-live="polite" aria-relevant="additions" aria-label="面试对话">
+            <div role="log" aria-live="polite" aria-relevant="additions" aria-label="面试对话" className="space-y-4">
               {transcript.map((t, i) => (
                 <div key={i} className={`flex ${t.speaker === 'me' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[90%] break-words rounded-2xl px-4 py-3 sm:max-w-[85%] ${
-                    t.speaker === 'me' ? 'bg-accent-500 text-white' : 'bg-white border border-ink-100 text-ink-900 shadow-soft'
-                  }`}>
-                    <span className="sr-only">{t.speaker === 'me' ? '我的回答：' : '面试官：'}</span>
-                    <div className="whitespace-pre-wrap text-sm">{t.content}</div>
-                  </div>
+                  {t.speaker === 'me' ? (
+                    <div className="max-w-[78%] break-words rounded-[15px_15px_5px_15px] bg-ink-900 px-[17px] py-3 text-[#efeeea] shadow-[0_1px_3px_rgba(26,25,23,.18)]">
+                      <span className="sr-only">我的回答：</span>
+                      <div className="whitespace-pre-wrap text-sm leading-[1.7]">{t.content}</div>
+                    </div>
+                  ) : (
+                    <div className="max-w-[92%]">
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="brand-mark flex h-[23px] w-[23px] items-center justify-center rounded-[7px] text-xs">T</div>
+                        <span className="text-[11px] font-bold uppercase tracking-[.12em] text-ink-500">面试官</span>
+                      </div>
+                      <div className="pl-8">
+                        <span className="sr-only">面试官：</span>
+                        <div className="whitespace-pre-wrap break-words text-sm leading-[1.8] text-ink-900">{t.content}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {(loading || turn) && (
@@ -416,8 +428,11 @@ export default function InterviewPage() {
         )}
 
         {finished && (
-          <div className="card p-6 space-y-3 ring-1 ring-accent-100">
-            <h2 className="text-lg font-semibold text-ink-900">复盘报告</h2>
+          <div className="card p-6 space-y-4 ring-1 ring-accent-100">
+            <div>
+              <div className="editorial-kicker mb-1.5">本场复盘</div>
+              <h2 className="font-serif text-xl font-bold tracking-[-.01em] text-ink-900">复盘报告</h2>
+            </div>
             {reportLoading && <div className="rounded-md bg-ink-50 px-4 py-3 text-sm text-ink-700" role="status" aria-live="polite">正在加载复盘报告…</div>}
             {reportError && <div className="flex flex-col gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
               <span>{reportError}</span>
@@ -430,10 +445,10 @@ export default function InterviewPage() {
                 {completion.status === 'failed' && completion.lastError ? `（${completion.lastError}）` : ''}
                 {completion.evidenceStatus === 'completed' && completion.learningPlanStatus === 'failed' ? '；能力证据已保存，学习任务生成失败，系统将自动重试。' : ''}
               </div>}
-              <div className="grid grid-cols-3 gap-3 text-sm sm:flex sm:items-center sm:gap-6">
-                <div><div className="text-xs text-ink-500">题目数</div><div className="text-2xl font-semibold text-ink-900">{report.totalQuestions}</div></div>
-                <div><div className="text-xs text-ink-500">平均分</div><div className="text-2xl font-semibold text-accent-600">{report.avgScore?.toFixed(1)}/10</div></div>
-                <div><div className="text-xs text-ink-500">评分置信度</div><div className="text-2xl font-semibold text-ink-900">{Math.round((report.scoreConfidence ?? 0) * 100)}%</div></div>
+              <div className="grid grid-cols-3 gap-3 text-sm sm:flex sm:items-end sm:gap-8">
+                <div><div className="text-[11px] tracking-[.04em] text-ink-500">题目数</div><div className="font-serif text-[30px] font-bold leading-tight tracking-[-.02em] text-ink-900">{report.totalQuestions}</div></div>
+                <div><div className="text-[11px] tracking-[.04em] text-ink-500">平均分</div><div className="font-serif text-[30px] font-bold leading-tight tracking-[-.02em] text-accent-600">{report.avgScore?.toFixed(1)}<span className="text-[15px] font-normal text-ink-400">/10</span></div></div>
+                <div><div className="text-[11px] tracking-[.04em] text-ink-500">评分置信度</div><div className="font-serif text-[30px] font-bold leading-tight tracking-[-.02em] text-ink-900">{Math.round((report.scoreConfidence ?? 0) * 100)}<span className="text-[15px] font-normal text-ink-400">%</span></div></div>
               </div>
               {report.retestComparison && <div className="rounded-md bg-ink-50 px-4 py-3 text-sm text-ink-700 space-y-1">
                 <div className="font-medium text-ink-900">复测变化</div>
@@ -472,11 +487,11 @@ export default function InterviewPage() {
               onKeyDown={e => { if (e.key === 'Enter') void send(); }} placeholder="输入你的回答"
               className="min-w-0 flex-1 px-4 py-2 text-base sm:text-sm border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500" />
             <button onClick={() => void send()} disabled={loading || !!turn || !input.trim() || remainingSeconds === 0}
-              className="min-h-11 shrink-0 px-4 py-2 bg-accent-500 hover:bg-accent-600 disabled:bg-ink-200 text-white rounded-md text-sm">
+              className="min-h-11 shrink-0 px-4 py-2 bg-ink-900 hover:bg-black disabled:bg-ink-200 text-[#f2f1ec] rounded-[10px] text-sm transition">
               {loading || turn ? '…' : '发送'}
             </button>
             <button onClick={() => void cancel()} disabled={loading}
-              className="min-h-11 shrink-0 px-3 py-2 border border-ink-200 hover:bg-ink-50 disabled:bg-ink-100 text-ink-700 rounded-md text-sm">结束面试</button>
+              className="min-h-11 shrink-0 px-3 py-2 border border-ink-200 hover:bg-ink-50 disabled:bg-ink-100 text-ink-700 rounded-[10px] text-sm transition">结束面试</button>
           </div>
         )}
       </div>
@@ -486,8 +501,14 @@ export default function InterviewPage() {
 
 function ReportList({ title, items, marker }: { title: string; items?: string[]; marker: string }) {
   if (!Array.isArray(items) || items.length === 0) return null;
-  return <div><div className="text-xs text-ink-500 mb-1">{title}</div><ul className="text-sm space-y-1">
-    {items.map((item, index) => <li key={index}>{marker} {item}</li>)}
+  const good = marker === '✓';
+  return <div><div className="text-[11px] font-bold uppercase tracking-[.12em] text-ink-500 mb-2">{title}</div><ul className="text-sm space-y-1.5">
+    {items.map((item, index) => <li key={index} className="flex items-start gap-2.5 leading-[1.7] text-ink-800">
+      <span className={`mt-[3px] flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+        good ? 'bg-emerald-100 text-emerald-700' : 'bg-accent-50 text-accent-600'
+      }`} aria-hidden="true">{marker === '📚' ? '↗' : marker}</span>
+      <span>{item}</span>
+    </li>)}
   </ul></div>;
 }
 
