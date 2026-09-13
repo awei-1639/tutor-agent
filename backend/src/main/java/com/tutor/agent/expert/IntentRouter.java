@@ -13,12 +13,14 @@ import com.tutor.platform.llm.LlmMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * 意图路由 (V3 3.2): 最小 context（枚举定义+最近用户消息；指代追问时增加主题锚点），轻量调用。
@@ -50,29 +52,52 @@ public class IntentRouter {
             只输出JSON。
             """;
 
+    /**
+     * 纯对话 filler（问候/致谢/确认/继续）。这类消息没有图检索语义，模型路由的结果几乎总是
+     * CHAT + 单跳，因此用规则直接给定，省掉每条消息一次路由调用。
+     *
+     * <p>边界：只匹配整条消息（含少量标点），不参与任何含领域词的请求；置信度给 0.6
+     * —— 低于多跳阈值(0.70)与澄清阈值(0.80)，因此短路后执行计划是"单跳、不澄清、不扇出专家"，
+     * 与模型给出的默认路径一致。
+     */
+    static final Pattern CONVERSATIONAL_FILLER = Pattern.compile(
+            "^(你好|您好|你们好|hi|hello|hey|嗨|哈喽|谢谢|多谢|感谢|thanks|thx|好的|好|行|可以|嗯|嗯嗯|哦|明白|"
+                    + "收到|了解|继续|接着说|再说|还有吗|在吗|在么|在不在|test|测试)[\\s!！。.？?~～,，]*$",
+            Pattern.CASE_INSENSITIVE);
+    static final double RULE_CONFIDENCE = 0.6D;
+    static final String REASON_RULE_SHORTCUT = "RULE_CONVERSATIONAL_FILLER";
+
     private final RoutingConfidenceCalibrator confidenceCalibrator;
     private final StructuredOutputService structuredOutputService;
+    private final boolean ruleShortcutEnabled;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public IntentRouter(JsonGenerationGateway gateway) {
         this(gateway, new RoutingConfidenceCalibrator(false, null),
-                new StructuredOutputService(gateway, null));
+                new StructuredOutputService(gateway, null), true);
     }
 
     public IntentRouter(JsonGenerationGateway gateway, RoutingConfidenceCalibrator confidenceCalibrator) {
-        this(gateway, confidenceCalibrator, new StructuredOutputService(gateway, null));
+        this(gateway, confidenceCalibrator, new StructuredOutputService(gateway, null), true);
     }
 
     @Autowired
     public IntentRouter(JsonGenerationGateway gateway,
                         RoutingConfidenceCalibrator confidenceCalibrator,
-                        StructuredOutputService structuredOutputService) {
+                        StructuredOutputService structuredOutputService,
+                        @Value("${tutor.routing.rule-shortcut-enabled:true}") boolean ruleShortcutEnabled) {
         this.confidenceCalibrator = confidenceCalibrator;
         this.structuredOutputService = structuredOutputService;
+        this.ruleShortcutEnabled = ruleShortcutEnabled;
     }
 
     // 调用 LLM 判断意图和检索提示。
     public RouteDecision routeDecision(String question, List<String> recentUserMessages, String traceId) {
+        RouteDecision shortcut = shortcut(question);
+        if (shortcut != null) {
+            log.debug("路由规则短路 trace={} question={}", traceId, question);
+            return shortcut;
+        }
         try {
             String context = recentUserMessages.isEmpty() ? ""
                     : "此前用户消息: " + String.join(" / ", recentUserMessages) + "\n";
@@ -95,6 +120,14 @@ public class IntentRouter {
             log.warn("router不可用, 降级CHAT+SINGLE trace={} type={}", traceId, e.getClass().getSimpleName());
             return RouteDecision.degraded("ROUTER_UNAVAILABLE");
         }
+    }
+
+    /** 规则短路命中返回决策, 否则 null 交给模型路由。 */
+    private RouteDecision shortcut(String question) {
+        if (!ruleShortcutEnabled || question == null) return null;
+        if (!CONVERSATIONAL_FILLER.matcher(question.strip()).matches()) return null;
+        return new RouteDecision(Scope.IN_SCOPE, Intent.CHAT, List.of(Intent.CHAT), List.of(),
+                RetrievalHint.SINGLE, RULE_CONFIDENCE, null, List.of(REASON_RULE_SHORTCUT), false);
     }
 
     private RouteDecision applyCalibration(RouteDecision decision) {

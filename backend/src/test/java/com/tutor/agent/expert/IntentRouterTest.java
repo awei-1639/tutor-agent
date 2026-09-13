@@ -53,6 +53,75 @@ class IntentRouterTest {
     }
 
     @Test
+    void conversationalFillerSkipsTheRouterCallEntirely() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        var router = new IntentRouter(gateway, new RoutingConfidenceCalibrator(false, null),
+                new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), true);
+
+        var decision = router.routeDecision("你好", List.of(), "trace");
+
+        assertThat(decision.intent()).isEqualTo(Intent.CHAT);
+        assertThat(decision.scope()).isEqualTo(IntentRouter.Scope.IN_SCOPE);
+        assertThat(decision.retrievalHint()).isEqualTo(IntentRouter.RetrievalHint.SINGLE);
+        assertThat(decision.retrievalFacets()).isEmpty();
+        assertThat(decision.degraded()).isFalse();
+        assertThat(decision.reasonCodes()).contains("RULE_CONVERSATIONAL_FILLER");
+        org.mockito.Mockito.verifyNoInteractions(gateway); // 省掉一次路由 LLM 调用
+    }
+
+    @Test
+    void ruleShortcutKeepsTheSameExecutionPlanAsTheDefaultModelPath() {
+        var router = new IntentRouter(mock(LlmGateway.class), new RoutingConfidenceCalibrator(false, null),
+                new com.tutor.platform.llm.structured.StructuredOutputService(mock(LlmGateway.class), null), true);
+        var decision = router.routeDecision("谢谢！", List.of(), "trace");
+        var policy = new RoutingPolicy();
+
+        var plan = policy.plan(decision, "谢谢！");
+
+        assertThat(plan.intent()).isEqualTo(Intent.CHAT);
+        assertThat(plan.retrievalHint()).isEqualTo(IntentRouter.RetrievalHint.SINGLE);
+        assertThat(plan.allowMultiHopEscalation()).isFalse();  // 0.6 低于多跳阈值
+        assertThat(plan.skipRetrieval()).isFalse();            // 不做高影响的跳过检索
+        assertThat(plan.degraded()).isFalse();
+        assertThat(policy.shouldClarify(decision)).isFalse();  // 0.6 低于澄清阈值且无竞争意图
+    }
+
+    @Test
+    void domainQuestionsStillRouteThroughTheModel() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.ROUTER), anyList(), eq("trace"), isNull(), eq(1))).thenReturn(
+                "{\"scope\":\"in_scope\",\"intent\":\"resume\",\"intents\":[\"resume\"],"
+                        + "\"alternative_intent\":\"none\",\"alternative_confidence\":0,"
+                        + "\"ambiguity_flags\":[],\"retrieval_facets\":[\"career\"],"
+                        + "\"retrieval_hint\":\"single\",\"confidence\":0.8,\"reason_codes\":[]}");
+        var router = new IntentRouter(gateway, new RoutingConfidenceCalibrator(false, null),
+                new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), true);
+
+        var decision = router.routeDecision("帮我优化简历", List.of(), "trace");
+
+        assertThat(decision.intent()).isEqualTo(Intent.RESUME);
+        org.mockito.Mockito.verify(gateway).chatJson(eq(Purpose.ROUTER), anyList(), eq("trace"), isNull(), eq(1));
+    }
+
+    @Test
+    void shortcutCanBeDisabledWithoutRedeploying() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.ROUTER), anyList(), eq("trace"), isNull(), eq(1))).thenReturn(
+                "{\"scope\":\"in_scope\",\"intent\":\"chat\",\"intents\":[\"chat\"],"
+                        + "\"alternative_intent\":\"none\",\"alternative_confidence\":0,"
+                        + "\"ambiguity_flags\":[],\"retrieval_facets\":[],"
+                        + "\"retrieval_hint\":\"single\",\"confidence\":0.8,\"reason_codes\":[]}");
+        var router = new IntentRouter(gateway, new RoutingConfidenceCalibrator(false, null),
+                new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), false);
+
+        var decision = router.routeDecision("你好", List.of(), "trace");
+
+        org.mockito.Mockito.verify(gateway, org.mockito.Mockito.atLeastOnce())
+                .chatJson(eq(Purpose.ROUTER), anyList(), eq("trace"), isNull(), eq(1));
+        assertThat(decision.reasonCodes()).doesNotContain("RULE_CONVERSATIONAL_FILLER");
+    }
+
+    @Test
     void malformedJsonFallsBackToChat() {
         assertThat(IntentRouter.parseDecision("not json", mapper).intent()).isEqualTo(Intent.CHAT);
     }
