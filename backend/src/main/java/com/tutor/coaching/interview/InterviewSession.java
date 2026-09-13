@@ -3,6 +3,7 @@ package com.tutor.coaching.interview;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.platform.llm.JsonGenerationGateway;
 import com.tutor.coaching.plan.PlanService;
+import com.tutor.identity.profile.ProfileService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +47,10 @@ public class InterviewSession {
     }
 
     /** Convenience constructor retained for focused tests with a mock gateway. */
-    public InterviewSession(JdbcTemplate jdbc, JsonGenerationGateway gateway, PlanService plans) {
+    public InterviewSession(JdbcTemplate jdbc, JsonGenerationGateway gateway, PlanService plans,
+                            ProfileService profiles) {
         this(new InterviewLlmService(gateway), new InterviewSessionRepository(jdbc),
-                new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans), plans);
+                new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans, profiles), plans);
     }
 
     public record InterviewMessage(String sessionId, String status, String message) {}

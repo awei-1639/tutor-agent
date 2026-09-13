@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -18,6 +19,11 @@ public final class ProfileMerger {
     public static final double INFERRED_CAP = 0.9;
     public static final double DECAY_DAILY = 0.977;   // 30天半衰期
     public static final double DECAY_FLOOR = 0.05;
+    /** 面试证据来源: 真实作答的验证信号, 强于对话推断, 弱于用户显式声明 */
+    public static final String SOURCE_INTERVIEW = "interview";
+    public static final double INTERVIEW_MIN_SCORE = 7.0;      // 低于此分视为待补齐, 交给学习计划而非画像
+    public static final double INTERVIEW_MAX_CONF = 0.9;       // 封顶低于 explicit(1.0)
+    public static final double INTERVIEW_CONF_PER_POINT = 0.06; // 每少 1 分降低的置信度
     static final List<String> KEY_FIELDS = List.of("target_position", "location");
     static final List<String> SCALAR_FIELDS = List.of(
             "target_position", "location", "experience_years", "education", "daily_hours");
@@ -107,7 +113,78 @@ public final class ProfileMerger {
         return next;
     }
 
-    /** 每日衰减: 仅 inferred 字段, 有下限; 返回新 map */
+    /**
+     * 面试证据回写: 仅"被证明具备"的技能进入画像。
+     *
+     * <p>弱项 (<7 分) 不在此降权 —— 单场题目难度受 JUNIOR/MID/SENIOR 影响，低分不足以证伪，
+     * 且降权会让画像随单次波动抖动。弱项由学习计划消费 (InterviewCompletionWorker → createEvidenceTasks)。
+     * 用户显式声明的技能永不被面试证据覆盖。
+     *
+     * @param averageScores 技能 ID (可能带 skill: 前缀) → 该场面试的平均分
+     */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> mergeInterviewSkills(Map<String, Object> current,
+                                                           Map<String, Double> averageScores,
+                                                           List<String> events) {
+        Map<String, Object> next = deepCopy(current);
+        if (averageScores == null || averageScores.isEmpty()) return next;
+        Map<String, Double> verified = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Double> entry : averageScores.entrySet()) {
+            String name = normalizeSkillName(entry.getKey());
+            Double rawScore = entry.getValue();
+            double score = rawScore == null ? 0 : rawScore;
+            if (name.isEmpty() || score < INTERVIEW_MIN_SCORE) continue;
+            verified.merge(name, score, Math::max);   // 同场同名取最高分, 避免重复键互相覆盖
+        }
+        if (verified.isEmpty()) return next;
+
+        List<Map<String, Object>> skills = (List<Map<String, Object>>) next
+                .computeIfAbsent("skills", k -> new ArrayList<Map<String, Object>>());
+        String today = LocalDate.now().toString();
+        for (Map.Entry<String, Double> entry : verified.entrySet()) {
+            String name = entry.getKey();
+            double target = interviewConfidence(entry.getValue());
+
+            Map<String, Object> hit = skills.stream()
+                    .filter(s -> name.equalsIgnoreCase(String.valueOf(s.get("name"))))
+                    .findFirst().orElse(null);
+            if (hit == null) {
+                Map<String, Object> skill = new HashMap<>();
+                skill.put("name", name);
+                skill.put("confidence", target);
+                skill.put("source", SOURCE_INTERVIEW);
+                skill.put("last_seen", today);
+                skills.add(skill);
+                events.add("技能新增(面试): " + name);
+                continue;
+            }
+            if ("explicit".equals(hit.get("source"))) continue;  // 显式优先, 面试证据不覆盖
+            hit.put("last_seen", today);
+            double conf = num(hit.get("confidence"));
+            if (target > conf + 1e-9) {
+                hit.put("confidence", target);
+                hit.put("source", SOURCE_INTERVIEW);
+                events.add("面试印证: " + name + " " + conf + "→" + target);
+            }
+        }
+        return next;
+    }
+
+    /** 技能 ID → 画像技能名: 去掉图谱 skill: 前缀 */
+    public static String normalizeSkillName(String skillId) {
+        String trimmed = skillId == null ? "" : skillId.trim();
+        return trimmed.toLowerCase(Locale.ROOT).startsWith("skill:")
+                ? trimmed.substring("skill:".length()).trim()
+                : trimmed;
+    }
+
+    /** 面试平均分 → 画像置信度: 10 分封顶 0.9, 每少 1 分 -0.06, 下限 0.6 */
+    public static double interviewConfidence(double averageScore) {
+        double raw = INTERVIEW_MAX_CONF - (10.0 - averageScore) * INTERVIEW_CONF_PER_POINT;
+        return Math.max(INFERRED_INIT, Math.min(INTERVIEW_MAX_CONF, raw));
+    }
+
+    /** 每日衰减: 仅非 explicit 字段 (inferred / interview), 有下限; 返回新 map */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> decay(Map<String, Object> current) {
         Map<String, Object> next = deepCopy(current);
@@ -115,14 +192,14 @@ public final class ProfileMerger {
         if (skillsObj instanceof List<?> skills) {
             for (Object o : skills) {
                 Map<String, Object> s = (Map<String, Object>) o;
-                if ("inferred".equals(s.get("source"))) {
+                if (!"explicit".equals(s.get("source"))) {
                     s.put("confidence", Math.max(DECAY_FLOOR, num(s.get("confidence")) * DECAY_DAILY));
                 }
             }
         }
         for (String field : SCALAR_FIELDS) {
             Object o = next.get(field);
-            if (o instanceof Map<?, ?> m && "inferred".equals(((Map<String, Object>) m).get("source"))) {
+            if (o instanceof Map<?, ?> m && !"explicit".equals(((Map<String, Object>) m).get("source"))) {
                 Map<String, Object> f = (Map<String, Object>) m;
                 f.put("confidence", Math.max(DECAY_FLOOR, num(f.get("confidence")) * DECAY_DAILY));
             }

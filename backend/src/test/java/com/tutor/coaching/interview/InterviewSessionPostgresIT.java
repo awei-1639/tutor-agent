@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.identity.admin.AdminService;
 import com.tutor.identity.auth.AuthService;
 import com.tutor.identity.auth.JwtService;
+import com.tutor.identity.profile.ProfileService;
+import com.tutor.identity.profile.ProfileStore;
 import com.tutor.contract.Purpose;
 import com.tutor.platform.llm.LlmGateway;
 import com.tutor.coaching.plan.PlanService;
@@ -71,7 +73,8 @@ class InterviewSessionPostgresIT {
                 "confidence":0.85,"evidence_quotes":["缓存"]}
                 """);
         PlanService plans = mock(PlanService.class);
-        reports = new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans);
+        ProfileService profiles = new ProfileService(gateway, new ProfileStore(jdbc));
+        reports = new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans, profiles);
         interviews = new InterviewSession(jdbc, new InterviewLlmService(gateway), new InterviewSessionRepository(jdbc), reports, plans);
     }
 

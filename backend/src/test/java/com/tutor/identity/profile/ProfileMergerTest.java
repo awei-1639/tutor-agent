@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 class ProfileMergerTest {
 
@@ -77,6 +78,65 @@ class ProfileMergerTest {
         Map<String, Object> java = skills.stream().filter(s -> s.get("name").equals("Java")).findFirst().orElseThrow();
         assertThat((double) python.get("confidence")).isEqualTo(ProfileMerger.INFERRED_INIT * ProfileMerger.DECAY_DAILY);
         assertThat((double) java.get("confidence")).isEqualTo(ProfileMerger.EXPLICIT); // explicit 不衰减
+    }
+
+    @Test
+    void interviewEvidenceAddsVerifiedSkillWithScoreDerivedConfidence() {
+        List<String> events = new ArrayList<>();
+        Map<String, Object> p = ProfileMerger.mergeInterviewSkills(new HashMap<>(),
+                Map.of("skill:Redis", 9.0), events);
+
+        assertThat(firstSkill(p)).containsEntry("name", "Redis")
+                .containsEntry("source", ProfileMerger.SOURCE_INTERVIEW);
+        assertThat((double) firstSkill(p).get("confidence")).isCloseTo(0.84, within(1e-9));
+        assertThat(events).containsExactly("技能新增(面试): Redis");
+    }
+
+    @Test
+    void interviewEvidenceIgnoresWeakSkillsBelowSeven() {
+        Map<String, Object> p = ProfileMerger.mergeInterviewSkills(new HashMap<>(),
+                Map.of("skill:Redis", 6.9), new ArrayList<>());
+
+        assertThat(p).doesNotContainKey("skills");
+    }
+
+    @Test
+    void interviewEvidenceRaisesButNeverOverridesExplicit() {
+        Map<String, Object> p = ProfileMerger.merge(new HashMap<>(), skillDelta("Redis", true), new ArrayList<>());
+        List<String> events = new ArrayList<>();
+        p = ProfileMerger.mergeInterviewSkills(p, Map.of("skill:Redis", 10.0), events);
+
+        assertThat(firstSkill(p)).containsEntry("confidence", ProfileMerger.EXPLICIT)
+                .containsEntry("source", "explicit");
+        assertThat(events).isEmpty();
+    }
+
+    @Test
+    void interviewEvidenceOnlyRaisesConfidenceNeverLowers() {
+        Map<String, Object> p = ProfileMerger.mergeInterviewSkills(new HashMap<>(),
+                Map.of("RAG", 10.0), new ArrayList<>());
+        List<String> events = new ArrayList<>();
+        p = ProfileMerger.mergeInterviewSkills(p, Map.of("RAG", 7.0), events);
+
+        assertThat((double) firstSkill(p).get("confidence")).isEqualTo(ProfileMerger.INTERVIEW_MAX_CONF);
+        assertThat(events).isEmpty(); // 低分重考不降权
+    }
+
+    @Test
+    void interviewEvidenceDecaysLikeInferredEvidence() {
+        Map<String, Object> p = ProfileMerger.mergeInterviewSkills(new HashMap<>(),
+                Map.of("Redis", 10.0), new ArrayList<>());
+        Map<String, Object> decayed = ProfileMerger.decay(p);
+
+        assertThat((double) firstSkill(decayed).get("confidence"))
+                .isCloseTo(ProfileMerger.INTERVIEW_MAX_CONF * ProfileMerger.DECAY_DAILY, within(1e-9));
+    }
+
+    @Test
+    void interviewConfidenceIsCappedBelowExplicit() {
+        assertThat(ProfileMerger.interviewConfidence(10.0)).isCloseTo(0.9, within(1e-9));
+        assertThat(ProfileMerger.interviewConfidence(7.0)).isCloseTo(0.72, within(1e-9));
+        assertThat(ProfileMerger.interviewConfidence(0.0)).isEqualTo(ProfileMerger.INFERRED_INIT);
     }
 
     @Test

@@ -114,6 +114,25 @@ public class ProfileService {
         }
     }
 
+    /**
+     * 面试收卷后回写画像: 本场被证明具备的技能 (≥7 分) 提升画像置信度并标记 interview 来源。
+     * 弱项不在此处理 —— 它们已经转成学习计划任务, 且单场低分不足以证伪能力。
+     * 任何失败只记日志, 绝不影响面试结果本身。
+     */
+    public void mergeInterviewEvidence(long userId, Map<String, Double> skillAverageScores, String traceId) {
+        if (skillAverageScores == null || skillAverageScores.isEmpty()) return;
+        try {
+            List<String> events = new ArrayList<>();
+            Map<String, Object> next = ProfileMerger.mergeInterviewSkills(snapshot(userId), skillAverageScores, events);
+            if (events.isEmpty()) return;
+            store.save(userId, next);
+            store.insertEvent(userId, mapper.writeValueAsString(events), "interview", traceId);
+            log.info("面试证据回写画像 user={} events={} trace={}", userId, events, traceId);
+        } catch (Exception e) {
+            log.error("面试证据回写画像失败(不影响面试结果) user={} trace={}: {}", userId, traceId, e.getMessage());
+        }
+    }
+
     public Map<String, Object> confirmField(long userId, String field, boolean accept) {
         Map<String, Object> next = ProfileMerger.confirm(snapshot(userId), field, accept);
         store.save(userId, next);

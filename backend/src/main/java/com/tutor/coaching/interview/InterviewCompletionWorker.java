@@ -3,6 +3,7 @@ package com.tutor.coaching.interview;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.platform.config.ExecutorLifecycle;
 import com.tutor.coaching.plan.PlanService;
+import com.tutor.identity.profile.ProfileService;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,21 +26,24 @@ final class InterviewCompletionWorker {
     private final InterviewCompletionJobStore jobs;
     private final InterviewLlmService interviewer;
     private final PlanService plans;
+    private final ProfileService profiles;
     private final ObjectMapper mapper = new ObjectMapper();
     private final ExecutorService executor;
     private final Semaphore slots;
 
     @Autowired
-    InterviewCompletionWorker(InterviewCompletionJobStore jobs, InterviewLlmService interviewer, PlanService plans) {
-        this(jobs, interviewer, plans, Executors.newVirtualThreadPerTaskExecutor(),
+    InterviewCompletionWorker(InterviewCompletionJobStore jobs, InterviewLlmService interviewer,
+                              PlanService plans, ProfileService profiles) {
+        this(jobs, interviewer, plans, profiles, Executors.newVirtualThreadPerTaskExecutor(),
                 new Semaphore(MAX_CONCURRENT_JOBS));
     }
 
     InterviewCompletionWorker(InterviewCompletionJobStore jobs, InterviewLlmService interviewer, PlanService plans,
-                               ExecutorService executor, Semaphore slots) {
+                              ProfileService profiles, ExecutorService executor, Semaphore slots) {
         this.jobs = jobs;
         this.interviewer = interviewer;
         this.plans = plans;
+        this.profiles = profiles;
         this.executor = executor;
         this.slots = slots;
     }
@@ -89,6 +93,8 @@ final class InterviewCompletionWorker {
                 plans.createEvidenceTasks(job.userId(),
                         session.targetRole().isBlank() ? session.topic() : session.targetRole(), weakSkills);
             }
+            // 闭环: 本场被证明具备的技能回写画像, 让后续检索与计划看到面试验证过的能力
+            profiles.mergeInterviewEvidence(job.userId(), jobs.skillAverages(job.sessionId()), job.sessionId());
             jobs.markCompleted(job);
         } catch (Exception error) {
             log.error("interview completion job failed id={} session={}: {}",

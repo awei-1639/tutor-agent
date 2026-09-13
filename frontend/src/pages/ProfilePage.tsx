@@ -223,7 +223,7 @@ export default function ProfilePage() {
 }
 
 function eventLabel(trigger: string): string {
-  return ({ conversation: '来自对话', resume: '来自简历', confirm: '你的确认' } as Record<string, string>)[trigger] ?? '系统更新';
+  return ({ conversation: '来自对话', resume: '来自简历', confirm: '你的确认', interview: '来自面试' } as Record<string, string>)[trigger] ?? '系统更新';
 }
 
 function formatEventTime(value: string): string {

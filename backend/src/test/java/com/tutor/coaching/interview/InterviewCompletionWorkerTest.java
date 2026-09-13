@@ -1,10 +1,12 @@
 package com.tutor.coaching.interview;
 
 import com.tutor.coaching.plan.PlanService;
+import com.tutor.identity.profile.ProfileService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
@@ -13,6 +15,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -20,9 +24,10 @@ class InterviewCompletionWorkerTest {
     private final InterviewCompletionJobStore jobs = mock(InterviewCompletionJobStore.class);
     private final InterviewLlmService interviewer = mock(InterviewLlmService.class);
     private final PlanService plans = mock(PlanService.class);
+    private final ProfileService profiles = mock(ProfileService.class);
     private final ExecutorService executor = mock(ExecutorService.class);
     private final InterviewCompletionWorker worker = new InterviewCompletionWorker(
-            jobs, interviewer, plans, executor, new Semaphore(2));
+            jobs, interviewer, plans, profiles, executor, new Semaphore(2));
     private final InterviewCompletionJobStore.Job job = new InterviewCompletionJobStore.Job(
             7L, 42L, "session-7", UUID.randomUUID());
     private final InterviewSession.SessionRow session = new InterviewSession.SessionRow(
@@ -58,5 +63,31 @@ class InterviewCompletionWorkerTest {
         verify(jobs).saveEvidence(eq(job.userId()), eq(job.sessionId()), eq("skill:缓存"), eq(5D), eq(0.8D), anyString());
         verify(plans).createEvidenceTasks(job.userId(), "后端开发", List.of("skill:缓存"));
         verify(jobs).markCompleted(job);
+    }
+
+    @Test
+    void writesVerifiedSkillsBackIntoTheProfileSoTheLoopCloses() {
+        when(jobs.session(job.userId(), job.sessionId())).thenReturn(session);
+        when(jobs.ownsLease(job)).thenReturn(true);
+        when(jobs.weakSkills(job.sessionId())).thenReturn(List.of());
+        when(jobs.skillAverages(job.sessionId())).thenReturn(Map.of("skill:Redis", 9.0, "skill:缓存", 5.0));
+        when(jobs.markEvidenceCompleted(job)).thenReturn(true);
+
+        worker.process(job);
+
+        // 强项与弱项一起交给画像服务, 由 ProfileMerger 的确定性规则决定谁能入画像
+        verify(profiles).mergeInterviewEvidence(job.userId(),
+                Map.of("skill:Redis", 9.0, "skill:缓存", 5.0), job.sessionId());
+        verify(jobs).markCompleted(job);
+    }
+
+    @Test
+    void skipsProfileWriteBackWhenTheLeaseExpiredBeforeEvidence() {
+        when(jobs.session(job.userId(), job.sessionId())).thenReturn(session);
+        when(jobs.ownsLease(job)).thenReturn(false);
+
+        worker.process(job);
+
+        verify(profiles, never()).mergeInterviewEvidence(anyLong(), anyMap(), anyString());
     }
 }

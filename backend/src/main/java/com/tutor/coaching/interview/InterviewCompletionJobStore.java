@@ -6,7 +6,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -129,6 +131,19 @@ class InterviewCompletionJobStore {
                 SELECT DISTINCT COALESCE(skill_id, '') FROM interview_questions
                 WHERE session_id=? AND score IS NOT NULL AND score < 7 AND skill_id IS NOT NULL
                 """, (rs, i) -> rs.getString(1), sessionId);
+    }
+
+    /** 本场每个技能的平均分 (含强项与弱项); 用于把"被证明具备"的能力回写画像。 */
+    Map<String, Double> skillAverages(String sessionId) {
+        Map<String, Double> out = new LinkedHashMap<>();
+        jdbc.query("""
+                SELECT skill_id, AVG(score)::float8 FROM interview_questions
+                WHERE session_id=? AND score IS NOT NULL AND skill_id IS NOT NULL AND skill_id <> ''
+                GROUP BY skill_id
+                """, rs -> {
+            out.put(rs.getString(1), rs.getDouble(2));
+        }, sessionId);
+        return out;
     }
 
     List<InterviewSession.QuestionScore> scores(String sessionId, String skillId) {

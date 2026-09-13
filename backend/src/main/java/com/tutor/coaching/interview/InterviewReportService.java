@@ -1,6 +1,7 @@
 package com.tutor.coaching.interview;
 
 import com.tutor.coaching.plan.PlanService;
+import com.tutor.identity.profile.ProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -31,14 +32,15 @@ class InterviewReportService {
     }
 
     /** Compatibility constructor retained for focused and database integration tests. */
-    InterviewReportService(JdbcTemplate jdbc, InterviewLlmService interviewer, PlanService plans) {
-        this(jdbc, interviewer, plans, new InterviewCompletionJobStore(jdbc));
+    InterviewReportService(JdbcTemplate jdbc, InterviewLlmService interviewer, PlanService plans,
+                           ProfileService profiles) {
+        this(jdbc, interviewer, plans, profiles, new InterviewCompletionJobStore(jdbc));
     }
 
     private InterviewReportService(JdbcTemplate jdbc, InterviewLlmService interviewer, PlanService plans,
-                                   InterviewCompletionJobStore completionJobs) {
+                                   ProfileService profiles, InterviewCompletionJobStore completionJobs) {
         this(interviewer, new InterviewSessionRepository(jdbc), completionJobs,
-                new InterviewCompletionWorker(completionJobs, interviewer, plans));
+                new InterviewCompletionWorker(completionJobs, interviewer, plans, profiles));
     }
 
     InterviewSession.Report buildReport(long userId, InterviewSession.SessionRow session, String sessionId) {
