@@ -46,11 +46,14 @@ public class PlanService {
             - 任务要具体可执行 ("复习 Python 装饰器 1h" 而非 "学习Python")
             - 难度循序渐进: 新概念少, 复习多
             - 关联具体技能名 (与图谱一致)
+            - 若请求附带"用户画像与历史证据", 必须据此安排: 优先覆盖面试验证的薄弱项,
+              任务量不超过每日可学时长, 资源形式贴合偏好, 已掌握的高置信技能不要重复排练
             """;
 
     private final PlanStore store;
     private final StructuredOutputService structuredOutputService;
     private volatile LlmBudgetGuard budgetGuard;
+    private volatile PlanContextService planContextService;
 
     public PlanService(PlanStore store, StructuredOutputService structuredOutputService) {
         this.store = store;
@@ -61,6 +64,15 @@ public class PlanService {
     @Autowired(required = false)
     void setBudgetGuard(LlmBudgetGuard budgetGuard) {
         this.budgetGuard = budgetGuard;
+    }
+
+    /**
+     * Optionally enriches generation with profile, long-term facts and interview evidence.
+     * Absent (tests, minimal contexts) the planner falls back to the caller-supplied strings.
+     */
+    @Autowired(required = false)
+    void setPlanContextService(PlanContextService planContextService) {
+        this.planContextService = planContextService;
     }
 
     /** Enqueue quickly so the HTTP request does not wait for the model. */
@@ -87,13 +99,14 @@ public class PlanService {
     public Plan generateWeeklyPlan(long userId, String goal, String currentSkills,
                                    String checkinHistory, String traceId) {
         try {
+            String learnerContext = learnerContextBlock(userId);
             StructuredOutputResult<PlanOutput> structured = structuredOutputService.generate(
                     StructuredTask.PLAN,
                     Purpose.PLAN,
                     List.of(
                             LlmMessage.system(SYS),
                             LlmMessage.user("目标: " + goal + "\n当前技能: " + currentSkills
-                                    + "\n近期打卡: " + checkinHistory)),
+                                    + "\n近期打卡: " + checkinHistory + learnerContext)),
                     PlanOutput.class,
                     output -> {
                         if (output.goalSummary() == null || output.goalSummary().isBlank()
@@ -175,6 +188,18 @@ public class PlanService {
                     EVIDENCE_HINT));
         }
         return created;
+    }
+
+    /** Best-effort learner context; never blocks or fails plan generation. */
+    private String learnerContextBlock(long userId) {
+        PlanContextService context = this.planContextService;
+        if (context == null) return "";
+        try {
+            return context.load(userId).toPromptBlock();
+        } catch (Exception error) {
+            log.warn("计划上下文加载失败, 退化为仅使用请求入参 user={}: {}", userId, error.getMessage());
+            return "";
+        }
     }
 
     private LocalDate startOfWeek(LocalDate day) {
