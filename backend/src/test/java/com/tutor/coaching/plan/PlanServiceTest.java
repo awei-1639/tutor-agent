@@ -107,6 +107,58 @@ class PlanServiceTest {
                 .containsExactly("learn", "practice", "review", "learn", "practice", "review", "learn");
     }
 
+    @Test
+    void injectsProfileFactsAndInterviewEvidenceIntoThePlannerRequest() {
+        JsonGenerationGateway gateway = mock(JsonGenerationGateway.class);
+        when(gateway.chatJson(eq(Purpose.PLAN), any(), eq("trace-plan"), isNull(), eq(1)))
+                .thenReturn(sevenDayPlanJson());
+        PlanService generatedPlans = new PlanService(store, new StructuredOutputService(gateway, null));
+        PlanContextService context = mock(PlanContextService.class);
+        when(context.load(42L)).thenReturn(new PlanContextService.LearnerContext(
+                "目标岗位: 后端开发｜每日可学: 2小时",
+                List.of("目标是在六个月内转到后端岗位"),
+                List.of("缓存", "Redis")));
+        generatedPlans.setPlanContextService(context);
+        when(store.saveGeneratedPlan(eq(42L), anyString(), any(LocalDate.class), any()))
+                .thenAnswer(invocation -> new PlanModels.Plan(
+                        91L, 42L, invocation.getArgument(1), invocation.getArgument(2),
+                        ((LocalDate) invocation.getArgument(2)).plusDays(6), "active"));
+
+        generatedPlans.generateWeeklyPlan(42L, "转后端岗位", "Java, SQL", "完成了 Java 集合练习", "trace-plan");
+
+        ArgumentCaptor<List<LlmMessage>> messages = ArgumentCaptor.forClass(List.class);
+        verify(gateway).chatJson(eq(Purpose.PLAN), messages.capture(), eq("trace-plan"), isNull(), eq(1));
+        String request = messages.getValue().getLast().content();
+        assertThat(request)
+                .contains("目标岗位: 后端开发")
+                .contains("目标是在六个月内转到后端岗位")
+                .contains("缓存")
+                .contains("用户画像与历史证据");
+    }
+
+    @Test
+    void fallsBackToRequestInputsWhenLearnerContextIsEmptyOrFails() {
+        JsonGenerationGateway gateway = mock(JsonGenerationGateway.class);
+        when(gateway.chatJson(eq(Purpose.PLAN), any(), eq("trace-plan"), isNull(), eq(1)))
+                .thenReturn(sevenDayPlanJson());
+        PlanService generatedPlans = new PlanService(store, new StructuredOutputService(gateway, null));
+        PlanContextService context = mock(PlanContextService.class);
+        when(context.load(42L)).thenThrow(new IllegalStateException("profile store down"));
+        generatedPlans.setPlanContextService(context);
+        when(store.saveGeneratedPlan(eq(42L), anyString(), any(LocalDate.class), any()))
+                .thenAnswer(invocation -> new PlanModels.Plan(
+                        91L, 42L, invocation.getArgument(1), invocation.getArgument(2),
+                        ((LocalDate) invocation.getArgument(2)).plusDays(6), "active"));
+
+        PlanModels.Plan plan = generatedPlans.generateWeeklyPlan(
+                42L, "转后端岗位", "Java, SQL", "完成了 Java 集合练习", "trace-plan");
+
+        assertThat(plan).isNotNull(); // 上下文失败不应让计划生成失败
+        ArgumentCaptor<List<LlmMessage>> messages = ArgumentCaptor.forClass(List.class);
+        verify(gateway).chatJson(eq(Purpose.PLAN), messages.capture(), eq("trace-plan"), isNull(), eq(1));
+        assertThat(messages.getValue().getLast().content()).doesNotContain("用户画像与历史证据");
+    }
+
     private String sevenDayPlanJson() {
         return """
                 {"goal_summary":"后端学习计划","days":[
