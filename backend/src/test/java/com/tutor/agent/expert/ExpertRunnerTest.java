@@ -2,7 +2,7 @@ package com.tutor.agent.expert;
 
 import com.tutor.contract.Intent;
 import com.tutor.platform.config.LlmProperties;
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.Purpose;
@@ -41,7 +41,10 @@ class ExpertRunnerTest {
 
     @BeforeEach
     void setUp() {
-        runner = new ExpertRunner(gateway, new TokenBudget(), properties(1));
+        // 批次 deadline 不能取 1s：两个取消用例要求"专家任务在 deadline 到期前真正启动"，
+        // 而 JVM 预热(加载分词表)或机器繁忙都可能让任务调度晚于 1s，届时任务会被 deadline
+        // 直接判超时、根本不会调用网关，用例就退化成偶发失败。留足余量只增加耗时，不改语义。
+        runner = new ExpertRunner(gateway, new TokenBudget(), properties(5));
     }
 
     @AfterEach
@@ -157,8 +160,8 @@ class ExpertRunnerTest {
 
         assertThatThrownBy(() -> runner.run(List.of("resume"), "briefing", "trace", null))
                 .isInstanceOf(ExpertRunner.ExpertUnavailableException.class);
-        assertThat(started.await(1, TimeUnit.SECONDS)).isTrue();
-        assertThat(interrupted.get()).isTrue();
+        assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(awaitTrue(interrupted)).isTrue();
     }
 
     @Test
@@ -182,13 +185,22 @@ class ExpertRunnerTest {
         Thread run = Thread.startVirtualThread(() -> result.set(
                 runner.run(List.of("resume"), "briefing", "trace", null, cancellation)));
 
-        assertThat(started.await(1, TimeUnit.SECONDS)).isTrue();
+        assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
         cancellation.cancel();
-        run.join(2_000);
+        run.join(5_000);
 
         assertThat(run.isAlive()).isFalse();
         assertThat(result.get()).isEmpty();
-        assertThat(interrupted.get()).isTrue();
+        assertThat(awaitTrue(interrupted)).isTrue();
+    }
+
+    /** 取消与中断是异步投递的：future 先异常完成、interrupt 后到达，必须轮询等待而不是立即断言。 */
+    private static boolean awaitTrue(AtomicBoolean flag) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (!flag.get() && System.nanoTime() < deadline) {
+            Thread.sleep(20);
+        }
+        return flag.get();
     }
 
     private static LlmProperties properties(int expertSeconds) {
