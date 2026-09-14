@@ -37,7 +37,7 @@ spring:
       max-file-size: ${KNOWLEDGE_UPLOAD_MAX_FILE_SIZE:50MB}
       max-request-size: ${KNOWLEDGE_UPLOAD_MAX_REQUEST_SIZE:55MB}
   datasource:
-    url: jdbc:postgresql://localhost:5432/tutor
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tutor}
     username: tutor
     password: ${POSTGRES_PASSWORD:tutor_dev_only}
   flyway:
@@ -272,3 +272,4 @@ llm:
     rerank-input-tokens: 6000
   concurrency:
     max-in-flight: ${LLM_MAX_IN_FLIGHT:16}
+
