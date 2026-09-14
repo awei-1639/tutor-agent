@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tutor Agent · 前端升级 v2 · 完成度进阶版</title>
+<style>
+  :root {
+    /* v2: 同一套 editorial 血统, 色值微调更润 */
+    --canvas: #f2f1ec;
+    --paper: #faf9f5;
+    --ink: #1a1917;
+    --ink-800: #2e2d29;
+    --ink-700: #45443f;
+    --ink-500: #6f6e67;
+    --muted: #83827b;
+    --faint: #a5a49c;
+    --signal: #2f4fd4;
+    --signal-deep: #2440b4;
+    --signal-soft: rgba(47, 79, 212, .08);
+    --signal-ring: rgba(47, 79, 212, .22);
+    --line: #dcdad1;
+    --hairline: #e7e5dd;
+    --ok: #3f7d4e;
+    --warn: #a86a10;
+    --bad: #b3403a;
+    --radius: 13px;
+    --serif: Georgia, "Songti SC", "SimSun", serif;
+    --sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    --mono: "SF Mono", Consolas, "Courier New", monospace;
+    /* v2: 统一柔和阴影系 */
+    --shadow-sm: 0 1px 2px rgba(26,25,23,.05);
+    --shadow-md: 0 2px 6px rgba(26,25,23,.05), 0 8px 24px rgba(26,25,23,.06);
+    --shadow-pop: 0 4px 12px rgba(26,25,23,.08), 0 16px 48px rgba(26,25,23,.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans); background: var(--canvas); color: var(--ink);
+    font-feature-settings: 'cv02','cv03','cv11';
+  }
+  ::selection { background: rgba(47,79,212,.18); }
+  * { scrollbar-width: thin; scrollbar-color: #b1b0a8 transparent; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-thumb { background: #b1b0a8; border: 2px solid transparent; border-radius: 999px; background-clip: content-box; }
+
+  .icon { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+  /* ============ 演示控制条 ============ */
+  .demo-bar {
+    position: sticky; top: 0; z-index: 100; height: 46px;
+    background: var(--ink); display: flex; align-items: center; gap: 6px; padding: 0 18px;
+  }
+  .demo-title { color: #8f8e87; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; margin-right: 10px; white-space: nowrap; }
+  .demo-tab {
+    border: 1px solid #38372f; background: transparent; color: #b4b3ab;
+    padding: 5px 13px; border-radius: 999px; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+    transition: all .15s ease; font-family: inherit;
+  }
+  .demo-tab:hover { color: #fff; border-color: #55544b; }
+  .demo-tab.active { background: var(--canvas); border-color: var(--canvas); color: var(--ink); font-weight: 600; }
+  .demo-hint { color: #6e6d66; font-size: 11.5px; margin-left: auto; white-space: nowrap; }
+
+  .view { display: none; height: calc(100vh - 46px); position: relative; }
+  .view.active { display: block; }
+
+  /* ============ 通用 editorial 元素 ============ */
+  .kicker {
+    color: var(--signal); letter-spacing: .18em; text-transform: uppercase;
+    font-size: 10px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+  }
+  .kicker::before { content: ""; width: 18px; height: 1.5px; background: var(--signal); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+    border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+    transition: all .15s ease; box-shadow: var(--shadow-sm);
+  }
+  .btn:hover { border-color: #b8b6ab; background: #fff; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .btn-primary { background: var(--ink); border-color: var(--ink); color: var(--canvas); }
+  .btn-primary:hover { background: #000; }
+  .btn-ghost { border-color: transparent; background: transparent; box-shadow: none; color: var(--muted); }
+  .btn-ghost:hover { color: var(--ink); background: #eae8e0; transform: none; box-shadow: none; }
+
+  /* ============ 视图1: 聊天页 ============ */
+  .chat-shell { display: grid; grid-template-columns: 268px 1fr 312px; height: 100%; }
+
+  /* 侧栏: v2 加微渐变与顶部品牌区优化 */
+  .sidebar {
+    background: linear-gradient(180deg, #1d1c1a 0%, #171614 100%);
+    color: #cfcec6; display: flex; flex-direction: column; overflow-y: auto; position: relative;
+  }
+  .sidebar::after {
+    content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(255,255,255,.06), transparent);
+  }
+  .sidebar-head { padding: 20px 18px 12px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .brand-mark {
+    background: linear-gradient(145deg, #4565e6, #2f4fd4); color: #fff;
+    width: 31px; height: 31px; border-radius: 9px; display: grid; place-items: center;
+    font-family: var(--serif); font-weight: 700; font-size: 15px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 2px 8px rgba(47,79,212,.35);
+  }
+  .brand-name { font-family: var(--serif); font-size: 15.5px; color: #efeeea; letter-spacing: .01em; }
+  .new-chat {
+    display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%;
+    border: 1px solid #34332c; background: rgba(255,255,255,.03); color: #dddcd4;
+    padding: 8px; border-radius: 10px; font-size: 13px; cursor: pointer; font-family: inherit;
+    transition: all .15s ease; margin-bottom: 6px;
+  }
+  .new-chat:hover { border-color: #4d4c42; background: rgba(255,255,255,.06); }
+  .sidebar-label {
+    font-size: 10.5px; color: #7c7b73; letter-spacing: .14em; text-transform: uppercase;
+    padding: 16px 18px 5px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+  }
+  .sidebar-label::after { content: ""; flex: 1; height: 1px; background: #2e2d29; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin: 0 8px;
+    border-radius: 8px; color: #a3a29a; font-size: 13px; cursor: pointer; transition: all .13s ease;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.05); color: #e6e5de; }
+  .nav-item.active { background: rgba(255,255,255,.08); color: #fff; }
+  .nav-item .icon { width: 15px; height: 15px; opacity: .75; }
+  .conv-item {
+    padding: 7px 11px; margin: 0 8px; border-radius: 8px; font-size: 12.8px; color: #a3a29a;
+    cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all .13s ease;
+  }
+  .conv-item:hover { background: rgba(255,255,255,.05); color: #e6e5de; }
+  .conv-item.current { background: rgba(255,255,255,.09); color: #fff; }
+  .conv-item.current::before {
+    content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 99px;
+    background: var(--signal); margin-right: 8px; vertical-align: 2px; box-shadow: 0 0 6px rgba(69,101,230,.8);
+  }
+  .sidebar-foot { margin-top: auto; padding: 13px 16px; border-top: 1px solid #2b2a26; display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 27px; height: 27px; border-radius: 99px; background: #3a3934; display: grid; place-items: center; font-size: 12px; }
+
+  /* 主区: v2 加纸纹底噪 */
+  .chat-main { display: flex; flex-direction: column; min-width: 0; position: relative; background: var(--canvas); }
+  .chat-main::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.018 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .chat-main > * { position: relative; z-index: 1; }
+
+  .chat-topbar {
+    display: flex; align-items: center; gap: 12px; padding: 13px 28px;
+    border-bottom: 1px solid var(--hairline); background: rgba(250,249,245,.72); backdrop-filter: blur(10px);
+  }
+  .chat-topbar .tt { min-width: 0; }
+  .chat-topbar .kicker { margin-bottom: 2px; }
+  .chat-topbar h2 { font-family: var(--serif); font-size: 15.5px; font-weight: 650; letter-spacing: -.012em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-topbar .sub { margin-left: auto; color: var(--muted); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .stream-dot { width: 6px; height: 6px; border-radius: 99px; background: var(--ok); animation: pulse 1.6s ease infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+  .chat-scroll { flex: 1; overflow-y: auto; padding: 30px 40px 26px; display: flex; flex-direction: column; gap: 26px; }
+
+  .msg { max-width: 700px; width: 100%; margin: 0 auto; }
+  .msg.user { display: flex; justify-content: flex-end; }
+  .msg-bubble-user {
+    background: var(--ink); color: #efeeea; padding: 12px 17px;
+    border-radius: 15px 15px 5px 15px; font-size: 14px; line-height: 1.7; max-width: 78%;
+    box-shadow: 0 1px 3px rgba(26,25,23,.18);
+  }
+  .msg-time { font-size: 11px; color: var(--faint); text-align: right; margin-top: 6px; }
+
+  .msg.ai { display: flex; flex-direction: column; }
+  .ai-head { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; }
+  .ai-mark {
+    width: 23px; height: 23px; border-radius: 7px;
+    background: linear-gradient(145deg, #4565e6, #2f4fd4); color: #fff;
+    display: grid; place-items: center; font-family: var(--serif); font-size: 12px; font-weight: 700;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 2px 6px rgba(47,79,212,.3);
+  }
+  .ai-name { font-size: 11px; font-weight: 700; color: var(--ink-500); letter-spacing: .12em; text-transform: uppercase; }
+  .msg-body { font-size: 14.5px; line-height: 1.8; color: var(--ink); white-space: pre-wrap; }
+  .msg-body strong { font-weight: 700; }
+  .msg-body .dim-label { display: inline-block; width: 19px; height: 19px; border: 1.5px solid var(--ink); border-radius: 6px; text-align: center; line-height: 17px; font-size: 11px; font-family: var(--serif); font-weight: 700; margin-right: 4px; }
+
+  .cite-ref {
+    display: inline-block; padding: 1px 6px; margin: 0 2px; font-size: 11px; font-weight: 700;
+    color: var(--signal); background: var(--signal-soft); border-radius: 5px; cursor: pointer;
+    vertical-align: baseline; transition: all .12s ease; font-family: var(--mono);
+    border: 1px solid transparent;
+  }
+  .cite-ref:hover { background: var(--signal); color: #fff; box-shadow: 0 1px 5px rgba(47,79,212,.35); }
+
+  .msg-actions { display: flex; gap: 4px; margin-top: 8px; opacity: 0; transition: opacity .15s ease; }
+  .msg:hover .msg-actions { opacity: 1; }
+  .action-chip {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted);
+    padding: 4px 9px; border-radius: 7px; cursor: pointer; border: 0; background: transparent;
+    transition: all .12s ease; font-family: inherit;
+  }
+  .action-chip:hover { color: var(--ink); background: #eae8e0; }
+
+  .caret { display: inline-block; width: 8px; height: 17px; background: var(--signal); vertical-align: -3px; margin-left: 2px; animation: blink 1s step-end infinite; border-radius: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* 输入区: v2 更精致 */
+  .composer-wrap { padding: 14px 28px 20px; border-top: 1px solid var(--hairline); background: rgba(250,249,245,.72); backdrop-filter: blur(10px); }
+  .composer {
+    max-width: 700px; margin: 0 auto; background: #fff; border: 1px solid var(--line);
+    border-radius: 15px; padding: 12px 14px; transition: all .18s ease; box-shadow: var(--shadow-sm);
+  }
+  .composer:focus-within { border-color: #b8b6ab; box-shadow: var(--shadow-md); }
+  .composer-input { width: 100%; border: 0; outline: 0; font-size: 14px; font-family: inherit; resize: none; color: var(--ink); background: transparent; line-height: 1.6; }
+  .composer-input::placeholder { color: var(--faint); }
+  .composer-foot { display: flex; align-items: center; margin-top: 8px; }
+  .tool-btn {
+    width: 29px; height: 29px; border-radius: 8px; border: 0; background: transparent;
+    color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: all .12s ease;
+  }
+  .tool-btn:hover { background: #efede5; color: var(--ink); }
+  .send-btn {
+    margin-left: auto; width: 31px; height: 31px; border-radius: 9px; border: 0;
+    background: var(--ink); color: var(--canvas); display: grid; place-items: center; cursor: pointer;
+    transition: all .13s ease;
+  }
+  .send-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(26,25,23,.25); }
+  .send-btn.stop { background: var(--bad); }
+
+  /* 引用面板: v2 卡片左侧加信号色条 + 悬停浮起 */
+  .ref-panel { border-left: 1px solid var(--hairline); background: var(--paper); overflow-y: auto; padding: 20px 18px; }
+  .ref-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  .ref-title { font-family: var(--serif); font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; }
+  .ref-count { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .ref-desc { font-size: 12px; color: var(--muted); line-height: 1.65; margin-bottom: 16px; }
+  .ref-card {
+    background: #fff; border: 1px solid var(--line); border-radius: 11px; position: relative;
+    padding: 12px 14px 12px 16px; margin-bottom: 10px; cursor: pointer; transition: all .16s ease;
+    box-shadow: var(--shadow-sm); overflow: hidden;
+  }
+  .ref-card::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--signal); opacity: 0; transition: opacity .16s ease;
+  }
+  .ref-card:hover { border-color: #b8b6ab; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .ref-card.active { border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-ring), var(--shadow-md); }
+  .ref-card.active::before { opacity: 1; }
+  .ref-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .ref-badge {
+    width: 18px; height: 18px; border-radius: 5px; background: var(--signal-soft); color: var(--signal);
+    display: grid; place-items: center; font-size: 10.5px; font-weight: 700; flex-shrink: 0; font-family: var(--mono);
+  }
+  .ref-card.active .ref-badge { background: var(--signal); color: #fff; }
+  .ref-src { font-size: 12px; font-weight: 650; color: var(--ink-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ref-snippet { font-size: 12px; color: var(--ink-500); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .ref-meta { display: flex; gap: 8px; margin-top: 8px; font-size: 10.5px; color: var(--muted); align-items: center; }
+  .conf-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; font-family: var(--mono); }
+  .conf-high { background: rgba(63,125,78,.12); color: var(--ok); }
+  .conf-mid { background: rgba(168,106,16,.12); color: var(--warn); }
+  .ref-why { border-top: 1px dashed var(--hairline); margin-top: 9px; padding-top: 8px; font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .ref-why b { color: var(--ink-700); font-weight: 650; }
+
+  /* ============ 视图2: 面试报告 ============ */
+  .report-shell { display: grid; grid-template-columns: 1fr 388px; height: 100%; }
+  .report-main { overflow-y: auto; padding: 36px 44px; position: relative; }
+  .report-main::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .45;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.016 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .report-main > * { position: relative; }
+  .report-main h1 { font-family: var(--serif); font-size: 29px; letter-spacing: -.022em; margin: 8px 0 5px; line-height: 1.18; }
+  .report-sub { color: var(--muted); font-size: 12.5px; margin-bottom: 26px; font-family: var(--mono); }
+  .report-lead {
+    font-size: 15px; line-height: 1.85; max-width: 620px; color: var(--ink-700);
+    border-left: 3px solid var(--signal); padding-left: 18px; margin-bottom: 34px;
+  }
+  .report-lead::first-letter { font-family: var(--serif); font-size: 42px; float: left; line-height: .85; padding: 4px 8px 0 0; color: var(--signal); font-weight: 700; }
+  .report-lead strong { font-weight: 700; color: var(--ink); }
+
+  .dim-block { max-width: 620px; margin-bottom: 34px; }
+  .dim-head { display: flex; align-items: center; gap: 13px; margin-bottom: 12px; }
+  .dim-num { font-family: var(--serif); font-size: 13px; color: var(--faint); font-style: italic; margin-right: -4px; }
+  .dim-score {
+    font-family: var(--serif); font-size: 20px; font-weight: 700;
+    width: 47px; height: 47px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px rgba(26,25,23,.05);
+  }
+  .s-a { background: rgba(63,125,78,.13); color: var(--ok); }
+  .s-b { background: rgba(168,106,16,.13); color: var(--warn); }
+  .dim-name { font-size: 15.5px; font-weight: 700; letter-spacing: -.01em; }
+  .dim-qual { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+  .quote-card {
+    background: var(--paper); border: 1px solid var(--hairline); border-radius: 11px;
+    padding: 13px 17px 13px 20px; font-size: 13.5px; line-height: 1.7; color: var(--ink-700);
+    margin-bottom: 9px; position: relative; box-shadow: var(--shadow-sm);
+  }
+  .quote-card::before { content: "“"; font-family: var(--serif); font-size: 30px; color: #cbc9bf; position: absolute; left: 7px; top: 2px; }
+  .quote-card .turn-tag { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-bottom: 4px; letter-spacing: .08em; text-transform: uppercase; }
+  .feedback-line { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.75; margin-bottom: 7px; color: var(--ink-700); max-width: 600px; }
+  .fb-icon { width: 17px; height: 17px; border-radius: 99px; display: grid; place-items: center; flex-shrink: 0; margin-top: 3px; }
+  .fb-good { background: rgba(63,125,78,.13); color: var(--ok); }
+  .fb-bad { background: rgba(179,64,58,.13); color: var(--bad); }
+
+  .report-side { border-left: 1px solid var(--hairline); background: var(--paper); overflow-y: auto; padding: 26px 24px; }
+  .report-side .kicker { margin-bottom: 6px; }
+  .radar-title { font-family: var(--serif); font-size: 17px; font-weight: 700; margin: 8px 0 2px; }
+  .radar-sub { font-size: 11.5px; color: var(--muted); margin-bottom: 14px; }
+  .score-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; }
+  .score-row:last-of-type { border-bottom: 0; }
+  .score-bar { flex: 1; height: 5px; border-radius: 99px; background: #eae8e0; margin: 0 12px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4565e6, #2f4fd4); }
+  .score-val { font-family: var(--mono); font-size: 12px; font-weight: 700; width: 30px; text-align: right; }
+  .side-cta { margin-top: 18px; width: 100%; justify-content: center; }
+  .side-note { margin-top: 14px; font-size: 11.5px; color: var(--muted); line-height: 1.7; text-align: center; }
+
+  /* ============ 视图3: 记忆管理 ============ */
+  .memory-shell { overflow-y: auto; padding: 34px 40px; height: 100%; position: relative; }
+  .memory-shell::before {
+    content: ""; position: fixed; inset: 46px 0 0 0; pointer-events: none; opacity: .4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.015 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .memory-shell > * { position: relative; }
+  .memory-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 26px; }
+  .memory-head h1 { font-family: var(--serif); font-size: 28px; letter-spacing: -.02em; margin: 6px 0 4px; }
+  .memory-head .sub { color: var(--muted); font-size: 12.5px; }
+  .stat-row { display: flex; gap: 13px; margin-bottom: 28px; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--radius);
+    padding: 15px 19px; min-width: 128px; box-shadow: var(--shadow-sm); transition: all .15s ease;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .stat-num { font-family: var(--serif); font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .stat-num em { font-style: normal; font-size: 13px; color: var(--faint); font-weight: 400; margin-left: 2px; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: .04em; }
+  .facts-flow { display: grid; grid-template-columns: repeat(auto-fill, minmax(305px, 1fr)); gap: 13px; max-width: 1010px; }
+  .fact-card {
+    background: var(--paper); border: 1px solid var(--hairline); border-radius: var(--radius);
+    padding: 16px 18px; transition: all .16s ease; position: relative; overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .fact-card::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--signal);
+    transform: scaleY(0); transform-origin: top; transition: transform .18s ease;
+  }
+  .fact-card:hover { border-color: #b8b6ab; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .fact-card:hover::before { transform: scaleY(1); }
+  .fact-card.stale { opacity: .55; background: transparent; box-shadow: none; }
+  .fact-card.stale:hover { opacity: .8; transform: none; }
+  .fact-text { font-size: 14px; line-height: 1.7; margin-bottom: 11px; }
+  .fact-text strong { font-weight: 700; }
+  .fact-card.stale .fact-text { text-decoration: line-through; text-decoration-color: #b8b6ab; text-decoration-thickness: 1px; }
+  .fact-foot { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
+  .fact-actions { margin-left: auto; display: flex; gap: 2px; opacity: 0; transition: opacity .14s ease; }
+  .fact-card:hover .fact-actions { opacity: 1; }
+  .fact-icon-btn { width: 26px; height: 26px; border-radius: 7px; border: 0; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+  .fact-icon-btn:hover { background: #eae8e0; color: var(--ink); }
+  .fact-icon-btn.danger:hover { background: rgba(179,64,58,.1); color: var(--bad); }
+  .stale-note { font-size: 11px; color: var(--warn); display: flex; align-items: flex-start; gap: 6px; margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--hairline); line-height: 1.6; }
+
+  /* ============ 视图4: 组件库 ============ */
+  .lib-shell { overflow-y: auto; padding: 34px 42px; height: 100%; }
+  .lib-shell h1 { font-family: var(--serif); font-size: 26px; letter-spacing: -.02em; margin: 6px 0 4px; }
+  .lib-sub { color: var(--muted); font-size: 13px; margin-bottom: 26px; }
+  .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(315px, 1fr)); gap: 16px; max-width: 1080px; }
+  .lib-card { background: var(--paper); border: 1px solid var(--hairline); border-radius: 15px; padding: 19px 21px; box-shadow: var(--shadow-sm); transition: all .15s ease; }
+  .lib-card:hover { box-shadow: var(--shadow-md); }
+  .lib-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .lib-card .desc { font-size: 12px; color: var(--muted); margin-bottom: 15px; line-height: 1.55; }
+  .lib-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  .toast {
+    display: flex; align-items: center; gap: 10px; background: var(--ink); color: #efeeea;
+    padding: 11px 16px; border-radius: 11px; font-size: 13px; box-shadow: var(--shadow-pop);
+    animation: toastIn .32s cubic-bezier(.21,1.02,.73,1); width: 100%;
+  }
+  @keyframes toastIn { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .toast .icon { color: #85c79a; }
+  .toast-err .icon { color: #e39a95; }
+
+  .segmented { display: inline-flex; background: #e9e7de; border-radius: 10px; padding: 3px; }
+  .seg-btn { border: 0; background: transparent; padding: 6px 14px; font-size: 12.5px; border-radius: 8px; color: var(--muted); cursor: pointer; font-family: inherit; transition: all .14s ease; }
+  .seg-btn.active { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(26,25,23,.12); font-weight: 600; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+
+  .progress-track { height: 6px; background: #e9e7de; border-radius: 99px; overflow: hidden; margin: 8px 0; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #4565e6, #2f4fd4); border-radius: 99px; transition: width 1s ease; }
+
+  .empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 28px 20px; gap: 4px; }
+  .empty-icon {
+    width: 54px; height: 54px; border-radius: 17px; background: #e9e7de;
+    display: grid; place-items: center; color: var(--muted); margin-bottom: 9px;
+    box-shadow: inset 0 0 0 1px rgba(26,25,23,.04);
+  }
+  .empty h5 { font-size: 14px; font-weight: 700; }
+  .empty p { font-size: 12.5px; color: var(--muted); max-width: 220px; line-height: 1.65; }
+
+  .switch { position: relative; width: 38px; height: 22px; background: #cdcbbf; border-radius: 99px; cursor: pointer; transition: background .16s ease; border: 0; }
+  .switch.on { background: var(--signal); }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    background: #fff; border-radius: 99px; transition: transform .16s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 1px 3px rgba(0,0,0,.28);
+  }
+  .switch.on::after { transform: translateX(16px); }
+
+  .underline-tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); }
+  .u-tab { border: 0; background: none; font-size: 13px; color: var(--muted); padding: 8px 2px; cursor: pointer; font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .13s ease; }
+  .u-tab.active { color: var(--ink); border-bottom-color: var(--signal); font-weight: 650; }
+
+  .dialog-demo { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 21px 23px; box-shadow: var(--shadow-pop); width: 100%; }
+  .dialog-demo h5 { font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+  .dialog-demo p { font-size: 13px; color: var(--ink-500); line-height: 1.65; margin-bottom: 16px; }
+  .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; }
+
+  .skeleton-row { height: 13px; border-radius: 6px; background: linear-gradient(90deg, #e5e3da 25%, #eeece4 50%, #e5e3da 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; margin: 8px 0; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  @media (max-width: 1120px) {
+    .chat-shell { grid-template-columns: 240px 1fr; }
+    .ref-panel { display: none; }
+    .report-shell { grid-template-columns: 1fr; }
+    .report-side { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <span class="demo-title">v2 · 完成度进阶</span>
+  <button class="demo-tab active" data-view="chat">① 聊天页</button>
+  <button class="demo-tab" data-view="report">② 面试报告</button>
+  <button class="demo-tab" data-view="memory">③ 记忆管理</button>
+  <button class="demo-tab" data-view="lib">④ 组件库</button>
+  <span class="demo-hint">与 v1 同结构 · 排印与质感全面升级</span>
+</div>
+
+<!-- ============ ① 聊天页 ============ -->
+<div class="view active" id="view-chat">
+  <div class="chat-shell">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <div class="brand-row">
+          <div class="brand-mark">T</div>
+          <div class="brand-name">Tutor Agent</div>
+        </div>
+        <button class="new-chat">
+          <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          新对话
+        </button>
+      </div>
+
+      <div class="sidebar-label">工作台</div>
+      <div class="nav-item active"><svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>对话</div>
+      <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10H12z"/><path d="M12 2v10h10A10 10 0 0 0 12 2z" opacity=".4"/></svg>模拟面试</div>
+      <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>简历</div>
+      <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3h0V6a3 3 0 0 0-3-3z"/></svg>记忆</div>
+      <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>检索评测</div>
+
+      <div class="sidebar-label">今天</div>
+      <div class="conv-item current">如何讲好 STAR 法则的项目故事</div>
+      <div class="conv-item">三年后端转 AI 方向的路径</div>
+      <div class="sidebar-label">昨天</div>
+      <div class="conv-item">简历里量化成果怎么写</div>
+      <div class="conv-item">模拟面试复盘：字节电商后端</div>
+      <div class="sidebar-label">7 天前</div>
+      <div class="conv-item">Redis 缓存一致性常见追问</div>
+      <div class="conv-item">系统设计：短链服务</div>
+
+      <div class="sidebar-foot">
+        <div class="avatar">陈</div>
+        <span style="font-size:12.5px;">陈同学</span>
+        <svg class="icon" style="margin-left:auto;width:14px;height:14px;opacity:.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+    </aside>
+
+    <main class="chat-main">
+      <div class="chat-topbar">
+        <div class="tt">
+          <div class="kicker">面试教练 · 对话</div>
+          <h2>如何讲好 STAR 法则的项目故事</h2>
+        </div>
+        <span class="sub"><span class="stream-dot"></span>流式生成中</span>
+      </div>
+
+      <div class="chat-scroll">
+        <div class="msg user">
+          <div class="msg-bubble-user">我之前做过一个电商订单系统重构的项目，面试的时候总被说"讲得太流水账"，怎么用 STAR 法则把它讲好？</div>
+          <div class="msg-time">14:32</div>
+        </div>
+
+        <div class="msg ai">
+          <div class="ai-head"><div class="ai-mark">T</div><span class="ai-name">Tutor Agent</span></div>
+          <div class="msg-body" id="typeTarget"></div>
+          <div class="msg-actions">
+            <button class="action-chip"><svg class="icon" style="width:12px;height:12px" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>重新生成</button>
+            <button class="action-chip"><svg class="icon" style="width:12px;height:12px" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer">
+          <textarea class="composer-input" rows="1" placeholder="继续追问，或换个项目场景练习…（Enter 发送 · Shift+Enter 换行）"></textarea>
+          <div class="composer-foot">
+            <button class="tool-btn" title="上传简历"><svg class="icon" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+            <button class="tool-btn" title="深度思考"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/><path d="M9 21h6"/></svg></button>
+            <button class="send-btn stop" title="停止生成" id="stopBtn">
+              <svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="ref-panel">
+      <div class="ref-head">
+        <span class="ref-title">引用来源</span>
+        <span class="ref-count">本轮 4 条</span>
+      </div>
+      <p class="ref-desc">悬停正文蓝色 [1] 标号可联动高亮；每张卡片附带检索路径，解释"为什么选中"。</p>
+
+      <div class="ref-card" data-ref="1">
+        <div class="ref-card-top"><span class="ref-badge">1</span><span class="ref-src">interview-questions.md · 项目深挖</span></div>
+        <div class="ref-snippet">面试官评估项目故事的四个信号：冲突感、决策点、量化结果、可复用方法论。流水账叙事通常缺决策点……</div>
+        <div class="ref-meta"><span class="conf-pill conf-high">置信 0.92</span><span>向量 + 图谱融合</span></div>
+        <div class="ref-why"><b>为什么选中：</b>与「STAR 叙事缺陷」直接语义匹配，图谱路径经由「面试评估标准 → 项目叙述」</div>
+      </div>
+
+      <div class="ref-card" data-ref="2">
+        <div class="ref-card-top"><span class="ref-badge">2</span><span class="ref-src">star-method-guide.md</span></div>
+        <div class="ref-snippet">Situation 只需两句话交代背景约束；Task 要说清"你个人负责的边界"，这是团队项目最常被压分的地方……</div>
+        <div class="ref-meta"><span class="conf-pill conf-high">置信 0.88</span><span>向量召回</span></div>
+      </div>
+
+      <div class="ref-card" data-ref="3">
+        <div class="ref-card-top"><span class="ref-badge">3</span><span class="ref-src">user_facts · 你的画像</span></div>
+        <div class="ref-snippet">用户背景：3 年 Java 后端；目标岗位：AI 应用工程师；已知项目：电商订单重构。</div>
+        <div class="ref-meta"><span class="conf-pill conf-high">置信 0.95</span><span>长期记忆</span></div>
+      </div>
+
+      <div class="ref-card" data-ref="4">
+        <div class="ref-card-top"><span class="ref-badge">4</span><span class="ref-src">quantify-results.md</span></div>
+        <div class="ref-snippet">量化模板：「做了 X → 指标从 A 到 B → 用时 C」。避免"大幅提升"这类不可验证表述……</div>
+        <div class="ref-meta"><span class="conf-pill conf-mid">置信 0.74</span><span>图谱二跳</span></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ ② 面试报告 ============ -->
+<div class="view" id="view-report">
+  <div class="report-shell">
+    <div class="report-main">
+      <div class="kicker">模拟面试 · 复盘报告</div>
+      <h1>电商订单系统重构 · 深挖轮</h1>
+      <div class="report-sub">后端 · 中等难度 · 12 轮对话 · 2026-09-12 14:05</div>
+
+      <div class="report-lead">
+        总评 <strong>B+</strong> —— 你的系统设计骨架清晰，但追问到「一致性取舍」时两次回避了量化表达，面试官会把这理解为"没实际踩过坑"。下面按五个维度逐条复盘，右侧雷达图可与历次成绩对比。
+      </div>
+
+      <div class="dim-block">
+        <div class="dim-head">
+          <span class="dim-num">01</span>
+          <div class="dim-score s-a">A</div>
+          <div>
+            <div class="dim-name">系统设计</div>
+            <div class="dim-qual">拆分思路与依赖梳理是亮点</div>
+          </div>
+        </div>
+        <div class="quote-card">
+          <div class="turn-tag">第 5 轮回答</div>
+          先按订单生命周期切成创建、支付、履约三个域，创建域单独走库避免和促销计算互相拖……
+        </div>
+        <div class="feedback-line"><span class="fb-icon fb-good"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>域的切分依据讲的是业务语义而不是技术方便，这正是高级工程师的信号。</div>
+        <div class="feedback-line"><span class="fb-icon fb-bad"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>未提及拆分过程中的双写过渡方案——被追问时补一句"先双写后切读"会更完整。</div>
+      </div>
+
+      <div class="dim-block">
+        <div class="dim-head">
+          <span class="dim-num">02</span>
+          <div class="dim-score s-b">B</div>
+          <div>
+            <div class="dim-name">量化表达</div>
+            <div class="dim-qual">两次使用"大幅提升"这类不可验证表述</div>
+          </div>
+        </div>
+        <div class="quote-card">
+          <div class="turn-tag">第 8 轮回答</div>
+          重构之后下单接口稳定了很多，高峰期也不怎么超时了……
+        </div>
+        <div class="feedback-line"><span class="fb-icon fb-bad"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>「稳定了很多」是体感不是数据。对照模板改写：高峰超时率 3.2% → 0.4%，P99 从 840ms 降到 210ms。</div>
+        <div class="feedback-line"><span class="fb-icon fb-good"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>第 11 轮主动给出 QPS 估算过程，前后态度转变明显——你有这个能力，要养成习惯。</div>
+      </div>
+
+      <div class="dim-block">
+        <div class="dim-head">
+          <span class="dim-num">03</span>
+          <div class="dim-score s-a">A-</div>
+          <div>
+            <div class="dim-name">技术深度</div>
+            <div class="dim-qual">缓存与一致性追问应答扎实</div>
+          </div>
+        </div>
+        <div class="feedback-line"><span class="fb-icon fb-good"><svg class="icon" style="width:10px;height:10px" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>延迟双删的适用边界讲对了，能区分"概率缓解"和"协议保证"。</div>
+      </div>
+    </div>
+
+    <aside class="report-side">
+      <div class="kicker">能力雷达</div>
+      <div class="radar-title">五维对比</div>
+      <div class="radar-sub">实线为本次 · 虚线为上次</div>
+      <svg viewBox="0 0 260 232" width="100%">
+        <g stroke="#e5e3da" stroke-width="1" fill="none">
+          <polygon points="130,30 213,90 181,185 79,185 47,90"/>
+          <polygon points="130,60 188,102 166,163 94,163 72,102"/>
+          <polygon points="130,90 163,114 152,141 108,141 97,114"/>
+          <line x1="130" y1="115" x2="130" y2="30"/><line x1="130" y1="115" x2="213" y2="90"/>
+          <line x1="130" y1="115" x2="181" y2="185"/><line x1="130" y1="115" x2="79" y2="185"/>
+          <line x1="130" y1="115" x2="47" y2="90"/>
+        </g>
+        <polygon points="130,55 190,100 160,168 95,160 80,100" fill="none" stroke="#a5a49c" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <polygon points="130,38 205,92 175,178 85,178 55,95" fill="rgba(47,79,212,.13)" stroke="#2f4fd4" stroke-width="2"/>
+        <g fill="#2f4fd4">
+          <circle cx="130" cy="38" r="3.4"/><circle cx="205" cy="92" r="3.4"/><circle cx="175" cy="178" r="3.4"/>
+          <circle cx="85" cy="178" r="3.4"/><circle cx="55" cy="95" r="3.4"/>
+        </g>
+        <g font-size="11" fill="#6f6e67" font-weight="600">
+          <text x="130" y="20" text-anchor="middle">系统设计</text>
+          <text x="222" y="86" text-anchor="start">量化表达</text>
+          <text x="192" y="202" text-anchor="middle">技术深度</text>
+          <text x="66" y="202" text-anchor="middle">沟通条理</text>
+          <text x="38" y="86" text-anchor="end">抗压应变</text>
+        </g>
+      </svg>
+
+      <div class="score-row"><span>系统设计</span><div class="score-bar"><div class="score-fill" style="width:90%"></div></div><span class="score-val">90</span></div>
+      <div class="score-row"><span>量化表达</span><div class="score-bar"><div class="score-fill" style="width:68%"></div></div><span class="score-val">68</span></div>
+      <div class="score-row"><span>技术深度</span><div class="score-bar"><div class="score-fill" style="width:84%"></div></div><span class="score-val">84</span></div>
+      <div class="score-row"><span>沟通条理</span><div class="score-bar"><div class="score-fill" style="width:80%"></div></div><span class="score-val">80</span></div>
+      <div class="score-row"><span>抗压应变</span><div class="score-bar"><div class="score-fill" style="width:76%"></div></div><span class="score-val">76</span></div>
+
+      <button class="btn btn-primary side-cta">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        针对弱项再练一轮
+      </button>
+      <button class="btn side-cta" style="margin-top:8px">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        导出 PDF 报告
+      </button>
+      <div class="side-note">雷达图数据来自本局 12 轮评分，与历史成绩可比</div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ ③ 记忆管理 ============ -->
+<div class="view" id="view-memory">
+  <div class="memory-shell">
+    <div class="memory-head">
+      <div>
+        <div class="kicker">AI 关于你记住的事</div>
+        <h1>记忆管理</h1>
+        <div class="sub">每一条都可以查看来源、修正或删除 · 逐条加密存储</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn"><svg class="icon" viewBox="0 0 24 24"><path d="M12 8v8"/><path d="M8 12h8"/><circle cx="12" cy="12" r="10"/></svg>手动添加</button>
+        <button class="btn"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空记忆</button>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-num">23</div><div class="stat-label">生效中</div></div>
+      <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">已软失效</div></div>
+      <div class="stat-card"><div class="stat-num">9</div><div class="stat-label">本周新增</div></div>
+      <div class="stat-card"><div class="stat-num">128</div><div class="stat-label">累计被引用</div></div>
+    </div>
+
+    <div class="facts-flow">
+      <div class="fact-card">
+        <div class="fact-text">目标岗位是 <strong>AI 应用工程师</strong>，方向为 Java 后端转型，期望 2026 年内完成切换。</div>
+        <div class="fact-foot">
+          <span class="conf-pill conf-high">置信 0.95</span><span>来源：对话 09-08</span>
+          <div class="fact-actions">
+            <button class="fact-icon-btn"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+            <button class="fact-icon-btn danger"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-text">做过<strong>电商订单系统重构</strong>（Monolith → 按域拆分），熟悉缓存一致性与高峰限流场景。</div>
+        <div class="fact-foot">
+          <span class="conf-pill conf-high">置信 0.92</span><span>来源：简历 + 面试 09-10</span>
+          <div class="fact-actions">
+            <button class="fact-icon-btn"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+            <button class="fact-icon-btn danger"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-text">回答风格偏好：<strong>先结论后展开</strong>，示例要带量化数字，不要客套铺垫。</div>
+        <div class="fact-foot">
+          <span class="conf-pill conf-high">置信 0.89</span><span>来源：对话 09-11 · 引用 12 次</span>
+          <div class="fact-actions">
+            <button class="fact-icon-btn"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+            <button class="fact-icon-btn danger"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-text">薄弱项：量化表达（面试评分 B，两次使用不可验证表述）。</div>
+        <div class="fact-foot">
+          <span class="conf-pill conf-mid">置信 0.81</span><span>来源：面试复盘 09-12</span>
+          <div class="fact-actions">
+            <button class="fact-icon-btn"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+            <button class="fact-icon-btn danger"><svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fact-card stale">
+        <div class="fact-text">正在准备阿里云 ACP 认证。</div>
+        <div class="fact-foot">
+          <span class="conf-pill" style="background:#eae8e0;color:var(--muted)">已失效</span><span>来源：对话 08-30</span>
+        </div>
+        <div class="stale-note">
+          <svg class="icon" style="width:12px;height:12px;flex-shrink:0;margin-top:2px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          09-11 对话中你说认证已搁置，本条自动软失效。历史保留，可恢复。
+        </div>
+      </div>
+
+      <div class="fact-card stale">
+        <div class="fact-text">在职公司：某电商平台（后端开发）。</div>
+        <div class="fact-foot">
+          <span class="conf-pill" style="background:#eae8e0;color:var(--muted)">已失效</span><span>来源：简历 09-02</span>
+        </div>
+        <div class="stale-note">
+          <svg class="icon" style="width:12px;height:12px;flex-shrink:0;margin-top:2px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          新简历显示已离职，与旧事实冲突，按时间新者优先。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ④ 组件库 ============ -->
+<div class="view" id="view-lib">
+  <div class="lib-shell">
+    <div class="kicker">组件层补强</div>
+    <h1>新组件库</h1>
+    <p class="lib-sub">shadcn/ui 骨架 · editorial 皮肤 · 与现有 ink / accent 色板一致</p>
+
+    <div class="lib-grid">
+      <div class="lib-card">
+        <h4>Toast 通知</h4>
+        <div class="desc">替代现在无反馈的静默操作。面试已复制、简历解析完成等场景。</div>
+        <div class="toast">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+          面试复盘已复制到剪贴板
+        </div>
+        <div style="height:8px"></div>
+        <div class="toast toast-err">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          简历解析超时，请检查文件格式（已保留原文）
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <h4>骨架屏</h4>
+        <div class="desc">SSE 连接建立前的占位，比转圈更符合纸面质感的"正在排版"隐喻。</div>
+        <div class="skeleton-row" style="width:38%"></div>
+        <div class="skeleton-row" style="width:92%"></div>
+        <div class="skeleton-row" style="width:76%"></div>
+        <div class="skeleton-row" style="width:84%"></div>
+        <div class="skeleton-row" style="width:52%"></div>
+      </div>
+
+      <div class="lib-card">
+        <h4>分段控制 / 徽章</h4>
+        <div class="desc">评测页策略切换（四臂消融）、记忆页置信度分级。</div>
+        <div class="lib-row">
+          <div class="segmented">
+            <button class="seg-btn active">全部</button>
+            <button class="seg-btn">生效中</button>
+            <button class="seg-btn">已失效</button>
+          </div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="lib-row">
+          <span class="badge conf-high">置信 ≥ 0.85</span>
+          <span class="badge conf-mid">置信 0.6–0.85</span>
+          <span class="badge" style="background:#eae8e0;color:var(--muted)">已失效</span>
+          <span class="badge" style="background:rgba(47,79,212,.09);color:var(--signal)">向量+图谱</span>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <h4>开关 / 进度</h4>
+        <div class="desc">设置项（点开关试试）；简历解析、知识库导入的进度反馈。</div>
+        <div class="lib-row" style="justify-content:space-between;width:100%">
+          <span style="font-size:13px">在回答中显示引用标号</span>
+          <button class="switch on" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <div style="height:10px"></div>
+        <div class="lib-row" style="justify-content:space-between;width:100%">
+          <span style="font-size:13px">记忆功能（需同意）</span>
+          <button class="switch" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <div style="height:14px"></div>
+        <div class="lib-row" style="justify-content:space-between;font-size:12px;color:var(--muted)"><span>知识库导入</span><span id="progText">64%</span></div>
+        <div class="progress-track"><div class="progress-fill" id="progFill" style="width:64%"></div></div>
+      </div>
+
+      <div class="lib-card">
+        <h4>下划线标签页</h4>
+        <div class="desc">管理端与评测页的信息层级切换。</div>
+        <div class="underline-tabs">
+          <button class="u-tab active">概览</button>
+          <button class="u-tab">检索评测</button>
+          <button class="u-tab">引用评测</button>
+          <button class="u-tab">历史趋势</button>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <h4>对话框</h4>
+        <div class="desc">删除记忆、清空会话等危险操作的确认。</div>
+        <div class="dialog-demo">
+          <h5>删除这条记忆？</h5>
+          <p>「在职公司：某电商平台」将被永久删除，对话中 AI 将不再参考此信息。此操作不可撤销。</p>
+          <div class="dialog-foot">
+            <button class="btn">取消</button>
+            <button class="btn" style="background:var(--bad);border-color:var(--bad);color:#fff">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lib-card">
+        <h4>空状态</h4>
+        <div class="desc">新用户零会话、评测无结果时的引导，而不是一片白屏。</div>
+        <div class="empty">
+          <div class="empty-icon">
+            <svg class="icon" style="width:22px;height:22px" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h5>还没有对话</h5>
+          <p>从上传简历开始——AI 会先读懂你的背景，再帮你打磨项目故事。</p>
+          <button class="btn btn-primary" style="margin-top:12px">上传简历</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 视图切换
+  document.querySelectorAll('.demo-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    });
+  });
+
+  // 流式打字机
+  const segs = [
+    { t: "流水账的根源是只有 " },
+    { c: "1" }, { t: " 时间线和动作，没有 " }, { c: "2" },
+    { t: " 决策点。面试官要的不是“你做了什么”，而是“为什么这么做、代价是什么”。\n\n用你的订单重构举例，同样一件事换一种讲法：\n\n**S** — 大促前下单接口 P99 飙到 840ms，创单成功率跌到 96.8%，两周内必须解决（" },
+    { c: "3" },
+    { t: " 结合你的背景，这就是现成的“高压情境”素材）。\n**T** — 你个人负责创单域的拆分，不动支付和履约。\n**A** — 关键决策：为什么先拆“创建域”而不是先做读写分离？"
+  ];
+  const target = document.getElementById('typeTarget');
+  let i = 0;
+  function step() {
+    if (i >= segs.length) return;
+    const s = segs[i];
+    if (s.c) {
+      target.insertAdjacentHTML('beforeend', `<span class="cite-ref">${s.c}</span>`);
+    } else {
+      target.insertAdjacentHTML('beforeend',
+        s.t.replace(/\*\*([ST])\*\*/g, '<span class="dim-label">$1</span>')
+           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+           .replace(/\n/g, '<br>'));
+    }
+    i++;
+    target.querySelectorAll('.caret').forEach(c => c.remove());
+    if (i < segs.length) {
+      target.insertAdjacentHTML('beforeend', '<span class="caret"></span>');
+      setTimeout(step, 14 + Math.random() * 30);
+    }
+  }
+  step();
+
+  // 引用联动
+  document.querySelectorAll('.cite-ref').forEach(ref => {
+    ref.addEventListener('mouseenter', () => {
+      const card = document.querySelector(`.ref-card[data-ref="${ref.textContent}"]`);
+      if (card) card.classList.add('active');
+    });
+    ref.addEventListener('mouseleave', () => {
+      document.querySelectorAll('.ref-card').forEach(c => c.classList.remove('active'));
+    });
+  });
+
+  // 停止/发送切换
+  const stopBtn = document.getElementById('stopBtn');
+  if (stopBtn) stopBtn.addEventListener('click', function () {
+    const isStop = this.classList.contains('stop');
+    this.classList.remove('stop');
+    this.innerHTML = isStop
+      ? '<svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>'
+      : '<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></svg>';
+    if (!isStop) this.classList.add('stop');
+  });
+
+  // 进度条
+  const progFill = document.getElementById('progFill');
+  const progText = document.getElementById('progText');
+  if (progFill) {
+    let p = 64;
+    setInterval(() => {
+      p = p >= 100 ? 30 : p + 3;
+      progFill.style.width = p + '%';
+      progText.textContent = p + '%';
+    }, 900);
+  }
+</script>
+</body>
+</html>
