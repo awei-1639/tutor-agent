@@ -3,7 +3,7 @@ package com.tutor.conversation.chat.application;
 import com.tutor.conversation.context.PromptAssembler;
 import com.tutor.conversation.context.CoreferenceResolver;
 import com.tutor.conversation.context.ContextualQueryRewriter;
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.conversation.chat.application.ChatModels.TurnState;
 import com.tutor.conversation.context.sections.ProfileSection;
 import com.tutor.conversation.chat.support.TraceRecorder;

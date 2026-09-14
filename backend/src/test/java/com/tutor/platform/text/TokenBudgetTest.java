@@ -1,4 +1,4 @@
-package com.tutor.conversation.context;
+package com.tutor.platform.text;
 
 import org.junit.jupiter.api.Test;
 

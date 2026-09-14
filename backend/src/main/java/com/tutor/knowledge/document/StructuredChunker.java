@@ -1,6 +1,6 @@
 package com.tutor.knowledge.document;
 
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

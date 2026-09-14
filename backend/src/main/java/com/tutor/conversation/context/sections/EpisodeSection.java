@@ -1,7 +1,7 @@
 package com.tutor.conversation.context.sections;
 
 import com.tutor.conversation.context.ContextSection;
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.conversation.context.TurnContextView;
 import com.tutor.conversation.memory.local.EpisodeStore;
 import org.springframework.core.annotation.Order;

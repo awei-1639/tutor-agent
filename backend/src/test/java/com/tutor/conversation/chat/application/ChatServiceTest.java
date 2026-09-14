@@ -4,7 +4,7 @@ import com.tutor.identity.auth.AuthContext;
 import com.tutor.conversation.chat.application.ChatService;
 import com.tutor.conversation.chat.support.TraceRecorder;
 import com.tutor.conversation.context.PromptAssembler;
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.conversation.context.sections.ProfileSection;
 import com.tutor.contract.Intent;
 import com.tutor.contract.CancellationToken;

@@ -3,7 +3,7 @@ package com.tutor.platform.llm;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tutor.platform.config.ExecutorLifecycle;
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Purpose;
 

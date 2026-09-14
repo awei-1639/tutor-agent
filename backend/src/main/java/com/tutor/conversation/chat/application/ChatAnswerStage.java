@@ -7,7 +7,7 @@ import com.tutor.conversation.chat.support.TraceRecorder;
 import com.tutor.conversation.context.ContextPlanner;
 import com.tutor.conversation.context.ConversationContextSelector;
 import com.tutor.conversation.context.PromptAssembler;
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.conversation.context.TurnContextView;
 import com.tutor.conversation.context.sections.EpisodeSection;
 import com.tutor.conversation.context.sections.FactsSection;

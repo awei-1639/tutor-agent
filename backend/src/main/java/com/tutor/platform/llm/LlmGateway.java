@@ -1,7 +1,7 @@
 package com.tutor.platform.llm;
 
 import com.tutor.platform.config.LlmProperties;
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.Purpose;

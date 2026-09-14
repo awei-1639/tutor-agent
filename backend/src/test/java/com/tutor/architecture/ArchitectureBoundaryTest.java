@@ -18,6 +18,7 @@ public class ArchitectureBoundaryTest {
                 .importPackages("com.tutor");
         retrievalDoesNotDependOnChat.check(classes);
         knowledgeDoesNotDependOnChat.check(classes);
+        platformDoesNotDependOnConversation.check(classes);
         apiDoesNotDependOnLlmImplementations.check(classes);
         planApplicationServiceDoesNotOwnPersistenceOrScheduling.check(classes);
         careerGapApplicationServiceDoesNotOwnJobSql.check(classes);
@@ -36,6 +37,8 @@ public class ArchitectureBoundaryTest {
 
     public static final ArchRule retrievalDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.knowledge.retrieval..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation.chat..");
     public static final ArchRule knowledgeDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.knowledge.document..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation.chat..");
+    // platform 是最底层：任何反向依赖 conversation 的类都会让"拆服务"和"复用底座"同时失效。
+    public static final ArchRule platformDoesNotDependOnConversation = noClasses().that().resideInAnyPackage("com.tutor.platform..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation..");
     public static final ArchRule apiDoesNotDependOnLlmImplementations = noClasses().that().haveSimpleNameEndingWith("Controller").should().dependOnClassesThat().resideInAnyPackage("com.tutor.platform.llm..");
     public static final ArchRule planApplicationServiceDoesNotOwnPersistenceOrScheduling = noClasses().that().haveSimpleName("PlanService").should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..", "org.springframework.scheduling..");
     public static final ArchRule careerGapApplicationServiceDoesNotOwnJobSql = noClasses().that().haveSimpleName("CareerGapService").should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..");

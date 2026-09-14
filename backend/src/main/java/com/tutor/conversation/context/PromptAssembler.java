@@ -1,5 +1,7 @@
 package com.tutor.conversation.context;
 
+import com.tutor.platform.text.TokenBudget;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

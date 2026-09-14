@@ -1,5 +1,7 @@
 package com.tutor.conversation.context;
 
+import com.tutor.platform.text.TokenBudget;
+
 import com.tutor.conversation.context.sections.EpisodeSection;
 import com.tutor.conversation.memory.local.EpisodeStore;
 import org.junit.jupiter.api.Test;

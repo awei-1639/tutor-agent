@@ -1,5 +1,8 @@
 package com.tutor.conversation.context;
 
+import com.tutor.platform.llm.BudgetPressureView;
+import com.tutor.platform.text.TokenBudget;
+
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;

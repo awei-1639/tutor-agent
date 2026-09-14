@@ -1,6 +1,6 @@
 package com.tutor.agent.expert;
 
-import com.tutor.conversation.context.TokenBudget;
+import com.tutor.platform.text.TokenBudget;
 import com.tutor.contract.Evidence;
 import com.tutor.contract.ExpertOutput;
 import com.tutor.contract.Intent;
