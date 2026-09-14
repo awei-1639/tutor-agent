@@ -5,9 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 /**
  * 默认限流实现：PostgreSQL 原子固定窗口，多实例共享同一计数。
  * 数据库不可用时回退到进程内窗口，保证单实例部署与测试仍受保护，且不阻断主流程。
@@ -17,7 +14,7 @@ public class DatabaseFixedWindowRateLimiter implements FixedWindowRateLimiter {
     private static final Logger log = LoggerFactory.getLogger(DatabaseFixedWindowRateLimiter.class);
 
     private final JdbcTemplate jdbc;
-    private final ConcurrentHashMap<String, Window> localFallback = new ConcurrentHashMap<>();
+    private final FixedWindowRateLimiter fallback = new InProcessFixedWindowRateLimiter();
 
     public DatabaseFixedWindowRateLimiter(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -47,24 +44,7 @@ public class DatabaseFixedWindowRateLimiter implements FixedWindowRateLimiter {
             return count != null && count <= limit;
         } catch (RuntimeException e) {
             log.warn("共享限流存储不可用，回退到进程内窗口 scope={} subject={}: {}", scope, subjectId, e.getMessage());
-            return tryAcquireLocal(scope, subjectId, limit, windowSeconds * 1000L);
+            return fallback.tryAcquire(scope, subjectId, limit, windowSeconds);
         }
     }
-
-    private boolean tryAcquireLocal(String scope, long subjectId, int limit, long windowMs) {
-        long now = System.currentTimeMillis();
-        AtomicBoolean allowed = new AtomicBoolean();
-        localFallback.compute(scope + ":" + subjectId, (id, previous) -> {
-            if (previous == null || now - previous.startedAt() >= windowMs) {
-                allowed.set(true);
-                return new Window(now, 1);
-            }
-            if (previous.count() >= limit) return previous;
-            allowed.set(true);
-            return new Window(previous.startedAt(), previous.count() + 1);
-        });
-        return allowed.get();
-    }
-
-    private record Window(long startedAt, int count) {}
 }

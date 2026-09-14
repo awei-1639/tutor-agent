@@ -1,23 +1,28 @@
 package com.tutor.conversation.memory.policy;
 
+import com.tutor.platform.ratelimit.FixedWindowRateLimiter;
+import com.tutor.platform.ratelimit.InProcessFixedWindowRateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-/** 限制用户手动重排队远程删除；生产环境使用 PostgreSQL 原子窗口，多实例共享限额。 */
+/**
+ * 限制用户手动重排队远程删除；生产环境使用 PostgreSQL 原子窗口，多实例共享限额。
+ *
+ * <p>与共享 {@link FixedWindowRateLimiter} 的语义差异是刻意的：远程删除成本高且不可逆，
+ * 因此窗口存储不可用时 <b>拒绝</b> 重试 (fail-closed)，而不是回退到进程内窗口放行。
+ */
 @Component
 public class MemoryDeletionRateLimiter {
-    private static final long WINDOW_MS = 60_000L;
+    private static final String SCOPE = "memory_delete_retry";
+    private static final long WINDOW_SECONDS = 60L;
     private static final Logger log = LoggerFactory.getLogger(MemoryDeletionRateLimiter.class);
 
     private final JdbcTemplate jdbc;
     private final int maxRequestsPerMinute;
-    private final ConcurrentHashMap<Long, Window> windows = new ConcurrentHashMap<>();
+    private final FixedWindowRateLimiter localFallback = new InProcessFixedWindowRateLimiter();
 
     public MemoryDeletionRateLimiter() {
         this(null, 3);
@@ -44,7 +49,7 @@ public class MemoryDeletionRateLimiter {
 
     public boolean tryAcquire(long userId) {
         if (jdbc != null) return tryAcquireShared(userId);
-        return tryAcquireLocal(userId);
+        return localFallback.tryAcquire(SCOPE, userId, maxRequestsPerMinute, WINDOW_SECONDS);
     }
 
     private boolean tryAcquireShared(long userId) {
@@ -72,21 +77,4 @@ public class MemoryDeletionRateLimiter {
             return false;
         }
     }
-
-    private boolean tryAcquireLocal(long userId) {
-        long now = System.currentTimeMillis();
-        AtomicBoolean allowed = new AtomicBoolean();
-        windows.compute(userId, (id, previous) -> {
-            if (previous == null || now - previous.startedAt() >= WINDOW_MS) {
-                allowed.set(true);
-                return new Window(now, 1);
-            }
-            if (previous.count() >= maxRequestsPerMinute) return previous;
-            allowed.set(true);
-            return new Window(previous.startedAt(), previous.count() + 1);
-        });
-        return allowed.get();
-    }
-
-    private record Window(long startedAt, int count) {}
 }
