@@ -11,13 +11,21 @@ import java.util.UUID;
 /** SQL boundary for durable interview-answer jobs and their fencing tokens. */
 @Repository
 class InterviewTurnJobStore {
+    private static final long LEASE_SECONDS = 90;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final com.tutor.platform.jobs.LeasedJobQueue.LeaseTable TABLE =
+            com.tutor.platform.jobs.LeasedJobQueue.LeaseTable.of(
+                    "interview_turn_jobs", "PROCESSING", "COMPLETED", "id=?");
+
     private final JdbcTemplate jdbc;
+    private final com.tutor.platform.jobs.LeasedJobQueue queue;
 
     record ClaimedJob(String id, long userId, String sessionId, String answer, String requestId,
                       String traceId, int attempts, UUID leaseToken) {}
 
-    InterviewTurnJobStore(JdbcTemplate jdbc) {
+    InterviewTurnJobStore(JdbcTemplate jdbc, com.tutor.platform.jobs.LeasedJobQueue queue) {
         this.jdbc = jdbc;
+        this.queue = queue;
     }
 
     Optional<InterviewTurnService.TurnJob> findByRequest(long userId, String sessionId, String requestId) {
@@ -55,46 +63,42 @@ class InterviewTurnJobStore {
     }
 
     Optional<ClaimedJob> claimNext() {
-        return jdbc.query("""
-                WITH candidate AS (
-                  SELECT id FROM interview_turn_jobs
-                  WHERE (status IN ('PENDING','RETRYABLE_FAILED') AND next_attempt_at <= now())
-                     OR (status='PROCESSING' AND lease_until < now())
-                  ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1
-                )
-                UPDATE interview_turn_jobs j SET status='PROCESSING', attempts=j.attempts+1,
-                    started_at=COALESCE(j.started_at, now()), lease_token=?,
-                    lease_until=now() + interval '90 seconds', updated_at=now()
-                FROM candidate WHERE j.id=candidate.id
-                RETURNING j.id, j.user_id, j.session_id, j.answer, j.request_id, j.trace_id, j.attempts, j.lease_token
-                """, (rs, i) -> new ClaimedJob(rs.getString(1), rs.getLong(2), rs.getString(3),
-                rs.getString(4), rs.getString(5), rs.getString(6), rs.getInt(7), rs.getObject(8, UUID.class)),
-                UUID.randomUUID()).stream().findFirst();
+        return queue.claimNext(TABLE,
+                "(status IN ('PENDING','RETRYABLE_FAILED') AND next_attempt_at <= now())"
+                        + " OR (status='PROCESSING' AND lease_until < now() AND attempts < " + MAX_ATTEMPTS + ")",
+                "status='PROCESSING', attempts=j.attempts+1, started_at=COALESCE(j.started_at, now()),"
+                        + " lease_token=?, lease_until=now() + (? * interval '1 second'), updated_at=now()",
+                "created_at",
+                "j.id, j.user_id, j.session_id, j.answer, j.request_id, j.trace_id, j.attempts, j.lease_token",
+                (rs, i) -> new ClaimedJob(rs.getString(1), rs.getLong(2), rs.getString(3),
+                        rs.getString(4), rs.getString(5), rs.getString(6), rs.getInt(7),
+                        rs.getObject(8, UUID.class)),
+                UUID.randomUUID(), LEASE_SECONDS);
+    }
+
+    /** 把崩溃 worker 遗留、租约耗尽且超过重试上限的任务批量置为 FAILED（死信）。 */
+    int sweepAbandoned() {
+        return queue.expireExhausted(TABLE,
+                "status='FAILED', last_error=?, finished_at=now(), updated_at=now()",
+                new Object[]{"任务租约已耗尽"}, "attempts >= ?", MAX_ATTEMPTS);
     }
 
     boolean ownsLease(ClaimedJob job) {
-        Integer active = jdbc.queryForObject("""
-                SELECT count(*) FROM interview_turn_jobs
-                WHERE id=? AND status='PROCESSING' AND lease_token=? AND lease_until > now()
-                """, Integer.class, job.id(), job.leaseToken());
-        return active != null && active == 1;
+        return queue.owns(TABLE, job.id(), job.leaseToken());
     }
 
     boolean complete(ClaimedJob job, String status, String message) {
-        return jdbc.update("""
-                UPDATE interview_turn_jobs SET status='COMPLETED', response_status=?, response_message=?, last_error=NULL,
-                  lease_until=NULL, lease_token=NULL, finished_at=now(), updated_at=now()
-                WHERE id=? AND status='PROCESSING' AND lease_token=? AND lease_until > now()
-                """, status, message, job.id(), job.leaseToken()) == 1;
+        return queue.complete(TABLE, job.id(), job.leaseToken(),
+                ", response_status=?, response_message=?, last_error=NULL, finished_at=now(), updated_at=now()",
+                status, message);
     }
 
     boolean fail(ClaimedJob job, String status, String error, boolean retryable) {
-        return jdbc.update("""
-                UPDATE interview_turn_jobs SET status=?, last_error=?, lease_until=NULL, lease_token=NULL,
+        return queue.fencedUpdate(TABLE, job.id(), job.leaseToken(), """
+                status=?, last_error=?, lease_token=NULL, lease_until=NULL,
                   next_attempt_at=CASE WHEN ? THEN now() + interval '5 seconds' ELSE next_attempt_at END,
-                  finished_at=CASE WHEN ? THEN NULL ELSE now() END, updated_at=now()
-                WHERE id=? AND status='PROCESSING' AND lease_token=? AND lease_until > now()
-                """, status, error, retryable, retryable, job.id(), job.leaseToken()) == 1;
+                  finished_at=CASE WHEN ? THEN NULL ELSE now() END, updated_at=now()""",
+                status, error, retryable, retryable);
     }
 
     private InterviewTurnService.TurnJob mapTurnJob(java.sql.ResultSet rs) throws java.sql.SQLException {

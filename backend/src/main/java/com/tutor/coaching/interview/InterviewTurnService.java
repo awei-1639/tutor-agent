@@ -36,7 +36,8 @@ public class InterviewTurnService {
     /** Compatibility constructor retained for database-focused integration tests. */
     public InterviewTurnService(org.springframework.jdbc.core.JdbcTemplate jdbc,
                                 InterviewSession interviews, MeterRegistry metrics) {
-        this(new InterviewTurnJobStore(jdbc), new InterviewSessionRepository(jdbc), metrics);
+        this(new InterviewTurnJobStore(jdbc, new com.tutor.platform.jobs.LeasedJobQueue(jdbc)),
+                new InterviewSessionRepository(jdbc), metrics);
     }
 
     public record TurnJob(String id, String sessionId, String requestId, String status, int attempts,

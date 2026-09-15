@@ -37,6 +37,7 @@ final class InterviewTurnWorker {
 
     @Scheduled(fixedDelayString = "${tutor.interview.turn.poll-ms:500}")
     void dispatch() {
+        jobs.sweepAbandoned();
         if (!slots.tryAcquire()) return;
         var job = jobs.claimNext();
         if (job.isEmpty()) {
