@@ -48,6 +48,7 @@ public class KnowledgeIngestionWorker {
     @Scheduled(fixedDelayString = "${knowledge.ingestion.poll-ms:1000}")
     public void processOne() {
         if (metrics != null) metrics.refreshBacklog();
+        jobs.sweepExhausted();
         if (!globalSlot.tryAcquire()) return;
         Optional<KnowledgeIngestionJobStore.Job> claimed;
         try {
