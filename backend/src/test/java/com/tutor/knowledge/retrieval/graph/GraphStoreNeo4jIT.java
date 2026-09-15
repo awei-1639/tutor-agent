@@ -40,10 +40,10 @@ class GraphStoreNeo4jIT {
                     CREATE (java)-[:UNRELATED]->(hidden)
                     """).consume();
 
-            // 这里刻意不使用生产默认的 2s 客户端事务超时：冷启动或宿主内存紧张时首条
-            // 查询很容易超过 2s，而 Neo4jResilience 只熔断不重试，GraphStore 会静默返回
-            // 空列表，把环境抖动伪装成功能回归。本用例验证的是扩展语义，超时/熔断策略
-            // 由 Neo4jResilienceTest 覆盖，因此给它一个宽裕的超时以保证结果确定。
+            // 这里刻意不用生产默认的查询超时(5s)：冷启动或宿主内存紧张时首条查询仍可能
+            // 超过它，而 Neo4jResilience 只熔断不重试，GraphStore 会静默返回空列表，把
+            // 环境抖动伪装成功能回归。本用例验证的是扩展语义，超时/熔断策略由
+            // Neo4jResilienceTest 覆盖，因此给它一个宽裕的超时以保证结果确定。
             Neo4jProperties properties = new Neo4jProperties(60, 3, 30);
             GraphStore store = new GraphStore(driver, new Neo4jResilience(properties), properties);
             List<GraphStore.Neighbor> neighbors = store

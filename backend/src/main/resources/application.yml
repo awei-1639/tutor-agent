@@ -194,7 +194,11 @@ neo4j:
   username: neo4j
   password: ${NEO4J_PASSWORD:tutor_dev_only}
   resilience:
-    query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:2}
+    # 单一超时值承担三重角色: 客户端事务超时(GraphStore/SkillAlignService)、驱动 TCP
+    # 连接超时、连接池获取超时(LlmConfig)。2s 在冷启动或宿主内存紧张时会被轻易击穿，
+    # 且 Neo4jResilience 只熔断不重试，击穿即静默降级为空结果，故放宽到 5s —— 仍远低于
+    # 驱动库默认(连接 30s/获取 60s)。需要更紧的 SLA 时用 NEO4J_QUERY_TIMEOUT_SECONDS 覆盖。
+    query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:5}
     failure-threshold: ${NEO4J_FAILURE_THRESHOLD:3}
     open-seconds: ${NEO4J_OPEN_SECONDS:30}
 
