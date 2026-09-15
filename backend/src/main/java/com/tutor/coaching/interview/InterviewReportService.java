@@ -34,7 +34,8 @@ class InterviewReportService {
     /** Compatibility constructor retained for focused and database integration tests. */
     InterviewReportService(JdbcTemplate jdbc, InterviewLlmService interviewer, PlanService plans,
                            ProfileService profiles) {
-        this(jdbc, interviewer, plans, profiles, new InterviewCompletionJobStore(jdbc));
+        this(jdbc, interviewer, plans, profiles,
+                new InterviewCompletionJobStore(jdbc, new com.tutor.platform.jobs.LeasedJobQueue(jdbc)));
     }
 
     private InterviewReportService(JdbcTemplate jdbc, InterviewLlmService interviewer, PlanService plans,

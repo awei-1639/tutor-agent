@@ -117,6 +117,23 @@ class LeasedJobQueueTest {
     }
 
     @Test
+    void fencedUpdateKeepsRowRunningAndAppliesSet() {
+        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+        UUID token = UUID.randomUUID();
+
+        assertThat(queue.fencedUpdate(table, "job-1", token, "evidence_status='completed', stage=?", "validating")).isTrue();
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).update(sql.capture(), args.capture());
+        assertThat(sql.getValue()).isEqualTo("""
+                UPDATE chat_turns SET evidence_status='completed', stage=?
+                WHERE id=?::uuid AND status='RUNNING' AND lease_token=? AND lease_until > now()
+                """);
+        assertThat(args.getValue()).containsExactly("validating", "job-1", token);
+    }
+
+    @Test
     void expireExhaustedSweepsDeadLeases() {
         when(jdbc.update(anyString(), any(Object[].class))).thenReturn(2);
 

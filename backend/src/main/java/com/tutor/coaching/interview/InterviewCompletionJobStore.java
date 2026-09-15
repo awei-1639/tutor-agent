@@ -22,7 +22,14 @@ import java.util.UUID;
  */
 @Repository
 class InterviewCompletionJobStore {
+    private static final long LEASE_SECONDS = 600;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final com.tutor.platform.jobs.LeasedJobQueue.LeaseTable TABLE =
+            com.tutor.platform.jobs.LeasedJobQueue.LeaseTable.of(
+                    "interview_completion_jobs", "running", "completed", "id=?");
+
     private final JdbcTemplate jdbc;
+    private final com.tutor.platform.jobs.LeasedJobQueue queue;
 
     record Job(long id, long userId, String sessionId, UUID leaseToken) {}
 
@@ -30,8 +37,9 @@ class InterviewCompletionJobStore {
                   String evidenceStatus, String learningPlanStatus,
                   Instant createdAt, Instant startedAt, Instant finishedAt) {}
 
-    InterviewCompletionJobStore(JdbcTemplate jdbc) {
+    InterviewCompletionJobStore(JdbcTemplate jdbc, com.tutor.platform.jobs.LeasedJobQueue queue) {
         this.jdbc = jdbc;
+        this.queue = queue;
     }
 
     void enqueue(long userId, String sessionId) {
@@ -53,61 +61,42 @@ class InterviewCompletionJobStore {
     }
 
     Optional<Job> claimNext() {
-        return jdbc.query("""
-                WITH next_job AS (
-                    SELECT id FROM interview_completion_jobs
-                    WHERE (status='queued' AND attempts < 3)
-                       OR (status='running' AND (lease_until IS NULL OR lease_until < now()) AND attempts < 3)
-                    ORDER BY id
-                    FOR UPDATE SKIP LOCKED LIMIT 1
-                )
-                UPDATE interview_completion_jobs j
-                SET status='running', attempts=attempts+1, started_at=now(), last_error=NULL,
-                    lease_token=?, lease_until=now() + interval '10 minutes'
-                FROM next_job
-                WHERE j.id=next_job.id
-                RETURNING j.id, j.user_id, j.session_id, j.lease_token
-                """, (rs, i) -> new Job(rs.getLong(1), rs.getLong(2), rs.getString(3),
-                rs.getObject(4, UUID.class)), UUID.randomUUID()).stream().findFirst();
+        return queue.claimNext(TABLE,
+                "(status='queued' AND attempts < " + MAX_ATTEMPTS + ")"
+                        + " OR (status='running' AND (lease_until IS NULL OR lease_until < now())"
+                        + " AND attempts < " + MAX_ATTEMPTS + ")",
+                "status='running', attempts=j.attempts+1, started_at=now(), last_error=NULL,"
+                        + " lease_token=?, lease_until=now() + (? * interval '1 second')",
+                "id",
+                "j.id, j.user_id, j.session_id, j.lease_token",
+                (rs, i) -> new Job(rs.getLong(1), rs.getLong(2), rs.getString(3),
+                        rs.getObject(4, UUID.class)),
+                UUID.randomUUID(), LEASE_SECONDS);
     }
 
     boolean ownsLease(Job job) {
-        Integer active = jdbc.queryForObject("""
-                SELECT count(*) FROM interview_completion_jobs
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, Integer.class, job.id(), job.leaseToken());
-        return active != null && active == 1;
+        return queue.owns(TABLE, job.id(), job.leaseToken());
     }
 
     boolean markEvidenceCompleted(Job job) {
-        return jdbc.update("""
-                UPDATE interview_completion_jobs SET evidence_status='completed'
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, job.id(), job.leaseToken()) == 1;
+        return queue.fencedUpdate(TABLE, job.id(), job.leaseToken(), "evidence_status='completed'");
     }
 
     boolean markCompleted(Job job) {
-        return jdbc.update("""
-                UPDATE interview_completion_jobs
-                SET status='completed', evidence_status='completed', learning_plan_status='completed', finished_at=now(),
-                    last_error=NULL, lease_token=NULL, lease_until=NULL
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, job.id(), job.leaseToken()) == 1;
+        return queue.complete(TABLE, job.id(), job.leaseToken(),
+                ", evidence_status='completed', learning_plan_status='completed', finished_at=now(), last_error=NULL");
     }
 
     void markFailure(Job job, Exception error) {
         String message = error.getMessage() == null || error.getMessage().isBlank()
                 ? "面试闭环任务失败" : error.getMessage();
         if (message.length() > 500) message = message.substring(0, 500);
-        jdbc.update("""
-                UPDATE interview_completion_jobs
-                SET status=CASE WHEN attempts >= 3 THEN 'failed' ELSE 'queued' END,
+        queue.fencedUpdate(TABLE, job.id(), job.leaseToken(), """
+                status=CASE WHEN attempts >= 3 THEN 'failed' ELSE 'queued' END,
                     learning_plan_status=CASE WHEN attempts >= 3 AND evidence_status='completed'
                         THEN 'failed' ELSE learning_plan_status END,
                     last_error=?, finished_at=CASE WHEN attempts >= 3 THEN now() ELSE NULL END,
-                    lease_token=NULL, lease_until=NULL
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, message, job.id(), job.leaseToken());
+                    lease_token=NULL, lease_until=NULL""", message);
     }
 
     InterviewSession.SessionRow session(long userId, String sessionId) {

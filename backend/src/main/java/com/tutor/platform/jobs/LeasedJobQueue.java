@@ -101,6 +101,21 @@ public class LeasedJobQueue {
     }
 
     /**
+     * 围栏内的任意业务回写：保持行处于 running，仅套用调用方给定的 SET 片段
+     * （如子状态机推进 {@code evidence_status='completed'} 或阶段推进）。
+     * 返回是否仍持有围栏。
+     */
+    public boolean fencedUpdate(LeaseTable leaseTable, Object id, UUID leaseToken,
+                                String setSql, Object... args) {
+        Object[] all = append(args, id, leaseToken);
+        return jdbc.update("""
+                UPDATE %s SET %s
+                WHERE %s AND status='%s' AND lease_token=? AND lease_until > now()
+                """.formatted(leaseTable.table(), setSql, leaseTable.idPredicate(), leaseTable.runningStatus()),
+                all) == 1;
+    }
+
+    /**
      * 围栏内的失败：目标状态由调用方给定（重试态或终态），清空租约并套用业务片段
      * {@code extraSet}（错误列、退避列等；以逗号开头，可为空串）。
      */
