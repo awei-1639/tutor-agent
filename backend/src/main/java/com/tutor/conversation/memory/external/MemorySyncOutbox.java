@@ -37,7 +37,8 @@ public class MemorySyncOutbox {
         this.transactions = transactions;
         this.admission = admission;
         this.leaseSeconds = Math.clamp(leaseSeconds, 30, 3600);
-        this.jobStore = new MemorySyncJobStore(jdbc, transactions, this.leaseSeconds);
+        this.jobStore = new MemorySyncJobStore(jdbc, transactions,
+                new com.tutor.platform.jobs.LeasedJobQueue(jdbc), this.leaseSeconds);
     }
 
     public void enqueueDeleteUser(long userId) {

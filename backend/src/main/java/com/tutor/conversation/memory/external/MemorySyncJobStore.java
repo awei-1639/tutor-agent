@@ -12,41 +12,42 @@ import java.util.UUID;
 
 /** Durable storage boundary for external-memory sync jobs and their leases. */
 final class MemorySyncJobStore {
+    private static final com.tutor.platform.jobs.LeasedJobQueue.LeaseTable TABLE =
+            com.tutor.platform.jobs.LeasedJobQueue.LeaseTable.of(
+                    "memory_sync_outbox", "processing", "completed", "id=?");
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
+    private final com.tutor.platform.jobs.LeasedJobQueue queue;
     private final int leaseSeconds;
 
-    MemorySyncJobStore(JdbcTemplate jdbc, TransactionTemplate transactions, int leaseSeconds) {
+    MemorySyncJobStore(JdbcTemplate jdbc, TransactionTemplate transactions,
+                       com.tutor.platform.jobs.LeasedJobQueue queue, int leaseSeconds) {
         this.jdbc = jdbc;
         this.transactions = transactions;
+        this.queue = queue;
         this.leaseSeconds = leaseSeconds;
     }
 
+    /**
+     * 领取走统一内核（单条 SKIP LOCKED CTE 原子领取）。complete/fail 刻意保留本地的
+     * 宽松围栏（只校验 token、不校验 lease_until）：outbox 行是用户可见的删除进度状态，
+     * 租约过期后迟到 worker 的远程操作结果仍需落库，否则远程状态与本地脱节；
+     * 过期未完成的行由 claim 的接管分支回收。
+     */
     Optional<MemorySyncOutbox.Job> claimNext() {
-        return Optional.ofNullable(transactions.execute(status -> {
-            List<MemorySyncOutbox.Job> jobs = jdbc.query("""
-                    SELECT id, user_id, memory_generation, operation, memory_id, remote_memory_id,
-                           summary, topics, open_items, attempt_count
-                    FROM memory_sync_outbox
-                    WHERE (status IN ('pending', 'retryable') AND next_attempt_at <= now())
-                       OR (status='processing' AND lease_until <= now())
-                    ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1
-                    """, (rs, i) -> new MemorySyncOutbox.Job(rs.getLong(1), rs.getLong(2), rs.getLong(3),
-                    rs.getString(4), rs.getObject(5, Long.class), rs.getString(6), rs.getString(7),
-                    textArray(rs.getArray(8)), textArray(rs.getArray(9)), rs.getInt(10)));
-            if (jobs.isEmpty()) return null;
-            MemorySyncOutbox.Job job = jobs.getFirst();
-            UUID leaseToken = UUID.randomUUID();
-            jdbc.update("""
-                    UPDATE memory_sync_outbox
-                    SET status='processing', attempt_count=attempt_count+1,
-                        lease_token=?, lease_until=now() + (? * interval '1 second')
-                    WHERE id=?
-                    """, leaseToken, leaseSeconds, job.id());
-            return new MemorySyncOutbox.Job(job.id(), job.userId(), job.memoryGeneration(), job.operation(),
-                    job.memoryId(), job.remoteMemoryId(), job.summary(), job.topics(), job.openItems(),
-                    job.attemptCount() + 1, leaseToken);
-        }));
+        return queue.claimNext(TABLE,
+                "(status IN ('pending', 'retryable') AND next_attempt_at <= now())"
+                        + " OR (status='processing' AND lease_until <= now())",
+                "status='processing', attempt_count=attempt_count+1,"
+                        + " lease_token=?, lease_until=now() + (? * interval '1 second')",
+                "id",
+                "j.id, j.user_id, j.memory_generation, j.operation, j.memory_id, j.remote_memory_id,"
+                        + " j.summary, j.topics, j.open_items, j.attempt_count, j.lease_token",
+                (rs, i) -> new MemorySyncOutbox.Job(rs.getLong(1), rs.getLong(2), rs.getLong(3),
+                        rs.getString(4), rs.getObject(5, Long.class), rs.getString(6), rs.getString(7),
+                        textArray(rs.getArray(8)), textArray(rs.getArray(9)), rs.getInt(10),
+                        rs.getObject(11, UUID.class)),
+                UUID.randomUUID(), (long) leaseSeconds);
     }
 
     void complete(long jobId) {
