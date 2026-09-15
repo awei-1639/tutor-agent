@@ -3,6 +3,7 @@ package com.tutor.identity.auth;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Cookie;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -29,6 +30,8 @@ public class AuthInterceptor implements HandlerInterceptor {
         this(jwt, internalEndpointsEnabled, internalEndpointsLoopbackOnly, "");
     }
 
+    // 必须显式指定：多于一个构造器且都无 @Autowired 时，Spring 会退化去找无参构造器并直接失败。
+    @Autowired
     public AuthInterceptor(JwtService jwt,
                            @Value("${tutor.internal.enabled:false}") boolean internalEndpointsEnabled,
                            @Value("${tutor.internal.loopback-only:true}") boolean internalEndpointsLoopbackOnly,
