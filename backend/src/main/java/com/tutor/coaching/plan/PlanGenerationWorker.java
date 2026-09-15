@@ -36,6 +36,7 @@ public class PlanGenerationWorker {
 
     @Scheduled(fixedDelayString = "${plan.generation.poll-ms:500}")
     public void dispatchPlanGeneration() {
+        store.sweepGenerationJobs();
         if (!generationSlots.tryAcquire()) return;
         PlanStore.QueuedJob job = store.claimNextGenerationJob();
         if (job == null) {

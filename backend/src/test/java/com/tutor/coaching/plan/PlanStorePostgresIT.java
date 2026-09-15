@@ -37,7 +37,7 @@ class PlanStorePostgresIT {
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
         Flyway.configure().dataSource(dataSource).load().migrate();
         jdbc = new JdbcTemplate(dataSource);
-        store = new PlanStore(jdbc);
+        store = new PlanStore(jdbc, new com.tutor.platform.jobs.LeasedJobQueue(jdbc));
     }
 
     @BeforeEach
@@ -82,6 +82,28 @@ class PlanStorePostgresIT {
         PlanModels.Checkin checkin = store.addCheckin(task.id(), userId, "done", "已提交示例");
         assertThat(checkin.taskId()).isEqualTo(task.id());
         assertThat(store.progress(userId)).isEqualTo(new PlanStore.PlanProgress(1, 1));
+    }
+
+    @Test
+    void capsCrashRetakesAndSweepsExhaustedLeases() {
+        long userId = insertUser();
+        long jobId = store.enqueueGeneration(userId, "后端岗位", "Java", "", "trace-plan");
+
+        // 模拟 worker 反复崩溃：每次领取后不完成，把租约拨回过去使之下一次可被接管。
+        for (int taken = 1; taken <= 3; taken++) {
+            PlanStore.QueuedJob job = store.claimNextGenerationJob();
+            assertThat(job).isNotNull();
+            assertThat(job.id()).isEqualTo(jobId);
+            jdbc.update("UPDATE plan_generation_jobs SET lease_until=now() - interval '1 second' WHERE id=?", jobId);
+        }
+        // 重试上限耗尽后不再可领取（避免崩溃循环无限重跑 LLM）。
+        assertThat(store.claimNextGenerationJob()).isNull();
+
+        // 死信回收把卡死的 running 行置为 failed。
+        store.sweepGenerationJobs();
+        PlanModels.PlanGenerationJob failed = store.findGenerationJob(userId, jobId).orElseThrow();
+        assertThat(failed.status()).isEqualTo("failed");
+        assertThat(failed.error()).isEqualTo("任务租约已耗尽");
     }
 
     private long insertUser() {

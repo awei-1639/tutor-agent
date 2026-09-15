@@ -19,10 +19,23 @@ import static com.tutor.coaching.plan.PlanModels.PlanTaskDraft;
 /** PostgreSQL persistence adapter for plans, check-ins, and durable generation jobs. */
 @Repository
 class PlanStore {
-    private final JdbcTemplate jdbc;
+    private static final long LEASE_SECONDS = 600;
+    private static final int MAX_ATTEMPTS = 3;
+    /** 可领取条件：queued，或租约已过期的 running（崩溃接管），统一受重试上限约束。 */
+    private static final String CLAIM_WHERE =
+            "(status='queued' AND attempts < " + MAX_ATTEMPTS + ")"
+                    + " OR (status='running' AND (lease_until IS NULL OR lease_until < now())"
+                    + " AND attempts < " + MAX_ATTEMPTS + ")";
+    private static final com.tutor.platform.jobs.LeasedJobQueue.LeaseTable TABLE =
+            com.tutor.platform.jobs.LeasedJobQueue.LeaseTable.of(
+                    "plan_generation_jobs", "running", "completed", "id=?");
 
-    PlanStore(JdbcTemplate jdbc) {
+    private final JdbcTemplate jdbc;
+    private final com.tutor.platform.jobs.LeasedJobQueue queue;
+
+    PlanStore(JdbcTemplate jdbc, com.tutor.platform.jobs.LeasedJobQueue queue) {
         this.jdbc = jdbc;
+        this.queue = queue;
     }
 
     long enqueueGeneration(long userId, String goal, String currentSkills,
@@ -47,47 +60,32 @@ class PlanStore {
     }
 
     QueuedJob claimNextGenerationJob() {
-        return jdbc.query("""
-                WITH next_job AS (
-                    SELECT id FROM plan_generation_jobs
-                    WHERE status='queued'
-                       OR (status='running' AND (lease_until IS NULL OR lease_until < now()))
-                    ORDER BY id
-                    FOR UPDATE SKIP LOCKED LIMIT 1
-                )
-                UPDATE plan_generation_jobs j
-                SET status='running', started_at=now(), error=NULL,
-                    lease_token=?, lease_until=now() + interval '10 minutes'
-                FROM next_job
-                WHERE j.id=next_job.id
-                RETURNING j.id, j.user_id, j.goal, j.current_skills, j.checkin_history, j.trace_id, j.lease_token
-                """, (rs, i) -> new QueuedJob(rs.getLong(1), rs.getLong(2), rs.getString(3),
-                rs.getString(4), rs.getString(5), rs.getString(6), rs.getObject(7, UUID.class)),
-                UUID.randomUUID()).stream().findFirst().orElse(null);
+        return queue.claimNext(TABLE, CLAIM_WHERE,
+                "status='running', attempts=j.attempts+1, started_at=now(), error=NULL,"
+                        + " lease_token=?, lease_until=now() + (? * interval '1 second')",
+                "id",
+                "j.id, j.user_id, j.goal, j.current_skills, j.checkin_history, j.trace_id, j.lease_token",
+                (rs, i) -> new QueuedJob(rs.getLong(1), rs.getLong(2), rs.getString(3),
+                        rs.getString(4), rs.getString(5), rs.getString(6), rs.getObject(7, UUID.class)),
+                UUID.randomUUID(), LEASE_SECONDS).orElse(null);
+    }
+
+    /** 把崩溃 worker 遗留、租约耗尽且超过重试上限的任务批量置为 failed（死信）。 */
+    int sweepGenerationJobs() {
+        return queue.expireExhausted(TABLE, "status='failed', error=?, finished_at=now()",
+                new Object[]{"任务租约已耗尽"}, "attempts >= ?", MAX_ATTEMPTS);
     }
 
     boolean ownsLease(QueuedJob job) {
-        Integer active = jdbc.queryForObject("""
-                SELECT count(*) FROM plan_generation_jobs
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, Integer.class, job.id(), job.leaseToken());
-        return active != null && active == 1;
+        return queue.owns(TABLE, job.id(), job.leaseToken());
     }
 
     void completeGeneration(QueuedJob job, long planId) {
-        jdbc.update("""
-                UPDATE plan_generation_jobs
-                SET status='completed', plan_id=?, finished_at=now(), lease_token=NULL, lease_until=NULL
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, planId, job.id(), job.leaseToken());
+        queue.complete(TABLE, job.id(), job.leaseToken(), ", plan_id=?, finished_at=now()", planId);
     }
 
     void failGeneration(QueuedJob job, String error) {
-        jdbc.update("""
-                UPDATE plan_generation_jobs
-                SET status='failed', error=?, finished_at=now(), lease_token=NULL, lease_until=NULL
-                WHERE id=? AND status='running' AND lease_token=? AND lease_until > now()
-                """, error, job.id(), job.leaseToken());
+        queue.fail(TABLE, job.id(), job.leaseToken(), "failed", ", error=?, finished_at=now()", error);
     }
 
     Plan saveGeneratedPlan(long userId, String goalSummary, LocalDate monday,
