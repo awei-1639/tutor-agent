@@ -15,10 +15,15 @@ class ChatTurnJobStore {
     private static final String ACTIVE = "status IN ('ACCEPTED', 'RUNNING')";
     private static final long LEASE_SECONDS = 120;
     private static final int MAX_ATTEMPTS = 3;
+    private static final com.tutor.platform.jobs.LeasedJobQueue.LeaseTable TABLE =
+            com.tutor.platform.jobs.LeasedJobQueue.LeaseTable.of(
+                    "chat_turns", "RUNNING", "COMPLETED", "id=?::uuid");
     private final JdbcTemplate jdbc;
+    private final com.tutor.platform.jobs.LeasedJobQueue queue;
 
-    ChatTurnJobStore(JdbcTemplate jdbc) {
+    ChatTurnJobStore(JdbcTemplate jdbc, com.tutor.platform.jobs.LeasedJobQueue queue) {
         this.jdbc = jdbc;
+        this.queue = queue;
     }
 
     int activeCount() {
@@ -78,36 +83,23 @@ class ChatTurnJobStore {
     }
 
     Optional<ChatTurnService.Claim> claimNext() {
-        return jdbc.query("""
-                WITH candidate AS (
-                  SELECT id FROM chat_turns
-                  WHERE (status='ACCEPTED')
-                     OR (status='RUNNING' AND lease_until < now() AND attempts < ?)
-                  ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1
-                )
-                UPDATE chat_turns t
-                SET status='RUNNING', attempts=t.attempts+1, started_at=COALESCE(t.started_at, now()),
-                    lease_token=?::uuid, lease_until=now() + (? * interval '1 second'), updated_at=now()
-                FROM candidate WHERE t.id=candidate.id
-                RETURNING t.id, t.user_id, t.conversation_id, t.question, t.trace_id, t.attempts, t.lease_token
-                """, (rs, i) -> mapClaim(rs), MAX_ATTEMPTS, UUID.randomUUID(), LEASE_SECONDS)
-                .stream().findFirst();
+        return queue.claimNext(TABLE,
+                "(status='ACCEPTED')"
+                        + " OR (status='RUNNING' AND lease_until < now() AND attempts < " + MAX_ATTEMPTS + ")",
+                "status='RUNNING', attempts=j.attempts+1, started_at=COALESCE(j.started_at, now()),"
+                        + " lease_token=?, lease_until=now() + (? * interval '1 second'), updated_at=now()",
+                "created_at",
+                "j.id, j.user_id, j.conversation_id, j.question, j.trace_id, j.attempts, j.lease_token",
+                (rs, i) -> mapClaim(rs), UUID.randomUUID(), LEASE_SECONDS);
     }
 
     boolean owns(ChatTurnService.Claim claim) {
-        Integer count = jdbc.queryForObject("""
-                SELECT count(*) FROM chat_turns
-                WHERE id=?::uuid AND status='RUNNING' AND lease_token=? AND lease_until > now()
-                """, Integer.class, claim.id(), claim.leaseToken());
-        return count != null && count == 1;
+        return queue.owns(TABLE, claim.id(), claim.leaseToken());
     }
 
     boolean markCompleted(ChatTurnService.Claim claim) {
-        return jdbc.update("""
-                UPDATE chat_turns
-                SET status='COMPLETED', lease_token=NULL, lease_until=NULL, finished_at=now(), updated_at=now()
-                WHERE id=?::uuid AND status='RUNNING' AND lease_token=? AND lease_until > now()
-                """, claim.id(), claim.leaseToken()) == 1;
+        return queue.complete(TABLE, claim.id(), claim.leaseToken(),
+                ", finished_at=now(), updated_at=now()");
     }
 
     void setAnswerMessageId(ChatTurnService.Claim claim, long messageId) {
@@ -116,36 +108,24 @@ class ChatTurnJobStore {
     }
 
     void renew(ChatTurnService.Claim claim) {
-        jdbc.update("""
-                UPDATE chat_turns SET lease_until=now() + (? * interval '1 second'), updated_at=now()
-                WHERE id=?::uuid AND status='RUNNING' AND lease_token=? AND lease_until > now()
-                """, LEASE_SECONDS, claim.id(), claim.leaseToken());
+        queue.renew(TABLE, claim.id(), claim.leaseToken(), LEASE_SECONDS);
     }
 
     void fail(ChatTurnService.Claim claim, String error) {
-        jdbc.update("""
-                UPDATE chat_turns
-                SET status='FAILED', last_error=?, lease_token=NULL, lease_until=NULL,
-                    finished_at=now(), updated_at=now()
-                WHERE id=?::uuid AND status='RUNNING' AND lease_token=? AND lease_until > now()
-                """, error, claim.id(), claim.leaseToken());
+        queue.fail(TABLE, claim.id(), claim.leaseToken(), "FAILED",
+                ", last_error=?, finished_at=now(), updated_at=now()", error);
     }
 
     void cancelClaim(ChatTurnService.Claim claim) {
-        jdbc.update("""
-                UPDATE chat_turns
-                SET status='CANCELLED', cancel_requested_at=COALESCE(cancel_requested_at, now()),
-                    lease_token=NULL, lease_until=NULL, finished_at=now(), updated_at=now()
-                WHERE id=?::uuid AND status='RUNNING' AND lease_token=? AND lease_until > now()
-                """, claim.id(), claim.leaseToken());
+        queue.fencedUpdate(TABLE, claim.id(), claim.leaseToken(), """
+                status='CANCELLED', cancel_requested_at=COALESCE(cancel_requested_at, now()),
+                    lease_token=NULL, lease_until=NULL, finished_at=now(), updated_at=now()""");
     }
 
     void expireExhaustedLeases() {
-        jdbc.update("""
-                UPDATE chat_turns SET status='FAILED', last_error='任务租约已耗尽，未能恢复',
-                    lease_token=NULL, lease_until=NULL, finished_at=now(), updated_at=now()
-                WHERE status='RUNNING' AND lease_until < now() AND attempts >= ?
-                """, MAX_ATTEMPTS);
+        queue.expireExhausted(TABLE,
+                "status='FAILED', last_error=?, lease_token=NULL, lease_until=NULL, finished_at=now(), updated_at=now()",
+                new Object[]{"任务租约已耗尽，未能恢复"}, "attempts >= ?", MAX_ATTEMPTS);
     }
 
     private ChatTurnService.Claim mapClaim(ResultSet rs) throws SQLException {

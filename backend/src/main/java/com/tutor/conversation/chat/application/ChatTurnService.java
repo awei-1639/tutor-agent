@@ -36,7 +36,7 @@ public class ChatTurnService {
                            ConversationStore conversations,
                            ObjectProvider<ChatService> chatService,
                            MeterRegistry metrics) {
-        this.jobs = new ChatTurnJobStore(jdbc);
+        this.jobs = new ChatTurnJobStore(jdbc, new com.tutor.platform.jobs.LeasedJobQueue(jdbc));
         this.conversations = conversations;
         this.worker = new ChatTurnWorker(jobs, chatService);
         registerMetrics(metrics);
