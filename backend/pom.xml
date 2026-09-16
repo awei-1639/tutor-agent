@@ -23,7 +23,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <langchain4j.version>1.0.1</langchain4j.version>
     <jtokkit.version>1.1.0</jtokkit.version>
-    <jacoco.version>0.8.12</jacoco.version>
+    <jacoco.version>0.8.15</jacoco.version>
     <springdoc.version>2.8.6</springdoc.version>
     <opentelemetry.version>1.45.0</opentelemetry.version>
     <!-- Surefire performs late replacement for the Mockito Java agent. -->
