@@ -2,6 +2,7 @@ package com.tutor.coaching.plan;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
 import java.time.LocalDate;
@@ -38,13 +39,25 @@ class PlanStore {
         this.queue = queue;
     }
 
-    long enqueueGeneration(long userId, String goal, String currentSkills,
-                           String checkinHistory, String traceId) {
-        return jdbc.queryForObject("""
+    /** 入队; 若该用户已有排队/运行中的任务则不重复插入 (V71 部分唯一索引兜底), 返回空表示已有活跃任务。 */
+    Optional<Long> enqueueGeneration(long userId, String goal, String currentSkills,
+                                     String checkinHistory, String traceId) {
+        return jdbc.query("""
                 INSERT INTO plan_generation_jobs
                     (user_id, goal, current_skills, checkin_history, trace_id)
-                VALUES (?,?,?,?,?) RETURNING id
-                """, Long.class, userId, goal, currentSkills, checkinHistory, traceId);
+                VALUES (?,?,?,?,?)
+                ON CONFLICT (user_id) WHERE status IN ('queued', 'running') DO NOTHING
+                RETURNING id
+                """, (rs, i) -> rs.getLong(1), userId, goal, currentSkills, checkinHistory, traceId
+        ).stream().findFirst();
+    }
+
+    Optional<Long> findActiveGenerationJobId(long userId) {
+        return jdbc.query("""
+                SELECT id FROM plan_generation_jobs
+                WHERE user_id=? AND status IN ('queued', 'running')
+                ORDER BY id DESC LIMIT 1
+                """, (rs, i) -> rs.getLong(1), userId).stream().findFirst();
     }
 
     Optional<PlanGenerationJob> findGenerationJob(long userId, long jobId) {
@@ -80,6 +93,11 @@ class PlanStore {
         return queue.owns(TABLE, job.id(), job.leaseToken());
     }
 
+    /** 续租: LLM 生成耗时可接近租约上限, 长 task 必须周期续租以免被接管后重复执行。 */
+    void renewGeneration(QueuedJob job) {
+        queue.renew(TABLE, job.id(), job.leaseToken(), LEASE_SECONDS);
+    }
+
     void completeGeneration(QueuedJob job, long planId) {
         queue.complete(TABLE, job.id(), job.leaseToken(), ", plan_id=?, finished_at=now()", planId);
     }
@@ -88,6 +106,8 @@ class PlanStore {
         queue.fail(TABLE, job.id(), job.leaseToken(), "failed", ", error=?, finished_at=now()", error);
     }
 
+    /** 原子写入计划与任务: 中途失败回滚, 避免留下无任务的孤儿 plan。 */
+    @Transactional
     Plan saveGeneratedPlan(long userId, String goalSummary, LocalDate monday,
                            List<PlanTaskDraft> tasks) {
         long planId = jdbc.queryForObject(

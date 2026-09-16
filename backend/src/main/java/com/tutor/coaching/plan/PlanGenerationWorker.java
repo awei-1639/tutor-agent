@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -20,6 +22,7 @@ public class PlanGenerationWorker {
     private final PlanService plans;
     private final ExecutorService generationExecutor;
     private final Semaphore generationSlots;
+    private final Map<Long, PlanStore.QueuedJob> active = new ConcurrentHashMap<>();
 
     @Autowired
     public PlanGenerationWorker(PlanStore store, PlanService plans) {
@@ -44,12 +47,20 @@ public class PlanGenerationWorker {
             return;
         }
         generationExecutor.submit(() -> {
+            active.put(job.id(), job);
             try {
                 process(job);
             } finally {
+                active.remove(job.id());
                 generationSlots.release();
             }
         });
+    }
+
+    /** 长任务续租: LLM 生成可能逼近 600s 租约, 不续租会被其他实例接管后重复执行。 */
+    @Scheduled(fixedDelayString = "${plan.generation.lease-renew-ms:30000}")
+    public void renewActiveLeases() {
+        active.values().forEach(store::renewGeneration);
     }
 
     void process(PlanStore.QueuedJob job) {

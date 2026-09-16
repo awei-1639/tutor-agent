@@ -48,7 +48,7 @@ class PlanStorePostgresIT {
     @Test
     void preservesQueueFencingPlanTasksAndCheckins() {
         long userId = insertUser();
-        long jobId = store.enqueueGeneration(userId, "后端岗位", "Java", "", "trace-plan");
+        long jobId = store.enqueueGeneration(userId, "后端岗位", "Java", "", "trace-plan").orElseThrow();
 
         assertThat(store.findGenerationJob(userId, jobId)).isPresent();
         assertThat(store.findGenerationJob(userId + 1, jobId)).isEmpty();
@@ -87,7 +87,7 @@ class PlanStorePostgresIT {
     @Test
     void capsCrashRetakesAndSweepsExhaustedLeases() {
         long userId = insertUser();
-        long jobId = store.enqueueGeneration(userId, "后端岗位", "Java", "", "trace-plan");
+        long jobId = store.enqueueGeneration(userId, "后端岗位", "Java", "", "trace-plan").orElseThrow();
 
         // 模拟 worker 反复崩溃：每次领取后不完成，把租约拨回过去使之下一次可被接管。
         for (int taken = 1; taken <= 3; taken++) {
