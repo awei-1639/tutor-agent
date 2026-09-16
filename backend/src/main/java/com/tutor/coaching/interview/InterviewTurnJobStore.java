@@ -83,6 +83,11 @@ class InterviewTurnJobStore {
                 new Object[]{"任务租约已耗尽"}, "attempts >= ?", MAX_ATTEMPTS);
     }
 
+    /** 续租: LLM 评分可能逼近 90s 租约, 不续租会被接管后重复执行。 */
+    void renew(ClaimedJob job) {
+        queue.renew(TABLE, job.id(), job.leaseToken(), LEASE_SECONDS);
+    }
+
     boolean ownsLease(ClaimedJob job) {
         return queue.owns(TABLE, job.id(), job.leaseToken());
     }

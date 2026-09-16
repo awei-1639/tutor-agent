@@ -43,7 +43,13 @@ final class ChatTurnWorker {
     void start(ChatTurnService.Turn turn, ChatTurnEvents events, CancellationToken cancellation) {
         var claim = jobs.claimById(turn.id());
         if (claim.isEmpty()) return;
-        run(claim.get(), events, cancellation, slots.tryAcquire());
+        if (!slots.tryAcquire()) {
+            // 并发槽已满时快速失败, 不再静默绕过并发上限; 任务置为失败, 避免租约过期后被后台重复执行
+            jobs.fail(claim.get(), "对话并发已满，请稍后重试");
+            events.onError("TURN_BUSY", "当前对话并发已满，请稍后重试");
+            return;
+        }
+        run(claim.get(), events, cancellation, true);
     }
 
     @Scheduled(fixedDelayString = "${tutor.chat.turn.poll-ms:1000}")

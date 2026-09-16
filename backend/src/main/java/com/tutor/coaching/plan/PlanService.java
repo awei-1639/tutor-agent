@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -86,8 +87,15 @@ public class PlanService {
                         error.getClass().getSimpleName());
             }
         }
-        long id = store.enqueueGeneration(userId, goal, currentSkills, checkinHistory, traceId);
-        return generationJob(userId, id);
+        Optional<Long> id = store.enqueueGeneration(userId, goal, currentSkills, checkinHistory, traceId);
+        if (id.isEmpty()) {
+            // 已有排队/运行中的生成任务: 复用而不是产生重复计划
+            id = store.findActiveGenerationJobId(userId);
+        }
+        if (id.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "计划生成任务已在排队中");
+        }
+        return generationJob(userId, id.get());
     }
 
     public PlanGenerationJob generationJob(long userId, long jobId) {

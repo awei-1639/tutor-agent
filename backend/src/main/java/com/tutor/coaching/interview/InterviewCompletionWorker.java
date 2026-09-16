@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -30,6 +31,7 @@ final class InterviewCompletionWorker {
     private final ObjectMapper mapper = new ObjectMapper();
     private final ExecutorService executor;
     private final Semaphore slots;
+    private final Map<Long, InterviewCompletionJobStore.Job> active = new ConcurrentHashMap<>();
 
     @Autowired
     InterviewCompletionWorker(InterviewCompletionJobStore jobs, InterviewLlmService interviewer,
@@ -80,6 +82,7 @@ final class InterviewCompletionWorker {
     }
 
     void process(InterviewCompletionJobStore.Job job) {
+        active.put(job.id(), job);
         try {
             InterviewSession.SessionRow session = jobs.session(job.userId(), job.sessionId());
             if (!jobs.ownsLease(job)) {
@@ -103,8 +106,15 @@ final class InterviewCompletionWorker {
                     job.id(), job.sessionId(), error.getMessage());
             jobs.markFailure(job, error);
         } finally {
+            active.remove(job.id());
             slots.release();
         }
+    }
+
+    /** 长任务续租: 多技能 scorecard LLM 调用可能逼近 600s 租约, 不续租会被接管后重复执行。 */
+    @Scheduled(fixedDelayString = "${tutor.interview.completion.lease-renew-ms:30000}")
+    void renewActiveLeases() {
+        active.values().forEach(jobs::renew);
     }
 
     private String evidenceJson(List<InterviewSession.QuestionScore> scores) {
