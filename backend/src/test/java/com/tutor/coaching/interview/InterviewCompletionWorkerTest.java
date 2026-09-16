@@ -35,6 +35,13 @@ class InterviewCompletionWorkerTest {
             "", "technical", "MID", 45, Instant.now(), null);
 
     @Test
+    void sweepsExhaustedLeasesBeforeClaimingSoCrashResidueNeverSticks() {
+        worker.dispatch();
+
+        verify(jobs).sweepExhausted();
+    }
+
+    @Test
     void skipsExpiredLeaseBeforeWritingEvidenceOrCreatingPlan() {
         when(jobs.session(job.userId(), job.sessionId())).thenReturn(session);
         when(jobs.ownsLease(job)).thenReturn(false);

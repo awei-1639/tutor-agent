@@ -50,6 +50,8 @@ final class InterviewCompletionWorker {
 
     @Scheduled(fixedDelayString = "${tutor.interview.completion.poll-ms:500}")
     public void dispatch() {
+        // 先回收崩溃 worker 遗留的死信 (attempts 耗尽的 running 行), 否则它们永久卡死
+        jobs.sweepExhausted();
         if (!slots.tryAcquire()) return;
         var job = jobs.claimNext();
         if (job.isEmpty()) {

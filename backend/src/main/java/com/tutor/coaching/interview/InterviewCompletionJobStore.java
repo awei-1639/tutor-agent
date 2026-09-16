@@ -99,6 +99,12 @@ class InterviewCompletionJobStore {
                     lease_token=NULL, lease_until=NULL""", message);
     }
 
+    /** 把崩溃 worker 遗留、租约耗尽且超过重试上限的任务批量置为 failed（死信）。 */
+    int sweepExhausted() {
+        return queue.expireExhausted(TABLE, "status='failed', last_error=?, finished_at=now()",
+                new Object[]{"任务租约已耗尽"}, "attempts >= ?", MAX_ATTEMPTS);
+    }
+
     InterviewSession.SessionRow session(long userId, String sessionId) {
         return findSession(userId, sessionId)
                 .orElseThrow(() -> new IllegalStateException("interview session missing: " + sessionId));
