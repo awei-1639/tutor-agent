@@ -9,6 +9,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
 /** Executes claimed answer-scoring jobs without owning their HTTP submission API. */
@@ -21,6 +23,7 @@ final class InterviewTurnWorker {
     private final InterviewSession interviews;
     private final MeterRegistry metrics;
     private final Semaphore slots;
+    private final Map<String, InterviewTurnJobStore.ClaimedJob> active = new ConcurrentHashMap<>();
 
     @Autowired
     InterviewTurnWorker(InterviewTurnJobStore jobs, InterviewSession interviews, MeterRegistry metrics) {
@@ -45,12 +48,20 @@ final class InterviewTurnWorker {
             return;
         }
         Thread.startVirtualThread(() -> {
+            active.put(job.get().id(), job.get());
             try {
                 process(job.get());
             } finally {
+                active.remove(job.get().id());
                 slots.release();
             }
         });
+    }
+
+    /** 长任务续租: LLM 评分可能逼近 90s 租约, 不续租会被其他实例接管后重复执行。 */
+    @Scheduled(fixedDelayString = "${tutor.interview.turn.lease-renew-ms:30000}")
+    void renewActiveLeases() {
+        active.values().forEach(jobs::renew);
     }
 
     void process(InterviewTurnJobStore.ClaimedJob job) {
