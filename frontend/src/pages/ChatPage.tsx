@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { api, streamChat, type ConversationSummary, type MemoryRef } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 
@@ -170,6 +170,11 @@ export default function ChatPage() {
   const abortRef = useRef<AbortController | null>(null);
   const turnIdRef = useRef<string | null>(null);
   const activeStreamId = useRef<string | null>(null);
+  // 流式 token 渲染节流：SSE 逐 token 到达会触发 setState，用 rAF 把「每 token 一次提交」
+  // 收敛为「每帧至多一次」，将重渲染与自动滚动次数上界钉死在帧率，消除长回答期间的抖动。
+  const tokenRafRef = useRef<number | null>(null);
+
+  useEffect(() => () => { if (tokenRafRef.current != null) cancelAnimationFrame(tokenRafRef.current); }, []);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }); }, [messages, stage]);
 
@@ -208,6 +213,23 @@ export default function ChatPage() {
     const userMsg: Msg = { role: 'user', content: text };
     const assistantPlaceholder: Msg & { citations?: Citation[]; tokens?: string; clarify?: string } = { role: 'assistant', content: '', tokens: '' };
     let memoriesBuffer: MemoryRef[] = [];
+    // 不可变更新最后一条 assistant 消息：替换对象而非原地修改，使 React.memo 能按引用跳过历史消息。
+    const patchLast = (patch: Partial<Msg>, allowLocked = false) => {
+      setMessages(m => {
+        const last = m[m.length - 1];
+        if (!last || last.role !== 'assistant' || (!allowLocked && last.locked)) return m;
+        return [...m.slice(0, -1), { ...last, ...patch }];
+      });
+    };
+    // rAF 批量提交：token 只累积到 placeholder，每帧至多把最新文本刷进一次 state。
+    const flushTokens = () => {
+      tokenRafRef.current = null;
+      if (activeStreamId.current !== myStreamId) return;
+      patchLast({ content: assistantPlaceholder.tokens ?? '' });
+    };
+    const scheduleTokenFlush = () => {
+      if (tokenRafRef.current == null) tokenRafRef.current = requestAnimationFrame(flushTokens);
+    };
     setMessages(m => [...m, userMsg, assistantPlaceholder]);
     setStreaming(true);
     setStage('routing');
@@ -232,72 +254,41 @@ export default function ChatPage() {
         onToken: t => {
           if (activeStreamId.current !== myStreamId) return;
           assistantPlaceholder.tokens = (assistantPlaceholder.tokens ?? '') + t;
-          setMessages(m => {
-            const copy = [...m];
-            const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant' && !last.locked) {
-              last.content = assistantPlaceholder.tokens ?? '';
-            }
-            return copy;
-          });
+          scheduleTokenFlush();
         },
         onCitation: c => {
           if (activeStreamId.current !== myStreamId) return;
           // 累积到 placeholder.citations (避免 setMessages 闭包 m 竞态)
           assistantPlaceholder.citations = [...(assistantPlaceholder.citations ?? []), c];
-          setMessages(m => {
-            const copy = [...m];
-            const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant' && !last.locked) {
-              last.citations = assistantPlaceholder.citations;
-            }
-            return copy;
-          });
+          patchLast({ citations: assistantPlaceholder.citations });
         },
         onMemories: e => {
           if (activeStreamId.current !== myStreamId) return;
           memoriesBuffer = [...memoriesBuffer, ...(e.items ?? [])];
-          setMessages(m => {
-            const copy = [...m];
-            const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant' && !last.locked) {
-              last.memories = memoriesBuffer;
-            }
-            return copy;
-          });
+          patchLast({ memories: memoriesBuffer });
         },
         onClarify: event => {
           if (activeStreamId.current !== myStreamId) return;
           assistantPlaceholder.clarify = event.question;
           assistantPlaceholder.clarifyOptions = event.options ?? [];
-          setMessages(m => {
-            const copy = [...m];
-            const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant' && !last.locked) {
-              last.clarify = event.question;
-              last.clarifyOptions = event.options ?? [];
-            }
-            return copy;
-          });
+          patchLast({ clarify: event.question, clarifyOptions: event.options ?? [] });
         },
         onDone: e => {
           if (activeStreamId.current !== myStreamId) return;
+          // 收尾：取消挂起的帧，确保最后一批 token 已落地。
+          if (tokenRafRef.current != null) { cancelAnimationFrame(tokenRafRef.current); tokenRafRef.current = null; }
           turnIdRef.current = null;
           assistantPlaceholder.citationStatus = e.citation_status;
           assistantPlaceholder.citationIssues = e.citation_issues ?? [];
-          setMessages(m => {
-            const copy = [...m];
-            const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant') {
-              last.locked = true;
-              last.id = e.message_id;
-              last.trace_id = e.trace_id ?? assistantPlaceholder.trace_id;
-              last.citationStatus = assistantPlaceholder.citationStatus;
-              last.citationIssues = assistantPlaceholder.citationIssues;
-              last.truncated = e.truncated ?? false;
-            }
-            return copy;
-          });
+          patchLast({
+            content: assistantPlaceholder.tokens ?? assistantPlaceholder.content,
+            locked: true,
+            id: e.message_id,
+            trace_id: e.trace_id ?? assistantPlaceholder.trace_id,
+            citationStatus: assistantPlaceholder.citationStatus,
+            citationIssues: assistantPlaceholder.citationIssues,
+            truncated: e.truncated ?? false,
+          }, true);
           setStreaming(false); setStage(null);
           activeStreamId.current = null;
           // 引用数量 > 0 自动展开右侧面板
@@ -317,6 +308,7 @@ export default function ChatPage() {
         },
         onError: msg => {
           if (activeStreamId.current !== myStreamId) return;
+          if (tokenRafRef.current != null) { cancelAnimationFrame(tokenRafRef.current); tokenRafRef.current = null; }
           turnIdRef.current = null;
           setStreaming(false); setStage(null);
           setMessages(m => [...m, { role: 'assistant', content: '⚠️ ' + msg }]);
@@ -329,6 +321,7 @@ export default function ChatPage() {
   function stop() {
     const turnId = turnIdRef.current;
     if (turnId) api.cancelChatTurn(turnId).catch(() => {});
+    if (tokenRafRef.current != null) { cancelAnimationFrame(tokenRafRef.current); tokenRafRef.current = null; }
     abortRef.current?.abort();
     activeStreamId.current = null;
     turnIdRef.current = null;
@@ -368,6 +361,18 @@ export default function ChatPage() {
       setHoverCite(null);
     }
   }
+
+  // 稳定回调：让 memo 化的 MessageItem 不因每次渲染新建的函数而失效（历史消息可跳过重渲染）。
+  // ref 在 effect 中更新（而非渲染期），wrapper 调用时再读取最新实现。
+  const sendRef = useRef(send);
+  const submitFeedbackRef = useRef(submitFeedback);
+  useEffect(() => { sendRef.current = send; submitFeedbackRef.current = submitFeedback; });
+  const handleContinue = useCallback(() => sendRef.current('继续'), []);
+  const handleFeedback = useCallback(
+    (index: number, rating: 'helpful' | 'not_helpful', reason?: string) => submitFeedbackRef.current(index, rating, reason),
+    [],
+  );
+  const handleToggleFeedback = useCallback((index: number) => setFeedbackTarget(prev => (prev === index ? null : index)), []);
 
   return (
     <div className="h-full flex bg-transparent">
@@ -465,71 +470,18 @@ export default function ChatPage() {
               </div>
             )}
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {m.role === 'user' ? (
-                  <div className="max-w-[78%] rounded-[15px_15px_5px_15px] px-[17px] py-3 bg-ink-900 text-[#efeeea] text-sm leading-[1.7] shadow-[0_1px_3px_rgba(26,25,23,.18)]">
-                    <div className="whitespace-pre-wrap break-words">{m.content}</div>
-                  </div>
-                ) : (
-                <div className="w-full max-w-[92%] text-ink-900">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="brand-mark h-[23px] w-[23px] rounded-[7px] flex items-center justify-center text-xs">T</div>
-                    <span className="text-[11px] font-bold text-ink-500 tracking-[.12em] uppercase">成长教练</span>
-                  </div>
-                  <div className="pl-8">
-                    <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(i)) }} />
-                    {streaming && i === messages.length - 1 && !m.locked && <span className="stream-caret" aria-hidden="true" />}
-                  {m.clarify && (
-                    <div className="mt-2 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">
-                      ❓ 追问: {m.clarify}
-                      {m.clarifyOptions?.length ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {m.clarifyOptions.map(option => (
-                            <button key={option.id} onClick={() => setInput(option.label)}
-                              className="px-2.5 py-1.5 rounded border border-accent-200 bg-white text-accent-700 hover:bg-accent-100 transition">
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                  {m.role === 'assistant' && m.truncated && !streaming && (
-                    <div className="mt-2">
-                      <button onClick={() => send('继续')}
-                        className="px-3 py-1.5 rounded-lg border border-accent-200 bg-accent-50 text-accent-700 text-xs hover:bg-accent-100 transition">
-                        回答较长已被截断，点击继续生成 →
-                      </button>
-                    </div>
-                  )}
-                  {m.role === 'assistant' && m.memories && m.memories.length > 0 && <MemoryChips memories={m.memories} />}
-                  {m.role === 'assistant' && m.citationStatus && m.citationStatus !== 'not_applicable' && (
-                    <div className={`mt-2 text-[11px] ${m.citationStatus === 'verified' ? 'text-emerald-600' : m.citationStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'}`}>
-                      引用状态：{{ pending: '校验中', verified: '已验证', unsupported: '存在未充分支持的陈述', invalid_reference: '包含无效引用编号', unavailable: '校验服务暂不可用' }[m.citationStatus] ?? m.citationStatus}
-                      {m.citationIssues?.length ? `（${m.citationIssues.join('、')}）` : ''}
-                    </div>
-                  )}
-                  {m.role === 'assistant' && m.id && (
-                    <div className="mt-3 pt-2.5 border-t border-ink-100 flex items-center gap-2 text-xs text-ink-500">
-                      <span>这条回答有帮助吗？</span>
-                      <button onClick={() => submitFeedback(i, 'helpful')}
-                        className={`px-2 py-1 rounded transition ${m.feedback === 'helpful' ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-ink-50 hover:text-ink-700'}`}>有帮助</button>
-                      <button onClick={() => setFeedbackTarget(feedbackTarget === i ? null : i)}
-                        className={`px-2 py-1 rounded transition ${m.feedback === 'not_helpful' ? 'bg-rose-50 text-rose-700' : 'hover:bg-ink-50 hover:text-ink-700'}`}>不准确</button>
-                    </div>
-                  )}
-                  {m.role === 'assistant' && m.id && feedbackTarget === i && (
-                    <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                      {[['citation_irrelevant', '引用不相关'], ['factual_error', '内容不准确'], ['too_generic', '太笼统']].map(([reason, label]) => (
-                        <button key={reason} onClick={() => submitFeedback(i, 'not_helpful', reason)}
-                          className="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition">{label}</button>
-                      ))}
-                    </div>
-                  )}
-                  </div>
-                </div>
-                )}
-              </div>
+              <MessageItem
+                key={i}
+                m={m}
+                index={i}
+                isLast={i === messages.length - 1}
+                streaming={streaming}
+                feedbackOpen={feedbackTarget === i}
+                onOptionClick={setInput}
+                onContinue={handleContinue}
+                onFeedback={handleFeedback}
+                onToggleFeedback={handleToggleFeedback}
+              />
             ))}
           </div>
         </div>
@@ -569,6 +521,89 @@ export default function ChatPage() {
     </div>
   );
 }
+
+interface MessageItemProps {
+  m: Msg;
+  index: number;
+  isLast: boolean;
+  streaming: boolean;
+  feedbackOpen: boolean;
+  onOptionClick: (label: string) => void;
+  onContinue: () => void;
+  onFeedback: (index: number, rating: 'helpful' | 'not_helpful', reason?: string) => void;
+  onToggleFeedback: (index: number) => void;
+}
+
+// memo：历史消息 props 按引用稳定即跳过重渲染；流式期间只有最后一条（对象每帧替换）重渲染。
+const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, feedbackOpen, onOptionClick, onContinue, onFeedback, onToggleFeedback }: MessageItemProps) {
+  return (
+    <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      {m.role === 'user' ? (
+        <div className="max-w-[78%] rounded-[15px_15px_5px_15px] px-[17px] py-3 bg-ink-900 text-[#efeeea] text-sm leading-[1.7] shadow-[0_1px_3px_rgba(26,25,23,.18)]">
+          <div className="whitespace-pre-wrap break-words">{m.content}</div>
+        </div>
+      ) : (
+      <div className="w-full max-w-[92%] text-ink-900">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="brand-mark h-[23px] w-[23px] rounded-[7px] flex items-center justify-center text-xs">T</div>
+          <span className="text-[11px] font-bold text-ink-500 tracking-[.12em] uppercase">成长教练</span>
+        </div>
+        <div className="pl-8">
+          <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
+          {streaming && isLast && !m.locked && <span className="stream-caret" aria-hidden="true" />}
+        {m.clarify && (
+          <div className="mt-2 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">
+            ❓ 追问: {m.clarify}
+            {m.clarifyOptions?.length ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {m.clarifyOptions.map(option => (
+                  <button key={option.id} onClick={() => onOptionClick(option.label)}
+                    className="px-2.5 py-1.5 rounded border border-accent-200 bg-white text-accent-700 hover:bg-accent-100 transition">
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+        {m.role === 'assistant' && m.truncated && !streaming && (
+          <div className="mt-2">
+            <button onClick={onContinue}
+              className="px-3 py-1.5 rounded-lg border border-accent-200 bg-accent-50 text-accent-700 text-xs hover:bg-accent-100 transition">
+              回答较长已被截断，点击继续生成 →
+            </button>
+          </div>
+        )}
+        {m.role === 'assistant' && m.memories && m.memories.length > 0 && <MemoryChips memories={m.memories} />}
+        {m.role === 'assistant' && m.citationStatus && m.citationStatus !== 'not_applicable' && (
+          <div className={`mt-2 text-[11px] ${m.citationStatus === 'verified' ? 'text-emerald-600' : m.citationStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'}`}>
+            引用状态：{{ pending: '校验中', verified: '已验证', unsupported: '存在未充分支持的陈述', invalid_reference: '包含无效引用编号', unavailable: '校验服务暂不可用' }[m.citationStatus] ?? m.citationStatus}
+            {m.citationIssues?.length ? `（${m.citationIssues.join('、')}）` : ''}
+          </div>
+        )}
+        {m.role === 'assistant' && m.id && (
+          <div className="mt-3 pt-2.5 border-t border-ink-100 flex items-center gap-2 text-xs text-ink-500">
+            <span>这条回答有帮助吗？</span>
+            <button onClick={() => onFeedback(index, 'helpful')}
+              className={`px-2 py-1 rounded transition ${m.feedback === 'helpful' ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-ink-50 hover:text-ink-700'}`}>有帮助</button>
+            <button onClick={() => onToggleFeedback(index)}
+              className={`px-2 py-1 rounded transition ${m.feedback === 'not_helpful' ? 'bg-rose-50 text-rose-700' : 'hover:bg-ink-50 hover:text-ink-700'}`}>不准确</button>
+          </div>
+        )}
+        {m.role === 'assistant' && m.id && feedbackOpen && (
+          <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
+            {[['citation_irrelevant', '引用不相关'], ['factual_error', '内容不准确'], ['too_generic', '太笼统']].map(([reason, label]) => (
+              <button key={reason} onClick={() => onFeedback(index, 'not_helpful', reason)}
+                className="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition">{label}</button>
+            ))}
+          </div>
+        )}
+        </div>
+      </div>
+      )}
+    </div>
+  );
+});
 
 function MemoryChips({ memories }: { memories: MemoryRef[] }) {
   const [open, setOpen] = useState(false);
