@@ -94,11 +94,14 @@ for (const j of jobs) {
 }
 
 // ============ 3. embedding ============
+// 模型必须与后端 llm.routing.embed 一致(默认 BAAI/bge-m3, 1024 维),
+// 否则种子向量与查询向量不在同一空间, 检索结果失真。
+const EMBED_MODEL = process.env.LLM_MODEL_EMBED || 'BAAI/bge-m3';
 async function embed(texts) {
   const res = await fetch(`${env.SILICONFLOW_BASE_URL}/embeddings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.SILICONFLOW_API_KEY}` },
-    body: JSON.stringify({ model: 'BAAI/bge-m3', input: texts }),
+    body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) throw new Error(`embed HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);

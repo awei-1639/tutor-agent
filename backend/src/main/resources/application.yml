@@ -241,7 +241,9 @@ llm:
     extract: ${LLM_MODEL_EXTRACT:deepseek-chat}
     judge: ${LLM_MODEL_JUDGE:deepseek-chat}
     plan: ${LLM_MODEL_PLAN:deepseek-chat}
-    embed: BAAI/bge-m3
+    # 嵌入向量 1024 维与库表 vector(1024) 强耦合: 换模型 = 迁移列维度 + 全量重嵌, 勿随意改。
+    # 指向非 SiliconFlow 的 OpenAI 兼容端点(如本地 Ollama)时用 SILICONFLOW_BASE_URL 切。
+    embed: ${LLM_MODEL_EMBED:BAAI/bge-m3}
   # 主供应商全部尝试失败后的备用出口，默认关闭 (保持单供应商行为)。
   # 仅承接非流式结构化调用 (router/expert/judge/extract/plan)；流式聊天已发出的
   # token 无法撤回，不在此切换范围内。备用端点须为 OpenAI 兼容接口。
