@@ -1,6 +1,8 @@
 package com.tutor.platform.llm;
 
 import com.tutor.platform.config.LlmProperties;
+import com.tutor.platform.llm.budget.BudgetPressureService;
+import com.tutor.platform.llm.budget.LlmBudgetGuard;
 import com.tutor.platform.text.TokenBudget;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;

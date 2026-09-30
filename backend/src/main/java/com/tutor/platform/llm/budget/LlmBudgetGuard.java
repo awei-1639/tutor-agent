@@ -1,4 +1,4 @@
-package com.tutor.platform.llm;
+package com.tutor.platform.llm.budget;
 
 import com.tutor.platform.config.LlmProperties;
 import org.springframework.dao.EmptyResultDataAccessException;

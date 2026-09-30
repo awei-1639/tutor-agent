@@ -1,4 +1,4 @@
-package com.tutor.platform.llm;
+package com.tutor.platform.llm.budget;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;

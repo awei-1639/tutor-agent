@@ -2,8 +2,8 @@ package com.tutor.conversation.chat.application;
 
 import com.tutor.identity.auth.AuthContext;
 import com.tutor.conversation.chat.application.ChatModels.TurnContext;
-import com.tutor.platform.llm.BudgetExhausted;
-import com.tutor.platform.llm.LlmBudgetGuard;
+import com.tutor.platform.llm.budget.BudgetExhausted;
+import com.tutor.platform.llm.budget.LlmBudgetGuard;
 import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.conversation.memory.policy.MemoryConsentService;
 import com.tutor.identity.profile.ProfileService;

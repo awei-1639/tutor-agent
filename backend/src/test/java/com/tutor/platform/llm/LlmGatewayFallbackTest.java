@@ -2,6 +2,7 @@ package com.tutor.platform.llm;
 
 import com.sun.net.httpserver.HttpServer;
 import com.tutor.platform.config.LlmProperties;
+import com.tutor.platform.llm.budget.LlmBudgetGuard;
 import com.tutor.contract.Purpose;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;

@@ -16,8 +16,8 @@ public record Neo4jProperties(
     }
 
     public static Neo4jProperties defaults() {
-        // 与 application.yml 的 neo4j.resilience.query-timeout-seconds 默认值保持一致。
-        // 2s 在冷启动/内存紧张下被轻易击穿，且熔断层不重试，击穿即静默空结果。
+        // 镜像 application.yml 基线默认值 (query-timeout 5s); 完整取值理由见那里的注释。
+        // 更早的 2s 在冷启动/内存紧张下被轻易击穿，而熔断层只熔断不重试，击穿即静默空结果。
         return new Neo4jProperties(5, 3, 30);
     }
 }

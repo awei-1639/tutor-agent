@@ -193,11 +193,20 @@ neo4j:
   uri: bolt://localhost:7687
   username: neo4j
   password: ${NEO4J_PASSWORD:tutor_dev_only}
+  driver:
+    # 驱动连接层超时, 与下方 resilience.query-timeout(服务端查询预算) 彻底区分。
+    # 获取一条连接可能需先新建(最多耗时 connection-timeout), 故 acquisition >= connection
+    # (Neo4jDriverProperties 会校验); 驱动默认 连接30s/获取60s, 此处收紧但保持该关系。
+    connection-timeout-seconds: ${NEO4J_CONNECTION_TIMEOUT_SECONDS:5}
+    # 权衡: 图扩展是可降级增强, 此值即冷启动/池竞争时单次调用注入 turn 的最坏停顿上限。
+    # 调大=少假空但尾延迟高(偏"等"); 调小=快速降级空结果(偏"跳")。当前 10s 待用检索 eval 校准,
+    # 勿凭直觉改。注意: 该等待不受 turn CancellationToken 约束(另需改造 GraphStore, 不在此)。
+    acquisition-timeout-seconds: ${NEO4J_ACQUISITION_TIMEOUT_SECONDS:10}
+    # 借出前对空闲超过该阈值的连接探活(RESET), 抵消 Neo4j 重启后陈旧连接导致的假失败/假开路。
+    liveness-check-seconds: ${NEO4J_LIVENESS_CHECK_SECONDS:30}
   resilience:
-    # 单一超时值承担三重角色: 客户端事务超时(GraphStore/SkillAlignService)、驱动 TCP
-    # 连接超时、连接池获取超时(LlmConfig)。2s 在冷启动或宿主内存紧张时会被轻易击穿，
-    # 且 Neo4jResilience 只熔断不重试，击穿即静默降级为空结果，故放宽到 5s —— 仍远低于
-    # 驱动库默认(连接 30s/获取 60s)。需要更紧的 SLA 时用 NEO4J_QUERY_TIMEOUT_SECONDS 覆盖。
+    # 仅承担客户端事务超时(GraphStore/SkillAlignService) + 熔断参数。
+    # 5s: 2s 在冷启动/内存紧张下被轻易击穿, 且 Neo4jResilience 只熔断不重试, 击穿即静默降级为空结果。
     query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:5}
     failure-threshold: ${NEO4J_FAILURE_THRESHOLD:3}
     open-seconds: ${NEO4J_OPEN_SECONDS:30}

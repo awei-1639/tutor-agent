@@ -16,11 +16,8 @@ springdoc:
     enabled: false
 
 neo4j:
+  # resilience / driver 超时全部继承 application.yml 基线(单一事实来源), 仅覆盖密码(无默认→快速失败)。
   password: ${NEO4J_PASSWORD}
-  resilience:
-    query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:2}
-    failure-threshold: ${NEO4J_FAILURE_THRESHOLD:3}
-    open-seconds: ${NEO4J_OPEN_SECONDS:30}
 
 security:
   resume-enc-key: ${RESUME_ENC_KEY}
