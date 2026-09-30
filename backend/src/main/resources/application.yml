@@ -14,6 +14,11 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    neo4j:
+      # 关闭自动配置的 Neo4jHealthIndicator, 由 GracefulNeo4jHealthIndicator 取代
+      # (启动宽限, 见 neo4j.health): 后端常先于 Neo4j 容器就绪启动, 避免该窗口误报 DOWN。
+      enabled: false
   metrics:
     tags:
       application: ${spring.application.name}
@@ -193,14 +198,29 @@ neo4j:
   uri: bolt://localhost:7687
   username: neo4j
   password: ${NEO4J_PASSWORD:tutor_dev_only}
+  driver:
+    # 驱动连接层超时, 与下方 resilience.query-timeout(服务端查询预算) 彻底区分。
+    # 获取一条连接可能需先新建(最多耗时 connection-timeout), 故 acquisition >= connection
+    # (Neo4jDriverProperties 会校验); 驱动默认 连接30s/获取60s, 此处收紧但保持该关系。
+    connection-timeout-seconds: ${NEO4J_CONNECTION_TIMEOUT_SECONDS:5}
+    # 权衡: 图扩展是可降级增强, 此值即冷启动/池竞争时单次调用注入 turn 的最坏停顿上限。
+    # 调大=少假空但尾延迟高(偏"等"); 调小=快速降级空结果(偏"跳")。当前 10s 待用检索 eval 校准,
+    # 勿凭直觉改。注意: 该等待不受 turn CancellationToken 约束(另需改造 GraphStore, 不在此)。
+    acquisition-timeout-seconds: ${NEO4J_ACQUISITION_TIMEOUT_SECONDS:10}
+    # 借出前对空闲超过该阈值的连接探活(RESET), 抵消 Neo4j 重启后陈旧连接导致的假失败/假开路。
+    liveness-check-seconds: ${NEO4J_LIVENESS_CHECK_SECONDS:30}
   resilience:
-    # 单一超时值承担三重角色: 客户端事务超时(GraphStore/SkillAlignService)、驱动 TCP
-    # 连接超时、连接池获取超时(LlmConfig)。2s 在冷启动或宿主内存紧张时会被轻易击穿，
-    # 且 Neo4jResilience 只熔断不重试，击穿即静默降级为空结果，故放宽到 5s —— 仍远低于
-    # 驱动库默认(连接 30s/获取 60s)。需要更紧的 SLA 时用 NEO4J_QUERY_TIMEOUT_SECONDS 覆盖。
+    # 仅承担客户端事务超时(GraphStore/SkillAlignService) + 熔断参数。
+    # 5s: 2s 在冷启动/内存紧张下被轻易击穿, 且 Neo4jResilience 只熔断不重试, 击穿即静默降级为空结果。
     query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:5}
     failure-threshold: ${NEO4J_FAILURE_THRESHOLD:3}
     open-seconds: ${NEO4J_OPEN_SECONDS:30}
+  health:
+    # /actuator/health 的启动宽限: 后端常先于 Neo4j 容器就绪启动(Bolt 握手被拒),
+    # 窗口内失败报 UNKNOWN(不拉低整体状态, 详情标记 starting), 窗口外如实报 DOWN。
+    # 120s ≈ Neo4j 容器冷启动实测上限(约 75s)留余量。/readyz 不做宽限(HealthReadinessService),
+    # 编排探针语义不变。
+    startup-grace-seconds: ${NEO4J_HEALTH_STARTUP_GRACE_SECONDS:120}
 
 llm:
   # purpose→model 映射 (实现设计 6.4 模型分级路由), 配置化可整体切换
@@ -221,7 +241,9 @@ llm:
     extract: ${LLM_MODEL_EXTRACT:deepseek-chat}
     judge: ${LLM_MODEL_JUDGE:deepseek-chat}
     plan: ${LLM_MODEL_PLAN:deepseek-chat}
-    embed: BAAI/bge-m3
+    # 嵌入向量 1024 维与库表 vector(1024) 强耦合: 换模型 = 迁移列维度 + 全量重嵌, 勿随意改。
+    # 指向非 SiliconFlow 的 OpenAI 兼容端点(如本地 Ollama)时用 SILICONFLOW_BASE_URL 切。
+    embed: ${LLM_MODEL_EMBED:BAAI/bge-m3}
   # 主供应商全部尝试失败后的备用出口，默认关闭 (保持单供应商行为)。
   # 仅承接非流式结构化调用 (router/expert/judge/extract/plan)；流式聊天已发出的
   # token 无法撤回，不在此切换范围内。备用端点须为 OpenAI 兼容接口。

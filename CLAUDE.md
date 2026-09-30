@@ -66,12 +66,31 @@ Port is **8180**, not 8080. Vite proxies `/api/*` → `http://127.0.0.1:8180` an
 
 ### Module boundaries
 
-`backend/src/main/java/com/tutor/` is organized **by business capability**, not by layer — each of `auth chat context contract expert retrieval memory profile resume plan push interview knowledge eval admin llm guard tool config` owns its controllers, services, and domain logic. Do not add a cross-cutting `common`/`utils` package to dodge a boundary; shared stable types go in `contract`.
+`backend/src/main/java/com/tutor/` is organized **by business capability**, not by layer. Capabilities are grouped under **8 top-level packages**, each owning its controllers, services, and domain logic:
 
-`ArchitectureBoundaryTest` (ArchUnit) enforces three rules that will fail the build:
-- `retrieval..` must not depend on `chat..`
-- `knowledge..` must not depend on `chat..`
-- no `*Controller` may depend on `llm..`
+- `contract` — shared stable types (`Purpose Intent TurnContext Evidence SideEffect ToolSpec CancellationToken ExpertOutput`). The only allowed cross-cutting package; do **not** add a `common`/`utils` package to dodge a boundary.
+- `platform` — lowest layer: `config jobs llm ratelimit scheduling text`
+- `identity` — `admin auth profile resume`
+- `knowledge` — `document retrieval`
+- `conversation` — `chat context memory`
+- `agent` — `expert guard tool`
+- `coaching` — `interview plan push`
+- `evaluation` — `eval`
+
+`ArchitectureBoundaryTest` (`src/test/java/com/tutor/architecture/`, ArchUnit) enforces ~20 rules that will fail the build — run the test for the exact list. The load-bearing ones:
+
+**Direction (dependencies only flow downward):**
+- `knowledge.retrieval..` and `knowledge.document..` must not depend on `conversation.chat..`
+- `platform..` must not depend on `conversation..` (platform is the reusable base)
+- `conversation.memory..` must not depend on `conversation.chat..`
+- no `*Controller` may depend on `platform.llm..`
+- `platform.llm..` interfaces (e.g. `JsonGenerationGateway`) must not depend on the provider SDK (`dev.langchain4j..`)
+
+**Freeze rules (added 2026-09-16, commits #32/#33 — existing violations whitelisted in `KNOWN_*` sets, new ones fail):**
+- `*Service`/`*Worker`/`*Gateway` must not own JDBC (SQL sinks into `@Repository` `*Store` types)
+- `*Controller` must not touch `*Store`/`*Outbox` directly (go through an application service)
+- `coaching`/`evaluation`/`identity` must not reach into another domain's `conversation.memory.local..` or `knowledge.retrieval.vector..` stores
+- `@Repository` beans must not be `final` (CGLIB proxy would fail app startup, invisible to unit tests)
 
 ### Chat turn orchestration
 
@@ -81,15 +100,15 @@ The SSE event contract is public API: `meta`, `stage`, `clarify`, `citation`, `t
 
 ### LLM access
 
-Every model call goes through `llm/LlmGateway` (implements `EmbeddingGateway`, `JsonGenerationGateway`, `StreamingGenerationGateway`, `RerankGateway`, `RetrievalJudge`), keyed by the `contract/Purpose` enum (`CHAT ROUTER EXPERT SUMMARY EXTRACT JUDGE EMBED RERANK PLAN`). Purpose drives model routing, timeout, and input/output token bounds — all configured under `llm.*` in `application.yml` — plus `LlmBudgetGuard` (daily + per-turn caps) and `LlmConcurrencyGate`. Structured JSON output goes through `llm/structured/StructuredOutputService` with schemas in `StructuredSchemaRegistry`.
+Every model call goes through `platform/llm/LlmGateway` (implements `EmbeddingGateway`, `JsonGenerationGateway`, `StreamingGenerationGateway`, `RerankGateway`, `RetrievalJudge`), keyed by the `contract/Purpose` enum (`CHAT ROUTER EXPERT SUMMARY EXTRACT JUDGE EMBED RERANK PLAN`). Purpose drives model routing, timeout, and input/output token bounds — all configured under `llm.*` in `application.yml` — plus `LlmBudgetGuard` (daily + per-turn caps) and `LlmConcurrencyGate`. Structured JSON output goes through `platform/llm/structured/StructuredOutputService` with schemas in `StructuredSchemaRegistry`.
 
 Never call a provider SDK directly from a service; add a purpose or a gateway method instead.
 
 ### Retrieval
 
-`retrieval/fusion/FusedRetriever` combines pgvector dense, pg_trgm sparse, and a whitelisted one-hop Neo4j expansion via RRF, with per-source quotas, graph-score decay, and dedup. Rerank runs **only** for resource-recommendation queries (`ResourceQueryClassifier`). Learning-path queries use `retrieval/agentic/AgenticRetriever`, capped server-side at 3 hops — the LLM may only emit a structured stop/rewrite decision, never a raw graph query. All knobs live under `tutor.retrieval.profile.*`; they are experimental and must be re-calibrated against `evals/rag_testset.json` rather than tuned by intuition.
+`knowledge/retrieval/fusion/FusedRetriever` combines pgvector dense, pg_trgm sparse, and a whitelisted one-hop Neo4j expansion via RRF, with per-source quotas, graph-score decay, and dedup. Rerank runs **only** for resource-recommendation queries (`ResourceQueryClassifier`). Learning-path queries use `knowledge/retrieval/agentic/AgenticRetriever`, capped server-side at 3 hops — the LLM may only emit a structured stop/rewrite decision, never a raw graph query. All knobs live under `tutor.retrieval.profile.*`; they are experimental and must be re-calibrated against `evals/rag_testset.json` rather than tuned by intuition.
 
-`retrieval/resilience/Neo4jResilience` applies a per-query timeout plus an in-process circuit breaker. While open, graph expansion returns empty results and the request continues on PostgreSQL — but `/readyz` still returns 503 so an unready instance is never treated as healthy. `/healthz` is liveness only.
+`knowledge/retrieval/resilience/Neo4jResilience` applies a per-query timeout plus an in-process circuit breaker. While open, graph expansion returns empty results and the request continues on PostgreSQL — but `/readyz` still returns 503 so an unready instance is never treated as healthy. `/healthz` is liveness only.
 
 ### Memory
 
@@ -131,4 +150,4 @@ Retrieval-affecting changes (chunking, embeddings, RRF params, graph relations/q
 
 - `docs/README.md` is the documentation index; `docs/architecture.md` has full request sequence diagrams, `docs/api-reference.md` the endpoint/SSE contract, `docs/operations.md` degradation runbooks, `docs/evaluation.md` the eval gates, `docs/decisions.md` the ADRs (why hybrid retrieval, bounded multi-hop, Mem0-as-enhancement, Neo4j fallback, OSS-for-originals).
 - `scripts/README.md` documents each script's side effects. Scripts must never be a runtime dependency of the backend.
-- Root-level `src/main/java/com/tutor/tool/` is an empty stray directory, not a source root — the backend lives entirely under `backend/`.
+- The backend lives entirely under `backend/`; there is no source root at the repo root.

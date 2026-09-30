@@ -1,4 +1,4 @@
-package com.tutor.platform.llm;
+package com.tutor.platform.llm.budget;
 
 /**
  * 预算压力的最小视图，供上下文规划器在不依赖 llm 包实现的情况下感知全局水位。

@@ -50,7 +50,7 @@ final class DocumentTextExtractor {
                 }
                 if (!content.isBlank()) {
                     if (!pages.isEmpty()) pages.append("\n\n");
-                    pages.append("[第 ").append(page).append(" 页]\n").append(content);
+                    pages.append("[[PAGE:").append(page).append("]]\n").append(content);
                 }
             }
             return pages.toString().strip();

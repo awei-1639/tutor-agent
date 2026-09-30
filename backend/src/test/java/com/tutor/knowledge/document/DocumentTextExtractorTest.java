@@ -43,6 +43,27 @@ class DocumentTextExtractorTest {
     }
 
     @Test
+    void preservesPdfPageMarkersForChunker() throws Exception {
+        try (var document = new org.apache.pdfbox.pdmodel.PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            document.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            document.save(output);
+
+            String extracted = extractor.extract(output.toByteArray(), "guide.pdf");
+            String text = "[[PAGE:1]]\n\n第一页内容。\n\n[[PAGE:2]]\n\n第二页内容。";
+            var chunks = new StructuredChunker().chunk(text, "guide.pdf", 20);
+
+            assertThat(extracted).isNotNull();
+            assertThat(chunks).hasSize(2);
+            assertThat(chunks).extracting(StructuredChunker.Chunk::pageFrom)
+                    .containsExactly(1, 2);
+            assertThat(chunks).allSatisfy(chunk ->
+                    assertThat(chunk.text()).doesNotContain("[[PAGE:", "[第 "));
+        }
+    }
+
+    @Test
     void rejectsMalformedDocx() {
         assertThatThrownBy(() -> extractor.extract("not a docx".getBytes(StandardCharsets.UTF_8), "broken.docx"))
                 .isInstanceOf(IllegalArgumentException.class)

@@ -18,7 +18,7 @@ import com.tutor.contract.Intent;
 import com.tutor.contract.Purpose;
 import com.tutor.agent.expert.Aggregator;
 import com.tutor.agent.expert.ExpertRunner;
-import com.tutor.platform.llm.BudgetPressureService;
+import com.tutor.platform.llm.budget.BudgetPressureService;
 import com.tutor.platform.llm.LlmMessage;
 import com.tutor.platform.llm.LlmStreamHandler;
 import com.tutor.platform.llm.StreamingGenerationGateway;

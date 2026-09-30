@@ -1,6 +1,7 @@
 package com.tutor.platform.llm;
 
 import com.tutor.platform.config.LlmProperties;
+import com.tutor.platform.llm.budget.BudgetPressureService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

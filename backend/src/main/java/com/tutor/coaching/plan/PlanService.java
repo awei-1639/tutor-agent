@@ -1,7 +1,7 @@
 package com.tutor.coaching.plan;
 
 import com.tutor.contract.Purpose;
-import com.tutor.platform.llm.LlmBudgetGuard;
+import com.tutor.platform.llm.budget.LlmBudgetGuard;
 import com.tutor.platform.llm.structured.PlanOutput;
 import com.tutor.platform.llm.structured.StructuredOutputResult;
 import com.tutor.platform.llm.structured.StructuredOutputService;

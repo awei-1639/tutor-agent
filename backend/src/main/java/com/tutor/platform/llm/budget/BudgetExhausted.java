@@ -1,4 +1,4 @@
-package com.tutor.platform.llm;
+package com.tutor.platform.llm.budget;
 
 /** 预算硬上限触发。服务层据此映射稳定的错误码与用户文案，不再透传内部异常消息。 */
 public class BudgetExhausted extends RuntimeException {
