@@ -14,6 +14,11 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    neo4j:
+      # 关闭自动配置的 Neo4jHealthIndicator, 由 GracefulNeo4jHealthIndicator 取代
+      # (启动宽限, 见 neo4j.health): 后端常先于 Neo4j 容器就绪启动, 避免该窗口误报 DOWN。
+      enabled: false
   metrics:
     tags:
       application: ${spring.application.name}
@@ -210,6 +215,12 @@ neo4j:
     query-timeout-seconds: ${NEO4J_QUERY_TIMEOUT_SECONDS:5}
     failure-threshold: ${NEO4J_FAILURE_THRESHOLD:3}
     open-seconds: ${NEO4J_OPEN_SECONDS:30}
+  health:
+    # /actuator/health 的启动宽限: 后端常先于 Neo4j 容器就绪启动(Bolt 握手被拒),
+    # 窗口内失败报 UNKNOWN(不拉低整体状态, 详情标记 starting), 窗口外如实报 DOWN。
+    # 120s ≈ Neo4j 容器冷启动实测上限(约 75s)留余量。/readyz 不做宽限(HealthReadinessService),
+    # 编排探针语义不变。
+    startup-grace-seconds: ${NEO4J_HEALTH_STARTUP_GRACE_SECONDS:120}
 
 llm:
   # purpose→model 映射 (实现设计 6.4 模型分级路由), 配置化可整体切换

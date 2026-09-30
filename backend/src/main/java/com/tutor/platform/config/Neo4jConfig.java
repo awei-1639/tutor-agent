@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * 查询事务超时+熔断参数见 {@link Neo4jProperties}, 连接层超时见 {@link Neo4jDriverProperties}。
  */
 @Configuration
-@EnableConfigurationProperties({Neo4jProperties.class, Neo4jDriverProperties.class})
+@EnableConfigurationProperties({Neo4jProperties.class, Neo4jDriverProperties.class, Neo4jHealthProperties.class})
 public class Neo4jConfig {
 
     @Bean(destroyMethod = "close")
