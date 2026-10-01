@@ -25,7 +25,7 @@
     <jtokkit.version>1.1.0</jtokkit.version>
     <jacoco.version>0.8.15</jacoco.version>
     <springdoc.version>2.8.6</springdoc.version>
-    <opentelemetry.version>1.45.0</opentelemetry.version>
+    <opentelemetry.version>1.66.0</opentelemetry.version>
     <!-- Surefire performs late replacement for the Mockito Java agent. -->
     <argLine/>
   </properties>
