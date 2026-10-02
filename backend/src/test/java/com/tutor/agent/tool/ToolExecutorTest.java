@@ -23,7 +23,7 @@ class ToolExecutorTest {
     @Test
     void validatesAgentInputAndRecordsSuccessfulCall() {
         registry.register(new ToolRegistration(
-                new ToolSpec("echo", Input.class, Duration.ofSeconds(1), true, SideEffect.L0),
+                new ToolSpec("echo", Input.class, Duration.ofSeconds(1), true, SideEffect.L0, "测试工具 echo"),
                 java.util.Set.of("chat"),
                 (input, context) -> ((Input) input).value()));
 
@@ -41,7 +41,7 @@ class ToolExecutorTest {
     @Test
     void rejectsUnauthorizedAgentAndAuditsFailure() {
         registry.register(new ToolRegistration(
-                new ToolSpec("internal", Input.class, Duration.ofSeconds(1), true, SideEffect.L0),
+                new ToolSpec("internal", Input.class, Duration.ofSeconds(1), true, SideEffect.L0, "测试工具 internal"),
                 java.util.Set.of("planner"),
                 (input, context) -> "never"));
 
@@ -55,7 +55,7 @@ class ToolExecutorTest {
     @Test
     void requiresIdempotencyAndConfirmationForSideEffects() {
         registry.register(new ToolRegistration(
-                new ToolSpec("send", Input.class, Duration.ofSeconds(1), false, SideEffect.L2),
+                new ToolSpec("send", Input.class, Duration.ofSeconds(1), false, SideEffect.L2, "测试工具 send"),
                 java.util.Set.of("push"),
                 (input, context) -> "sent"));
         ToolExecutionContext missingKey = new ToolExecutionContext("trace-3", "push", 7, null, false);
@@ -72,7 +72,7 @@ class ToolExecutorTest {
     @Test
     void cancelsTimedOutHandlerAndRecordsTimeout() {
         registry.register(new ToolRegistration(
-                new ToolSpec("slow", Input.class, Duration.ofMillis(20), true, SideEffect.L0),
+                new ToolSpec("slow", Input.class, Duration.ofMillis(20), true, SideEffect.L0, "测试工具 slow"),
                 java.util.Set.of("chat"),
                 (input, context) -> { Thread.sleep(500); return "late"; }));
 
@@ -89,7 +89,7 @@ class ToolExecutorTest {
         MemoryIdempotencyStore store = new MemoryIdempotencyStore();
         ToolExecutor sideEffectExecutor = new ToolExecutor(registry, calls::add, new ObjectMapper(), store);
         registry.register(new ToolRegistration(
-                new ToolSpec("write", Input.class, Duration.ofSeconds(1), false, SideEffect.L1),
+                new ToolSpec("write", Input.class, Duration.ofSeconds(1), false, SideEffect.L1, "测试工具 write"),
                 java.util.Set.of("planner"),
                 (input, context) -> { runs.incrementAndGet(); return "created"; }));
         ToolExecutionContext context = new ToolExecutionContext("trace-6", "planner", 7, "write-1", false);

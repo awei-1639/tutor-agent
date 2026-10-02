@@ -163,6 +163,8 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // 今日剩余额度百分比 (meta 事件携带)；<=20% 时展示提示条，用完时提示恢复时间。
   const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+  // 工具循环进度 (tool 事件携带)：流式回答期间教练正在查询哪块学习状态。
+  const [toolStage, setToolStage] = useState<string | null>(null);
   // 主动记忆：新会话开场透出上次未完成事项；进入具体会话后不再打扰。
   const [openItems, setOpenItems] = useState<string[]>([]);
   const [openItemsDismissed, setOpenItemsDismissed] = useState(false);
@@ -233,6 +235,7 @@ export default function ChatPage() {
     setMessages(m => [...m, userMsg, assistantPlaceholder]);
     setStreaming(true);
     setStage('routing');
+    setToolStage(null);
     setPanelOpen(false); setPinnedKey(null);
 
     const myStreamId = Math.random().toString(36).slice(2);
@@ -251,6 +254,7 @@ export default function ChatPage() {
           if (typeof e.quota_remaining_percent === 'number') setQuotaRemaining(e.quota_remaining_percent);
         },
         onStage: e => setStage(e.expert && e.status ? `${e.phase}:${e.expert}:${e.status}` : e.phase),
+        onTool: e => setToolStage(toolLabel(e.tool)),
         onToken: t => {
           if (activeStreamId.current !== myStreamId) return;
           assistantPlaceholder.tokens = (assistantPlaceholder.tokens ?? '') + t;
@@ -289,7 +293,7 @@ export default function ChatPage() {
             citationIssues: assistantPlaceholder.citationIssues,
             truncated: e.truncated ?? false,
           }, true);
-          setStreaming(false); setStage(null);
+          setStreaming(false); setStage(null); setToolStage(null);
           activeStreamId.current = null;
           // 引用数量 > 0 自动展开右侧面板
           setMessages(m => {
@@ -310,7 +314,7 @@ export default function ChatPage() {
           if (activeStreamId.current !== myStreamId) return;
           if (tokenRafRef.current != null) { cancelAnimationFrame(tokenRafRef.current); tokenRafRef.current = null; }
           turnIdRef.current = null;
-          setStreaming(false); setStage(null);
+          setStreaming(false); setStage(null); setToolStage(null);
           // 错误并入占位气泡而不是另起新消息：避免留下「只有头像没有内容」的空教练块。
           const note = '⚠️ ' + msg;
           assistantPlaceholder.content = assistantPlaceholder.content
@@ -432,7 +436,8 @@ export default function ChatPage() {
               <div className="text-xs text-ink-500 mt-1">你的专属成长教练 · 每条建议均可溯源</div>
             </div>
           </div>
-          <div className="text-xs text-ink-500">
+          <div className="text-xs text-ink-500 flex items-center gap-2">
+            {streaming && toolStage && <span className="inline-flex items-center gap-1.5 bg-ink-900 text-[#f2f1ec] px-2.5 py-1 rounded-full"><span>🔧</span>{toolStage}</span>}
             {streaming && stage && <span className="inline-flex items-center gap-1.5 bg-accent-50 text-accent-700 px-2.5 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse" />{stageLabel(stage)}</span>}
           </div>
         </header>
@@ -643,6 +648,17 @@ function MemoryChips({ memories }: { memories: MemoryRef[] }) {
       )}
     </div>
   );
+}
+
+function toolLabel(tool: string): string {
+  const m: Record<string, string> = {
+    plan_today: '正在查看你的今日计划…',
+    interview_weakness: '正在查看你的面试薄弱项…',
+    learning_progress: '正在查看你的学习进度…',
+    profile_snapshot: '正在回顾你的画像…',
+    retrieve: '正在检索知识库…',
+  };
+  return m[tool] ?? `正在调用工具 ${tool}…`;
 }
 
 function stageLabel(s: string): string {

@@ -221,7 +221,10 @@ final class ChatAnswerStage {
                                       CancellationToken cancellation, ChatTurnService.Claim claim) {
         try {
             ToolCallLoop.LoopResult loopResult = toolCallLoop.run(Purpose.CHAT, messages, traceId,
-                    new ToolExecutionContext(traceId, "chat", context.userId(), null, false));
+                    new ToolExecutionContext(traceId, "chat", context.userId(), traceId + ":chat", false),
+                    (tool, step) -> {
+                        if (!cancellation.isCancelled()) events.onToolCall(tool, step);
+                    });
             completionFinalizer.completeAnswer(loopResult.answer(), intentName, context, question,
                     retrieved.evidences(), assembled.citationIds(), traceId, events, cancellation, claim, false);
             return true;
