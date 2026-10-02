@@ -202,7 +202,6 @@ public class PlanService {
     public boolean hasRecentTasks(long userId) {
         return store.progress(userId).total() > 0;
     }
-    }
 
     public boolean shouldReplan(long userId) {
         PlanStore.PlanProgress progress = store.progress(userId);
