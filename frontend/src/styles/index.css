@@ -104,6 +104,19 @@ body {
 }
 @keyframes caret-blink { 50% { opacity: 0; } }
 
+/* 教练气泡「思考中」三点：首 token 到达前的占位，替代空白 */
+.thinking-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 9999px;
+  background: var(--signal); opacity: .4;
+  animation: thinking-pulse 1.2s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) { animation-delay: .18s; }
+.thinking-dot:nth-child(3) { animation-delay: .36s; }
+@keyframes thinking-pulse {
+  0%, 80%, 100% { opacity: .35; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+
 /* v2: 引用面板卡片 — 左侧信号色条 + 激活色环 */
 .ref-card {
   background: #fff; border: 1px solid var(--line); border-radius: 11px; position: relative;
