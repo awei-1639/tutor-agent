@@ -53,7 +53,7 @@ export default function NotificationsPage() {
 }
 
 function typeLabel(t: string) {
-  return { job_push: '岗位', guide: '学习任务', system: '系统' }[t] ?? t;
+  return { job_push: '岗位', guide: '学习任务', system: '系统', coach_daily: '教练提醒' }[t] ?? t;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

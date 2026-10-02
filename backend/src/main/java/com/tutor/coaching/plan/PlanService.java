@@ -188,6 +188,22 @@ public class PlanService {
                 "completion_rate", Math.round(rate * 100) / 100.0);
     }
 
+    /** 最近一次打卡时间（主动教练断档信号）。 */
+    public java.time.Instant lastCheckinAt(long userId) {
+        return store.lastCheckinAt(userId);
+    }
+
+    /** 近 N 天有计划任务的用户（主动教练遍历范围）。 */
+    public List<Long> planUserIds(int activeDays) {
+        return store.planUserIds(activeDays);
+    }
+
+    /** 近 7 天是否存在计划任务（断档信号的前置条件）。 */
+    public boolean hasRecentTasks(long userId) {
+        return store.progress(userId).total() > 0;
+    }
+    }
+
     public boolean shouldReplan(long userId) {
         PlanStore.PlanProgress progress = store.progress(userId);
         if (progress.total() == 0) return false;
