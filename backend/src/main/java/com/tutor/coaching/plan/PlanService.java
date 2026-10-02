@@ -180,6 +180,14 @@ public class PlanService {
         }
     }
 
+    /** 最近 7 天计划完成度（供学习进度工具只读）。 */
+    public java.util.Map<String, Object> learningProgress(long userId) {
+        PlanStore.PlanProgress progress = store.progress(userId);
+        double rate = progress.total() == 0 ? 0D : (double) progress.done() / progress.total();
+        return java.util.Map.of("done", progress.done(), "total", progress.total(),
+                "completion_rate", Math.round(rate * 100) / 100.0);
+    }
+
     public boolean shouldReplan(long userId) {
         PlanStore.PlanProgress progress = store.progress(userId);
         if (progress.total() == 0) return false;

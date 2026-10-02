@@ -89,6 +89,10 @@ public class ChatController {
                         send(emitter, "meta", payload, cancellation);
                     }
 
+                    @Override public void onToolCall(String tool, int step) {
+                        send(emitter, "tool", java.util.Map.of("tool", tool, "step", step), cancellation);
+                    }
+
                     @Override public void onStage(String phase) {
                         send(emitter, "stage", Map.of("phase", phase), cancellation);
                     }

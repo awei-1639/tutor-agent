@@ -29,6 +29,10 @@ public interface ChatTurnEvents {
     default void onMemories(List<ChatModels.MemoryRef> memories) {
     }
 
+    /** 工具循环内每次实际执行工具前触发（仅 tool-loop 路径）。 */
+    default void onToolCall(String tool, int step) {
+    }
+
     void onToken(String token);
 
     void onClarify(String question);

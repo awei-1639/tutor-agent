@@ -19,12 +19,12 @@ class ToolCallLoopTest {
     @Test
     void executesToolThenReturnsFinalAnswer() {
         ToolRegistry registry = new ToolRegistry();
-        registry.register(new ToolRegistration(new ToolSpec("echo", Input.class, Duration.ofSeconds(1), true, SideEffect.L0),
+        registry.register(new ToolRegistration(new ToolSpec("echo", Input.class, Duration.ofSeconds(1), true, SideEffect.L0, "测试回显工具"),
                 Set.of("chat"), (input, context) -> ((Input) input).value()));
         JsonGenerationGateway gateway = new SequenceGateway(
                 "{\"type\":\"tool_call\",\"tool\":\"echo\",\"arguments\":{\"value\":\"hello\"}}",
                 "{\"type\":\"final\",\"answer\":\"工具返回：hello\"}");
-        ToolCallLoop loop = new ToolCallLoop(gateway, new ToolExecutor(registry, call -> { }, new ObjectMapper()), new ObjectMapper());
+        ToolCallLoop loop = new ToolCallLoop(gateway, new ToolExecutor(registry, call -> { }, new ObjectMapper()), new ObjectMapper(), registry);
 
         ToolCallLoop.LoopResult result = loop.run(Purpose.CHAT, List.of(LlmMessage.user("查询")), "trace-1",
                 new ToolExecutionContext("trace-1", "chat", 7, null, false));
@@ -37,12 +37,12 @@ class ToolCallLoopTest {
     @Test
     void rejectsRepeatedIdenticalToolCall() {
         ToolRegistry registry = new ToolRegistry();
-        registry.register(new ToolRegistration(new ToolSpec("echo", Input.class, Duration.ofSeconds(1), true, SideEffect.L0),
+        registry.register(new ToolRegistration(new ToolSpec("echo", Input.class, Duration.ofSeconds(1), true, SideEffect.L0, "测试回显工具"),
                 Set.of("chat"), (input, context) -> "ok"));
         JsonGenerationGateway gateway = new SequenceGateway(
                 "{\"type\":\"tool_call\",\"tool\":\"echo\",\"arguments\":{\"value\":\"same\"}}",
                 "{\"type\":\"tool_call\",\"tool\":\"echo\",\"arguments\":{\"value\":\"same\"}}");
-        ToolCallLoop loop = new ToolCallLoop(gateway, new ToolExecutor(registry, call -> { }, new ObjectMapper()), new ObjectMapper());
+        ToolCallLoop loop = new ToolCallLoop(gateway, new ToolExecutor(registry, call -> { }, new ObjectMapper()), new ObjectMapper(), registry);
 
         assertThatThrownBy(() -> loop.run(Purpose.CHAT, List.of(), "trace-2",
                 new ToolExecutionContext("trace-2", "chat", 7, null, false)))
@@ -54,7 +54,7 @@ class ToolCallLoopTest {
     void repairsInvalidStructuredOutputBeforeExecutingAnyTool() {
         ToolRegistry registry = new ToolRegistry();
         registry.register(new ToolRegistration(new ToolSpec("echo", Input.class,
-                        Duration.ofSeconds(1), true, SideEffect.L0),
+                        Duration.ofSeconds(1), true, SideEffect.L0, "测试回显工具"),
                 Set.of("chat"), (input, context) -> "should-not-run"));
         JsonGenerationGateway gateway = new SequenceGateway(
                 "{\"type\":\"tool_call\",\"tool\":\"echo\"}",
@@ -62,7 +62,7 @@ class ToolCallLoopTest {
         ToolCallLoop loop = new ToolCallLoop(
                 gateway,
                 new ToolExecutor(registry, call -> { throw new AssertionError("tool must not run"); }, new ObjectMapper()),
-                new ObjectMapper());
+                new ObjectMapper(), registry);
 
         ToolCallLoop.LoopResult result = loop.run(
                 Purpose.CHAT,

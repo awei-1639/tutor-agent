@@ -62,7 +62,7 @@ tutor:
       model-path: ${ROUTING_CALIBRATION_MODEL_PATH:}
   chat:
     rate-limit-per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:20}
-    tool-loop-enabled: ${CHAT_TOOL_LOOP_ENABLED:false}
+    tool-loop-enabled: ${CHAT_TOOL_LOOP_ENABLED:true}
     turn:
       poll-ms: ${CHAT_TURN_POLL_MS:1000}
       lease-renew-ms: ${CHAT_TURN_LEASE_RENEW_MS:30000}

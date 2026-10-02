@@ -8,5 +8,10 @@ public record ToolSpec(
         Class<?> inputSchema,      // 参数校验 (Bean Validation)
         Duration timeout,
         boolean idempotent,        // 决定可否自动重试
-        SideEffect level
-) {}
+        SideEffect level,
+        String description         // 目录注入 prompt 用的人读描述（含参数说明）
+) {
+    public ToolSpec {
+        if (description == null || description.isBlank()) description = name;
+    }
+}

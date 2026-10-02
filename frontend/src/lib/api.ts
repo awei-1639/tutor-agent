@@ -804,6 +804,7 @@ export function streamChat(
   handlers: {
     onMeta?: (e: { conversation_id: number; trace_id: string; turn_id?: string; quota_remaining_percent?: number }) => void;
     onStage?: (e: { phase: string; expert?: string; status?: string; detail?: string }) => void;
+    onTool?: (e: { tool: string; step: number }) => void;
     onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string }) => void;
     onMemories?: (e: { items: MemoryRef[] }) => void;
     onToken?: (text: string, seq?: number) => void;
@@ -852,6 +853,7 @@ export function streamChat(
         try {
           const evt = JSON.parse(m[1]);
           if ('conversation_id' in evt) handlers.onMeta?.(evt);
+          else if ('tool' in evt && 'step' in evt) handlers.onTool?.(evt);
           else if ('phase' in evt) handlers.onStage?.(evt);
           else if ('sid' in evt) handlers.onCitation?.(evt);
           else if ('items' in evt) handlers.onMemories?.(evt);

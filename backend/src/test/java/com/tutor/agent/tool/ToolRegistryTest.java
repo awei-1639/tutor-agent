@@ -14,7 +14,7 @@ class ToolRegistryTest {
     void rejectsDuplicateAndUnknownTools() {
         ToolRegistry registry = new ToolRegistry();
         ToolRegistration registration = new ToolRegistration(
-                new ToolSpec("demo", ToolInputs.Empty.class, Duration.ofSeconds(1), true, SideEffect.L0),
+                new ToolSpec("demo", ToolInputs.Empty.class, Duration.ofSeconds(1), true, SideEffect.L0, "演示工具"),
                 Set.of("chat"),
                 (input, context) -> null);
 
