@@ -1,6 +1,7 @@
 package com.tutor.coaching.plan;
 
 import com.tutor.contract.Purpose;
+import com.tutor.conversation.memory.application.LongTermMemoryService;
 import com.tutor.platform.llm.budget.LlmBudgetGuard;
 import com.tutor.platform.llm.structured.PlanOutput;
 import com.tutor.platform.llm.structured.StructuredOutputResult;
@@ -52,6 +53,7 @@ public class PlanService {
             """;
 
     private final PlanStore store;
+    private LongTermMemoryService longTermMemory;
     private final StructuredOutputService structuredOutputService;
     private volatile LlmBudgetGuard budgetGuard;
     private volatile PlanContextService planContextService;
@@ -59,6 +61,12 @@ public class PlanService {
     public PlanService(PlanStore store, StructuredOutputService structuredOutputService) {
         this.store = store;
         this.structuredOutputService = structuredOutputService;
+    }
+
+    /** Optionally routes plan check-ins into long-term memory as deterministic facts. */
+    @Autowired(required = false)
+    void setLongTermMemory(LongTermMemoryService longTermMemory) {
+        this.longTermMemory = longTermMemory;
     }
 
     /** Optionally attributes plan-generation usage to a user-level budget. */
@@ -154,7 +162,22 @@ public class PlanService {
         if (!store.taskExists(taskId, userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "task 不存在: id=" + taskId);
         }
-        return store.addCheckin(taskId, userId, status, feedback);
+        Checkin checkin = store.addCheckin(taskId, userId, status, feedback);
+        recordCheckinFact(userId, taskId, status);
+        return checkin;
+    }
+
+    /** 打卡回流为长期事实：确定性事件，失败只告警，不阻塞打卡主流程。 */
+    private void recordCheckinFact(long userId, long taskId, String status) {
+        if (longTermMemory == null) return;
+        try {
+            PlanTask task = store.taskById(taskId, userId);
+            if (task != null) {
+                longTermMemory.recordPlanCheckin(userId, task.content(), task.kind(), status);
+            }
+        } catch (RuntimeException error) {
+            log.warn("打卡事实回流失败（不阻塞） user={} task={}: {}", userId, taskId, error.getMessage());
+        }
     }
 
     public boolean shouldReplan(long userId) {

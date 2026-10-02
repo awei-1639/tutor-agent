@@ -2,14 +2,17 @@ package com.tutor.conversation.memory.application;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.tutor.conversation.memory.external.Mem0CircuitBreaker;
 import com.tutor.conversation.memory.external.Mem0Client;
 import com.tutor.conversation.memory.local.EpisodeRecall;
 import com.tutor.conversation.memory.local.EpisodeStore;
+import com.tutor.conversation.memory.local.FactReconciler;
 import com.tutor.conversation.memory.local.FactStore;
 import com.tutor.conversation.memory.policy.MemoryConsentService;
+import com.tutor.platform.llm.structured.FactExtractOutput;
 import com.tutor.conversation.memory.external.MemorySyncOutbox;
 
 import java.time.Instant;
@@ -31,6 +34,7 @@ public class LongTermMemoryService {
     private final MemorySyncOutbox outbox;
     private final FactStore factStore;
     private final MemoryMergePolicy mergePolicy;
+    private FactReconciler factReconciler;
 
     public LongTermMemoryService(EpisodeRecall localRecall, Mem0Client mem0,
                                  MemoryConsentService consent, Mem0CircuitBreaker breaker,
@@ -45,6 +49,12 @@ public class LongTermMemoryService {
         this.outbox = outbox;
         this.factStore = factStore;
         this.mergePolicy = new MemoryMergePolicy(recencyDecayDays);
+    }
+
+    /** 打卡事实回流复用既有消解管线；未注入（如单测旧构造）时功能关闭。 */
+    @Autowired(required = false)
+    void setFactReconciler(FactReconciler factReconciler) {
+        this.factReconciler = factReconciler;
     }
 
     public record RecallResult(List<EpisodeStore.Episode> episodes, boolean degraded) {}
@@ -101,6 +111,23 @@ public class LongTermMemoryService {
      */
     public void remember(long userId, String question, String answer, String traceId) {
         log.debug("Mem0 对话双写已禁用，等待受控记忆同步 user={} trace={}", userId, traceId);
+    }
+
+    /**
+     * 打卡回流：把确定性的计划打卡写成一条长期事实。
+     * 走既有 FactReconciler 准入/去重/取代管线；调用方负责兜底，失败不阻塞打卡主流程。
+     */
+    public void recordPlanCheckin(long userId, String taskContent, String kind, String status) {
+        if (factReconciler == null) return;
+        String action = "done".equalsIgnoreCase(status) ? "完成了今日学习任务"
+                : "skipped".equalsIgnoreCase(status) ? "跳过了今日学习任务"
+                : "打卡了今日学习任务（状态 " + status + "）";
+        var fact = new FactExtractOutput.ExtractedFact(
+                "用户" + action + "「" + taskContent + "」（" + (kind == null ? "practice" : kind) + "）",
+                "done".equalsIgnoreCase(status) ? "skill" : "background", 0.9D);
+        var result = factReconciler.reconcile(userId, consent.currentGeneration(userId), null, List.of(fact));
+        log.info("打卡事实回流 user={} added={} superseded={} duplicates={}",
+                userId, result.added(), result.superseded(), result.duplicates());
     }
 
     public ForgetResult forget(long userId) {
