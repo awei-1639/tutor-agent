@@ -40,6 +40,19 @@ public class NotificationStore {
                 userId, type, payload);
     }
 
+    public List<Long> allUserIds() {
+        return jdbc.queryForList("SELECT id FROM users ORDER BY id", Long.class);
+    }
+
+    /** 主动教练每用户每日至多一条。 */
+    public boolean coachSentToday(long userId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT count(*) FROM notifications WHERE user_id=? AND type='coach_daily' "
+                        + "AND created_at >= current_date",
+                Integer.class, userId);
+        return count != null && count > 0;
+    }
+
     public boolean hasUnreadGuide(long userId) {
         Integer count = jdbc.queryForObject(
                 "SELECT count(*) FROM notifications WHERE user_id=? AND type='guide' AND NOT read",

@@ -149,6 +149,18 @@ class PlanStore {
         return new Checkin(id, taskId, status, feedback);
     }
 
+    java.time.Instant lastCheckinAt(long userId) {
+        return jdbc.queryForObject(
+                "SELECT max(checked_at) FROM checkins WHERE user_id=?",
+                java.time.Instant.class, userId);
+    }
+
+    List<Long> planUserIds(int activeDays) {
+        return jdbc.queryForList(
+                "SELECT DISTINCT user_id FROM plan_tasks WHERE day >= current_date - ? ORDER BY user_id",
+                Long.class, activeDays);
+    }
+
     PlanProgress progress(long userId) {
         return jdbc.queryForObject("""
                 SELECT

@@ -35,6 +35,7 @@ public class LongTermMemoryService {
     private final FactStore factStore;
     private final MemoryMergePolicy mergePolicy;
     private FactReconciler factReconciler;
+    private EpisodeStore episodeStore;
 
     public LongTermMemoryService(EpisodeRecall localRecall, Mem0Client mem0,
                                  MemoryConsentService consent, Mem0CircuitBreaker breaker,
@@ -55,6 +56,16 @@ public class LongTermMemoryService {
     @Autowired(required = false)
     void setFactReconciler(FactReconciler factReconciler) {
         this.factReconciler = factReconciler;
+    }
+
+    /** 主动教练信号：最近有效记忆中的未决事项（只读桥接；未注入时返回空）。 */
+    @Autowired(required = false)
+    void setEpisodeStore(EpisodeStore episodeStore) {
+        this.episodeStore = episodeStore;
+    }
+
+    public List<String> recentOpenItems(long userId, int limit) {
+        return episodeStore == null ? List.of() : episodeStore.openItemsByUser(userId, limit);
     }
 
     public record RecallResult(List<EpisodeStore.Episode> episodes, boolean degraded) {}
