@@ -311,7 +311,11 @@ export default function ChatPage() {
           if (tokenRafRef.current != null) { cancelAnimationFrame(tokenRafRef.current); tokenRafRef.current = null; }
           turnIdRef.current = null;
           setStreaming(false); setStage(null);
-          setMessages(m => [...m, { role: 'assistant', content: '⚠️ ' + msg }]);
+          // 错误并入占位气泡而不是另起新消息：避免留下「只有头像没有内容」的空教练块。
+          const note = '⚠️ ' + msg;
+          assistantPlaceholder.content = assistantPlaceholder.content
+            ? `${assistantPlaceholder.content}\n\n${note}` : note;
+          patchLast({ content: assistantPlaceholder.content, locked: true }, true);
         },
       }
     );
@@ -536,6 +540,10 @@ interface MessageItemProps {
 
 // memo：历史消息 props 按引用稳定即跳过重渲染；流式期间只有最后一条（对象每帧替换）重渲染。
 const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, feedbackOpen, onOptionClick, onContinue, onFeedback, onToggleFeedback }: MessageItemProps) {
+  // 失败/中断会留下零内容的教练消息（历史里也有）：只渲染头像+名字的空壳很突兀，直接隐藏。
+  const isEmptyAssistant = m.role === 'assistant' && !m.content && !m.clarify
+    && !(m.citations && m.citations.length > 0) && !(m.memories && m.memories.length > 0);
+  if (isEmptyAssistant && !(streaming && isLast)) return null;
   return (
     <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       {m.role === 'user' ? (
@@ -549,8 +557,14 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           <span className="text-[11px] font-bold text-ink-500 tracking-[.12em] uppercase">成长教练</span>
         </div>
         <div className="pl-8">
-          <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
-          {streaming && isLast && !m.locked && <span className="stream-caret" aria-hidden="true" />}
+          {m.content ? (
+            <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
+          ) : (
+            <div className="flex items-center gap-1.5 py-2" role="status" aria-label="教练正在思考">
+              <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
+            </div>
+          )}
+          {streaming && isLast && !m.locked && m.content && <span className="stream-caret" aria-hidden="true" />}
         {m.clarify && (
           <div className="mt-2 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">
             ❓ 追问: {m.clarify}
