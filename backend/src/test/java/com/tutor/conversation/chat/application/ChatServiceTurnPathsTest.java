@@ -189,7 +189,7 @@ class ChatServiceTurnPathsTest {
         ChatServiceFixture fixture = new ChatServiceFixture();
         fixture.routeAsDirectChat();
         com.tutor.agent.tool.ToolCallLoop loop = org.mockito.Mockito.mock(com.tutor.agent.tool.ToolCallLoop.class);
-        org.mockito.Mockito.when(loop.run(any(), any(), anyString(), any()))
+        org.mockito.Mockito.when(loop.run(any(), any(), anyString(), any(), any()))
                 .thenReturn(new com.tutor.agent.tool.ToolCallLoop.LoopResult("工具回答", 1, List.of("retrieve")));
         AuthContext.set(ChatServiceFixture.USER_ID);
 
@@ -208,7 +208,7 @@ class ChatServiceTurnPathsTest {
         fixture.routeAsDirectChat();
         streamAnswer(fixture, "流式兜底回答");
         com.tutor.agent.tool.ToolCallLoop loop = org.mockito.Mockito.mock(com.tutor.agent.tool.ToolCallLoop.class);
-        org.mockito.Mockito.when(loop.run(any(), any(), anyString(), any()))
+        org.mockito.Mockito.when(loop.run(any(), any(), anyString(), any(), any()))
                 .thenThrow(new IllegalStateException("loop exceeded steps"));
         AuthContext.set(ChatServiceFixture.USER_ID);
 
