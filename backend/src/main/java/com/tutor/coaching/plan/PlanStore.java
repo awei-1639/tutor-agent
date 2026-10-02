@@ -133,6 +133,15 @@ class PlanStore {
         return exists != null && exists > 0;
     }
 
+    PlanTask taskById(long taskId, long userId) {
+        return jdbc.query(
+                "SELECT id, plan_id, day, content, kind, estimated_minutes, evidence_hint FROM plan_tasks "
+                        + "WHERE id=? AND user_id=?",
+                (rs, i) -> new PlanTask(rs.getLong(1), rs.getLong(2), rs.getDate(3).toLocalDate(),
+                        rs.getString(4), rs.getString(5), rs.getInt(6), rs.getString(7)),
+                taskId, userId).stream().findFirst().orElse(null);
+    }
+
     Checkin addCheckin(long taskId, long userId, String status, String feedback) {
         long id = jdbc.queryForObject(
                 "INSERT INTO checkins (task_id, user_id, status, feedback) VALUES (?,?,?,?) RETURNING id",
