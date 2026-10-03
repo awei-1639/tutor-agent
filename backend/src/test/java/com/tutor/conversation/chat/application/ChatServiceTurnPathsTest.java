@@ -1,5 +1,6 @@
 package com.tutor.conversation.chat.application;
 
+import com.tutor.conversation.memory.local.ConversationStore;
 import com.tutor.identity.auth.AuthContext;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
@@ -220,6 +221,32 @@ class ChatServiceTurnPathsTest {
         assertThat(events.errors).isEmpty();
     }
 
+    @Test
+    void pendingClarifyFollowUpProceedsWithBestIntentInsteadOfSecondClarify() {
+        ChatServiceFixture fixture = new ChatServiceFixture();
+        fixture.routeAsCompetingIntents();
+        org.mockito.Mockito.when(fixture.conversations.clarificationState(ChatServiceFixture.CONVERSATION_ID))
+                .thenReturn(new ConversationStore.ClarificationState(true, "resume",
+                        java.time.Instant.now().plusSeconds(600)));
+        fixture.stubRetrieval(List.of(evidence("skill:resume")));
+        fixture.stubExpertFanOut(
+                List.of(new com.tutor.contract.ExpertOutput("resume", "基于你的背景给出的简历建议", 0.9D, List.of("skill:resume"))),
+                "简历建议");
+        AuthContext.set(ChatServiceFixture.USER_ID);
+
+        RecordingEvents events = new RecordingEvents();
+        fixture.build().turn(null, "本科，Java，做过agent项目，做过传统系统，广州附近", events);
+
+        // 回答澄清后不得再次追问：必须按最优意图推进并给出回答。
+        assertThat(events.clarifies).isEmpty();
+        assertThat(events.done).isTrue();
+        assertThat(events.tokens).contains("简历建议");
+        // 路由提示带上了挂起澄清的原任务方向。
+        verify(fixture.router).routeDecision(anyString(),
+                argThat(context -> context.stream().anyMatch(line -> line.contains("原任务方向：resume"))),
+                anyString());
+    }
+
     private static void streamAnswer(ChatServiceFixture fixture, String answer) {
         doAnswer(invocation -> {
             LlmStreamHandler handler = invocation.getArgument(3);
@@ -236,6 +263,7 @@ class ChatServiceTurnPathsTest {
     private static final class RecordingEvents implements ChatTurnEvents {
         final List<String> stages = new ArrayList<>();
         final List<String> errors = new ArrayList<>();
+        final List<String> clarifies = new ArrayList<>();
         final StringBuilder tokens = new StringBuilder();
         int citationCount;
         int metaCalls;
@@ -245,7 +273,7 @@ class ChatServiceTurnPathsTest {
         @Override public void onStage(String phase) { stages.add(phase); }
         @Override public void onCitations(List<Evidence> evidences) { citationCount = evidences.size(); }
         @Override public void onToken(String token) { tokens.append(token); }
-        @Override public void onClarify(String question) { }
+        @Override public void onClarify(String question) { clarifies.add(question); }
         @Override public void onDone(long messageId, String fullText) { done = true; }
         @Override public void onError(String message) { errors.add(message); }
     }

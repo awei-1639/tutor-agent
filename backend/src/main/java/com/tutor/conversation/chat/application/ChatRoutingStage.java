@@ -57,7 +57,10 @@ final class ChatRoutingStage {
                 context.recentWindow(), executionQuestion);
         if (context.clarificationState().pending()) {
             recentUser = new ArrayList<>(recentUser);
-            recentUser.add("系统提示：当前用户回复可能是在回答上一轮澄清问题，请优先结合该澄清上下文理解。");
+            String pendingIntent = context.clarificationState().intent();
+            recentUser.add("系统提示：用户正在回答上一轮的澄清问题（原任务方向："
+                    + (pendingIntent == null ? "未记录" : pendingIntent)
+                    + "）。请把本条回复理解为对该澄清的回答，优先延续原任务方向，不要再次要求澄清。");
         }
         IntentRouter.RouteDecision decision = router.routeDecision(executionQuestion, recentUser, traceId);
         if (decision == null) throw new IllegalStateException("路由决策不能为空");

@@ -139,6 +139,13 @@ final class ChatServiceFixture {
                 IntentRouter.RetrievalHint.NONE, 1D, 1D, List.of("test"), false));
     }
 
+    /** 领域内低置信度 + 竞争意图 → RoutingPolicy 会触发澄清（用于验证追问链深度上限）。 */
+    void routeAsCompetingIntents() {
+        when(router.routeDecision(anyString(), any(), anyString())).thenReturn(new IntentRouter.RouteDecision(
+                IntentRouter.Scope.IN_SCOPE, Intent.RESUME, List.of(Intent.RESUME, Intent.INTERVIEW), List.of(),
+                IntentRouter.RetrievalHint.SINGLE, 0.5D, 0.45D, List.of("MODEL_COMPETING_INTENT"), false));
+    }
+
     /** 领域内 RESUME → 触发专家扇出与仲裁。 */
     void routeAsResumeExpert() {
         when(router.routeDecision(anyString(), any(), anyString())).thenReturn(new IntentRouter.RouteDecision(
