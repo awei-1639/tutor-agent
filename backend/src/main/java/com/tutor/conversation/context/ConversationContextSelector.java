@@ -103,12 +103,12 @@ public final class ConversationContextSelector {
                 recentUsers.add(0, message.content);
             }
         }
-        if (!needsContextAnchor(question)) return List.copyOf(recentUsers);
-
+        // 最新助手回复始终作为锚点：教练的上一轮承诺/追问（如「把背景发我，我帮你定位岗位方向」）
+        // 是理解用户回答意图的关键。线上案例：用户按承诺补了背景，路由器因看不到承诺而误判多意图再次追问。
         String anchor = latestAssistantReply(history);
         if (anchor != null) {
             List<String> result = new ArrayList<>(recentUsers);
-            result.add("[相关上一轮回复] " + anchor);
+            result.add("[相关上一轮回复] " + truncate(anchor, MAX_CONTEXT_ANCHOR_CHARS));
             return List.copyOf(result);
         }
         return List.copyOf(recentUsers);
