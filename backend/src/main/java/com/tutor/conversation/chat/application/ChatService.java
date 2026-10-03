@@ -160,7 +160,10 @@ public class ChatService {
 
             state = state.withRouting(routingStage.route(
                     state.executionQuestion(), state.context(), traceId, events));
-            if (routingPolicy.shouldClarify(state.routed().decision())) {
+            // 追问链深度上限：用户回答澄清后必须按最优意图推进，
+            // 否则「回答背景 → 再问优先级 → …」会让澄清链条永不收敛。
+            boolean clarifyFollowUp = state.context().clarificationState().pending();
+            if (!clarifyFollowUp && routingPolicy.shouldClarify(state.routed().decision())) {
                 completionFinalizer.completeClarification(state.context(), state.originalQuestion(),
                         routingPolicy.clarificationQuestion(state.routed().decision()),
                         routingPolicy.clarificationOptions(state.routed().decision()),
