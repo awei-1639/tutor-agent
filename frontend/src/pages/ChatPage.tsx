@@ -564,7 +564,7 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
         <div className="pl-8">
           {m.content ? (
             <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
-          ) : (
+          ) : m.clarify ? null : (
             <div className="flex items-center gap-1.5 py-2" role="status" aria-label="教练正在思考">
               <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
             </div>
