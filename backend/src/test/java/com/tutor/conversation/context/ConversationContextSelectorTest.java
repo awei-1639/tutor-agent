@@ -68,14 +68,29 @@ class ConversationContextSelectorTest {
     }
 
     @Test
-    void keepsRouterContextMinimalForNormalQuestions() {
+    void anchorsRouterContextWithLatestAssistantReply() {
         List<ConversationStore.Msg> history = List.of(
                 new ConversationStore.Msg(1, "user", "我想学习 Java"),
                 new ConversationStore.Msg(2, "assistant", "可以从基础开始"),
                 new ConversationStore.Msg(3, "user", "请制定学习计划"));
 
+        // 最新助手回复始终作为锚点：教练的承诺/追问是理解用户回答意图的关键。
         assertThat(ConversationContextSelector.routerContext(history, "分析后端岗位"))
-                .containsExactly("我想学习 Java", "请制定学习计划");
+                .containsExactly("我想学习 Java", "请制定学习计划",
+                        "[相关上一轮回复] 可以从基础开始");
+    }
+
+    @Test
+    void truncatesOverlongAssistantAnchor() {
+        String longReply = "很长的回答".repeat(200);
+        List<ConversationStore.Msg> history = List.of(
+                new ConversationStore.Msg(1, "user", "帮我看看简历"),
+                new ConversationStore.Msg(2, "assistant", longReply),
+                new ConversationStore.Msg(3, "user", "本科，Java，做过agent项目"));
+
+        List<String> context = ConversationContextSelector.routerContext(history, "分析后端岗位");
+        assertThat(context).hasSize(3);
+        assertThat(context.get(2)).startsWith("[相关上一轮回复] ").hasSizeLessThanOrEqualTo(700);
     }
 
     @Test
