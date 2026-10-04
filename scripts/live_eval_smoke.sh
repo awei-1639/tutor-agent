@@ -78,7 +78,8 @@ fi
 
 for _ in $(seq 1 300); do
   detail=$(curl --noproxy '*' -sS "http://127.0.0.1:8180/internal/evals/$run_id")
-  status=$(printf '%s' "$detail" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
+  # detail 里嵌套的 qualityGate.status (如 "sample_only") 会干扰匹配, 只取首个顶层 status。
+  status=$(printf '%s' "$detail" | grep -oE '"status" *: *"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')
   echo "POLL status=$status"
   if [ "$status" = "completed" ] || [ "$status" = "failed" ]; then
     echo "$detail"
