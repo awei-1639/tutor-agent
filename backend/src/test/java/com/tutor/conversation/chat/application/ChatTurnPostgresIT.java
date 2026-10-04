@@ -119,7 +119,7 @@ class ChatTurnPostgresIT {
         Map<String, Object> dead = jdbc.queryForMap(
                 "SELECT status, last_error FROM chat_turns WHERE id=?::uuid", turn.id());
         assertThat(dead.get("status")).isEqualTo("FAILED");
-        assertThat(dead.get("last_error")).isEqualTo("任务租约已耗尽");
+        assertThat(dead.get("last_error")).isEqualTo("任务租约已耗尽，未能恢复");
         // 死信释放了单飞槽位, 用户可以继续发起新一轮对话。
         assertThatCode(() -> turns.submit(userId, conversationId, "request-after", "新问题", "trace-after"))
                 .doesNotThrowAnyException();
