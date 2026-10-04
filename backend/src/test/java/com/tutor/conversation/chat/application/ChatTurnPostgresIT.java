@@ -16,9 +16,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
@@ -84,6 +86,35 @@ class ChatTurnPostgresIT {
                 "not_applicable", "[]")).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM messages WHERE chat_turn_id=?::uuid AND role='assistant'",
                 Long.class, turn.id())).isEqualTo(0L);
+    }
+
+    @Test
+    void expiredLeaseIsRetakenThenExhaustedLeasesDeadLetter() {
+        long userId = insertUser();
+        long conversationId = insertConversation(userId);
+        ChatTurnService.Turn turn = turns.submit(userId, conversationId, "request-crash", "问题", "trace-crash");
+
+        // 崩溃 worker 的过期 RUNNING 租约可被接管, attempts 递增并换发围栏。
+        ChatTurnJobStore jobs = new ChatTurnJobStore(jdbc, new com.tutor.platform.jobs.LeasedJobQueue(jdbc));
+        for (int taken = 1; taken <= 3; taken++) {
+            var claim = jobs.claimNext();
+            assertThat(claim).as("第 %d 次领取", taken).isPresent();
+            assertThat(claim.get().id()).isEqualTo(turn.id());
+            assertThat(claim.get().attempts()).isEqualTo(taken);
+            jdbc.update("UPDATE chat_turns SET lease_until=now() - interval '1 second' WHERE id=?::uuid", turn.id());
+        }
+        // 重试上限耗尽后不再可领取。
+        assertThat(jobs.claimNext()).isEmpty();
+
+        // 死信清扫: 卡死的 RUNNING 行置为 FAILED, 否则用户的单飞槽位被永久占用。
+        jobs.expireExhaustedLeases();
+        Map<String, Object> dead = jdbc.queryForMap(
+                "SELECT status, last_error FROM chat_turns WHERE id=?::uuid", turn.id());
+        assertThat(dead.get("status")).isEqualTo("FAILED");
+        assertThat(dead.get("last_error")).isEqualTo("任务租约已耗尽");
+        // 死信释放了单飞槽位, 用户可以继续发起新一轮对话。
+        assertThatCode(() -> turns.submit(userId, conversationId, "request-after", "新问题", "trace-after"))
+                .doesNotThrowAnyException();
     }
 
     private long insertUser() {
