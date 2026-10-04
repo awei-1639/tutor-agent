@@ -597,13 +597,13 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           </div>
         )}
         {m.role === 'assistant' && m.memories && m.memories.length > 0 && <MemoryChips memories={m.memories} />}
-        {m.role === 'assistant' && clarifyText == null && m.citationStatus && m.citationStatus !== 'not_applicable' && (
+        {m.role === 'assistant' && clarifyText == null && !m.clarify && m.citationStatus && m.citationStatus !== 'not_applicable' && (
           <div className={`mt-2 text-[11px] ${m.citationStatus === 'verified' ? 'text-emerald-600' : m.citationStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'}`}>
             引用状态：{{ pending: '校验中', verified: '已验证', unsupported: '存在未充分支持的陈述', invalid_reference: '包含无效引用编号', unavailable: '校验服务暂不可用' }[m.citationStatus] ?? m.citationStatus}
             {m.citationIssues?.length ? `（${m.citationIssues.join('、')}）` : ''}
           </div>
         )}
-        {m.role === 'assistant' && m.id && clarifyText == null && (
+        {m.role === 'assistant' && m.id && clarifyText == null && !m.clarify && (
           <div className="mt-3 pt-2.5 border-t border-ink-100 flex items-center gap-2 text-xs text-ink-500">
             <span>这条回答有帮助吗？</span>
             <button onClick={() => onFeedback(index, 'helpful')}
@@ -612,7 +612,7 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
               className={`px-2 py-1 rounded transition ${m.feedback === 'not_helpful' ? 'bg-rose-50 text-rose-700' : 'hover:bg-ink-50 hover:text-ink-700'}`}>不准确</button>
           </div>
         )}
-        {m.role === 'assistant' && m.id && feedbackOpen && clarifyText == null && (
+        {m.role === 'assistant' && m.id && feedbackOpen && clarifyText == null && !m.clarify && (
           <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
             {[['citation_irrelevant', '引用不相关'], ['factual_error', '内容不准确'], ['too_generic', '太笼统']].map(([reason, label]) => (
               <button key={reason} onClick={() => onFeedback(index, 'not_helpful', reason)}

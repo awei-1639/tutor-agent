@@ -98,6 +98,18 @@ class RoutingPolicyTest {
     }
 
     @Test
+    void wideMarginCompetingIntentAnswersDirectlyDespiteReasonCode() {
+        // 线上案例：「推荐一个可做的实战项目」0.72 vs 次优 0.25 差距悬殊，
+        // 即使模型自报竞争意图也按主意图直接回答，不再追问。
+        var decision = new IntentRouter.RouteDecision(
+                IntentRouter.Scope.IN_SCOPE, Intent.PLANNING, List.of(Intent.PLANNING),
+                List.of(RoutingPolicy.RetrievalFacet.LEARNING), IntentRouter.RetrievalHint.MULTI_CANDIDATE,
+                0.72, null, 0.25, List.of("MODEL_COMPETING_INTENT"), false);
+
+        assertThat(policy.shouldClarify(decision)).isFalse();
+    }
+
+    @Test
     void highConfidenceCompetingIntentKeepsSingleHopWithoutClarification() {
         var decision = new IntentRouter.RouteDecision(
                 IntentRouter.Scope.IN_SCOPE, Intent.PLANNING, List.of(Intent.PLANNING),
