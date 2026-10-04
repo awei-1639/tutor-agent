@@ -17,3 +17,16 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # React 19 是 major 迁移（@types 破坏 + 13 页面适配 + e2e 回归），需专门排期，
+      # 评论式 ignore 对本仓库不生效（#14 被忽略后 dependabot 又开了 #44/#51）。
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      # Tailwind v4 配置模型重写（CSS-first、postcss 插件更换），#17 关闭时结论。
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 是 Go 原生重写，属工具链迁移而非 bump，#16 关闭时结论。
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
