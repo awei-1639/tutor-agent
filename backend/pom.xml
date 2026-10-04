@@ -109,7 +109,7 @@
     <dependency>
       <groupId>org.neo4j.driver</groupId>
       <artifactId>neo4j-java-driver</artifactId>
-      <version>5.28.0</version>
+      <version>6.3.0</version>
     </dependency>
     <!-- 阿里云 OSS：知识库原文件私有存储，应用服务端持有访问凭证。 -->
     <dependency>
