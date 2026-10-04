@@ -126,8 +126,8 @@ class InterviewTurnJobsPostgresIT {
 
     private String insertSession(long userId) {
         return jdbc.queryForObject("""
-                INSERT INTO interview_sessions (id, user_id, topic, status, current_question_sequence)
-                VALUES (?, ?, 'Java 后端', 'IN_PROGRESS', 1) RETURNING id
+                INSERT INTO interview_sessions (id, user_id, topic, status, current_question_sequence, deadline_at)
+                VALUES (?, ?, 'Java 后端', 'IN_PROGRESS', 1, now() + interval '1 day') RETURNING id
                 """, String.class, UUID.randomUUID().toString(), userId);
     }
 }

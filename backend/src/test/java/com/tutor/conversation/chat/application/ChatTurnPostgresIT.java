@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -53,6 +54,13 @@ class ChatTurnPostgresIT {
     void close() {
         if (turns != null) turns.shutdown();
         if (metrics != null) metrics.close();
+    }
+
+    @BeforeEach
+    void clean() {
+        // chat_turns 的领取按 created_at 全表排序, 测试间必须清场,
+        // 否则上一个测试遗留的 ACCEPTED turn 会被本测试的 claimNext 领走。
+        jdbc.update("TRUNCATE chat_turns, messages, conversations, users RESTART IDENTITY CASCADE");
     }
 
     @Test

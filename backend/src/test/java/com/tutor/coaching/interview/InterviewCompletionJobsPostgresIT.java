@@ -120,8 +120,8 @@ class InterviewCompletionJobsPostgresIT {
 
     private String insertSession(long userId) {
         return jdbc.queryForObject("""
-                INSERT INTO interview_sessions (id, user_id, topic, status, current_question_sequence)
-                VALUES (?, ?, '系统设计', 'COMPLETED', 5) RETURNING id
+                INSERT INTO interview_sessions (id, user_id, topic, status, current_question_sequence, deadline_at)
+                VALUES (?, ?, '系统设计', 'COMPLETED', 5, now() + interval '1 day') RETURNING id
                 """, String.class, UUID.randomUUID().toString(), userId);
     }
 }
