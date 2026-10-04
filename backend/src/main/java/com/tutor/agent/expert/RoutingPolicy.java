@@ -63,16 +63,22 @@ public class RoutingPolicy {
         this.intentMarginThreshold = intentMarginThreshold;
     }
 
-    /** 中等置信度且存在竞争意图时先澄清，避免用猜测驱动检索和专家扇出。 */
+    /**
+     * 仅当「与次优意图的差距很小」时先澄清，避免用猜测驱动检索和专家扇出。
+     * 差距悬殊（如线上案例 0.72 vs 0.25）说明主意图明确：模型自报的竞争/歧义标记
+     * 与数值差距矛盾时，以数值差距为准，按主意图直接回答——
+     * 否则「推荐一个可做的实战项目」这类清晰请求会被追问简历/面试/规划。
+     * 次选置信度未知（null）时保留历史行为：高置信度（≥clarification 阈值）直接回答，
+     * 低置信度仍由 MODEL_AMBIGUITY/MODEL_COMPETING_INTENT 触发澄清。
+     */
     public boolean shouldClarify(IntentRouter.RouteDecision decision) {
         if (decision == null || decision.scope() != IntentRouter.Scope.IN_SCOPE || decision.degraded()) {
             return false;
         }
-        if (decision.confidence() >= clarificationConfidenceThreshold) {
-            return hasNarrowIntentMargin(decision);
-        }
-        return hasNarrowIntentMargin(decision)
-                || decision.reasonCodes().contains("MODEL_AMBIGUITY")
+        if (hasNarrowIntentMargin(decision)) return true;
+        if (decision.alternativeConfidence() != null) return false;
+        if (decision.confidence() >= clarificationConfidenceThreshold) return false;
+        return decision.reasonCodes().contains("MODEL_AMBIGUITY")
                 || decision.reasonCodes().contains("MODEL_COMPETING_INTENT");
     }
 
