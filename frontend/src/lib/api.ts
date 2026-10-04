@@ -26,6 +26,15 @@ export function clearToken() {
   localStorage.removeItem('tutor_user_role');
 }
 
+/**
+ * 会话彻底失效（静默续期也失败）：清掉本地会话提示并回登录页，
+ * 而不是把 401 留在当前页面里让用户面对一个再也答不动的教练。
+ */
+function redirectToLoginOnExpiredSession(): void {
+  clearToken();
+  window.location.assign('/login');
+}
+
 export function getUserId(): number {
   const v = localStorage.getItem('tutor_user_id');
   return v ? Number(v) : 0;
@@ -127,6 +136,8 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
       headers.set('X-CSRF-Token', csrfToken() ?? '');
       res = await fetch(BASE + path, { ...opts, headers, credentials: 'same-origin' });
     }
+    // 静默续期也无法恢复：会话彻底失效，回登录页。
+    if (res.status === 401) redirectToLoginOnExpiredSession();
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -815,7 +826,7 @@ export function streamChat(
   }
 ) {
   const ctrl = new AbortController();
-  fetch(BASE + '/chat', {
+  const options: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -826,12 +837,21 @@ export function streamChat(
     credentials: 'same-origin',
     body: JSON.stringify(body),
     signal: ctrl.signal,
-  }).then(async (res) => {
-    if (!res.ok || !res.body) {
-      handlers.onError?.(toUserMessage(new ApiError('/chat', res.status), '对话暂时无法完成，请稍后重试。'));
+  };
+  fetch(BASE + '/chat', options).then(async (res) => {
+    // access token 过期：静默续期后原地重发（同 requestId 幂等，不会重复入队）。
+    let final = res;
+    if (final.status === 401 && (await refreshSession())) {
+      options.headers = { ...options.headers, 'X-CSRF-Token': csrfToken() ?? '' };
+      final = await fetch(BASE + '/chat', options);
+    }
+    if (!final.ok || !final.body) {
+      // 续期也失败：会话彻底失效，回登录页而不是把 401 留在气泡里。
+      if (final.status === 401) redirectToLoginOnExpiredSession();
+      handlers.onError?.(toUserMessage(new ApiError('/chat', final.status), '对话暂时无法完成，请稍后重试。'));
       return;
     }
-    const reader = res.body.getReader();
+    const reader = final.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
     let nextTokenSequence = 0;
