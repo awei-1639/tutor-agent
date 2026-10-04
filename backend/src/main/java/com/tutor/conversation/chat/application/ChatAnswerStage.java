@@ -136,8 +136,9 @@ final class ChatAnswerStage {
                         if (!cancellation.isCancelled()) events.onToken(token);
                     }
 
+                    // 澄清不在此处转发：onComplete(clarified=true) 统一走 completeClarification，
+                    // 由它落库（intent=clarify）、设置挂起状态并发出一次澄清事件。
                     @Override public void onClarify(String clarification) {
-                        if (!cancellation.isCancelled()) events.onClarify(clarification);
                     }
 
                     @Override public void onComplete(String fullText, boolean clarified) {
@@ -146,8 +147,15 @@ final class ChatAnswerStage {
 
                     @Override public void onComplete(String fullText, boolean clarified, boolean truncated) {
                         trace.span(traceId, convId, "aggregate", aggregateStart, clarified);
+                        if (clarified) {
+                            String clarifyQuestion = Aggregator.clarifyQuestionOf(fullText);
+                            completionFinalizer.completeClarification(context, question,
+                                    clarifyQuestion == null ? fullText : clarifyQuestion, List.of(),
+                                    "aggregate", traceId, events, cancellation, claim);
+                            return;
+                        }
                         completionFinalizer.completeAnswer(fullText,
-                                clarified ? "clarify" : intent.name().toLowerCase(), context, question,
+                                intent.name().toLowerCase(), context, question,
                                 retrieved.evidences(), briefing.citationIds(), traceId, events,
                                 cancellation, claim, truncated);
                     }

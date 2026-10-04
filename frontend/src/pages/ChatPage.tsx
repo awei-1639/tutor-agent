@@ -546,6 +546,7 @@ interface MessageItemProps {
 // memo：历史消息 props 按引用稳定即跳过重渲染；流式期间只有最后一条（对象每帧替换）重渲染。
 const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, feedbackOpen, onOptionClick, onContinue, onFeedback, onToggleFeedback }: MessageItemProps) {
   // 失败/中断会留下零内容的教练消息（历史里也有）：只渲染头像+名字的空壳很突兀，直接隐藏。
+  const clarifyText = m.role === 'assistant' ? clarifyOf(m.content) : null;
   const isEmptyAssistant = m.role === 'assistant' && !m.content && !m.clarify
     && !(m.citations && m.citations.length > 0) && !(m.memories && m.memories.length > 0);
   if (isEmptyAssistant && !(streaming && isLast)) return null;
@@ -562,7 +563,9 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           <span className="text-[11px] font-bold text-ink-500 tracking-[.12em] uppercase">成长教练</span>
         </div>
         <div className="pl-8">
-          {m.content ? (
+          {clarifyText != null ? (
+            <div className="mt-1 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">❓ 追问: {clarifyText}</div>
+          ) : m.content ? (
             <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
           ) : m.clarify ? null : (
             <div className="flex items-center gap-1.5 py-2" role="status" aria-label="教练正在思考">
@@ -594,13 +597,13 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           </div>
         )}
         {m.role === 'assistant' && m.memories && m.memories.length > 0 && <MemoryChips memories={m.memories} />}
-        {m.role === 'assistant' && m.citationStatus && m.citationStatus !== 'not_applicable' && (
+        {m.role === 'assistant' && clarifyText == null && m.citationStatus && m.citationStatus !== 'not_applicable' && (
           <div className={`mt-2 text-[11px] ${m.citationStatus === 'verified' ? 'text-emerald-600' : m.citationStatus === 'pending' ? 'text-amber-600' : 'text-rose-600'}`}>
             引用状态：{{ pending: '校验中', verified: '已验证', unsupported: '存在未充分支持的陈述', invalid_reference: '包含无效引用编号', unavailable: '校验服务暂不可用' }[m.citationStatus] ?? m.citationStatus}
             {m.citationIssues?.length ? `（${m.citationIssues.join('、')}）` : ''}
           </div>
         )}
-        {m.role === 'assistant' && m.id && (
+        {m.role === 'assistant' && m.id && clarifyText == null && (
           <div className="mt-3 pt-2.5 border-t border-ink-100 flex items-center gap-2 text-xs text-ink-500">
             <span>这条回答有帮助吗？</span>
             <button onClick={() => onFeedback(index, 'helpful')}
@@ -609,7 +612,7 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
               className={`px-2 py-1 rounded transition ${m.feedback === 'not_helpful' ? 'bg-rose-50 text-rose-700' : 'hover:bg-ink-50 hover:text-ink-700'}`}>不准确</button>
           </div>
         )}
-        {m.role === 'assistant' && m.id && feedbackOpen && (
+        {m.role === 'assistant' && m.id && feedbackOpen && clarifyText == null && (
           <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
             {[['citation_irrelevant', '引用不相关'], ['factual_error', '内容不准确'], ['too_generic', '太笼统']].map(([reason, label]) => (
               <button key={reason} onClick={() => onFeedback(index, 'not_helpful', reason)}
@@ -648,6 +651,13 @@ function MemoryChips({ memories }: { memories: MemoryRef[] }) {
       )}
     </div>
   );
+}
+
+function clarifyOf(content: string): string | null {
+  const trimmed = content.trim();
+  if (trimmed.startsWith('CLARIFY:')) return trimmed.slice('CLARIFY:'.length).trim();
+  if (trimmed.startsWith('CLARIFY：')) return trimmed.slice('CLARIFY：'.length).trim();
+  return null;
 }
 
 function toolLabel(tool: string): string {
