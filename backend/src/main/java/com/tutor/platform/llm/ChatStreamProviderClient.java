@@ -33,7 +33,11 @@ final class ChatStreamProviderClient {
     private String endpoint() {
         String base = properties.deepseek().baseUrl();
         String normalized = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
-        return normalized.endsWith("/v1") ? normalized + "/chat/completions" : normalized + "/v1/chat/completions";
+        // baseUrl 约定写到版本段为止 (DeepSeek 根路径、SiliconFlow/Ollama 的 /v1、智谱的 /paas/v4)，
+        // /chat/completions 统一在此追加；DeepSeek 官方对带不带 /v1 两种路径等价。
+        return normalized.endsWith("/chat/completions")
+                ? normalized
+                : normalized + "/chat/completions";
     }
 
     private String body(String model, List<ChatMessage> messages, int maxOutputTokens) {
