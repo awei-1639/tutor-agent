@@ -1,11 +1,12 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { api, streamChat, type ConversationSummary, type MemoryRef } from '../lib/api';
+import { useLocation } from 'react-router-dom';
+import { api, streamChat, type MemoryRef } from '../lib/api';
+import { useChatConversations } from '../lib/chatConversations';
 import { renderMarkdown } from '../lib/markdown';
 
 interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; }
 interface DisplayCitation extends Citation { key: string; }
 interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; memories?: MemoryRef[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; clarifyOptions?: Array<{ id: string; label: string }>; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; truncated?: boolean; }
-type Conv = ConversationSummary;
 
 function safeSourceUrl(value?: string): string | null {
   try {
@@ -129,25 +130,7 @@ function parseCitationIssues(raw?: string): string[] {
   } catch { return []; }
 }
 
-// 对话分组 (Qwen 风格: 今天 / 昨天 / 过去 7 天 / 过去 30 天)
-function groupConvs(convs: Conv[]): { label: string; items: Conv[] }[] {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const yesterday = today - 86400000;
-  const week = today - 7 * 86400000;
-  const month = today - 30 * 86400000;
-  const groups = { 今天: [] as Conv[], 昨天: [] as Conv[], '过去 7 天': [] as Conv[], '过去 30 天': [] as Conv[] };
-  for (const c of convs) {
-    const t = c.last_active_at ? new Date(c.last_active_at).getTime() : 0;
-    if (t >= today) groups.今天.push(c);
-    else if (t >= yesterday) groups.昨天.push(c);
-    else if (t >= week) groups['过去 7 天'].push(c);
-    else if (t >= month) groups['过去 30 天'].push(c);
-  }
-  return (['今天', '昨天', '过去 7 天', '过去 30 天'] as const)
-    .filter(k => groups[k].length > 0)
-    .map(k => ({ label: k, items: groups[k] }));
-}
+// 对话分组逻辑已移至 lib/chatConversations.tsx，侧边栏与聊天页共享。
 
 export default function ChatPage() {
   const [convId, setConvId] = useState<number | null>(null);
@@ -155,12 +138,10 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
-  const [convs, setConvs] = useState<Conv[]>([]);
   const [hoverCite, setHoverCite] = useState<{ c: Citation; x: number; y: number } | null>(null);
   const [pinnedKey, setPinnedKey] = useState<string | null>(null);
   const [feedbackTarget, setFeedbackTarget] = useState<number | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   // 今日剩余额度百分比 (meta 事件携带)；<=20% 时展示提示条，用完时提示恢复时间。
   const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
   // 工具循环进度 (tool 事件携带)：流式回答期间教练正在查询哪块学习状态。
@@ -180,14 +161,19 @@ export default function ChatPage() {
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }); }, [messages, stage]);
 
+  const { refresh: refreshConvs, setCurrentId } = useChatConversations();
+  const location = useLocation();
+
+  // 侧边栏会话列表共享同一份数据：当前会话高亮 + 变更后刷新。
+  useEffect(() => { setCurrentId(convId); }, [convId, setCurrentId]);
+  useEffect(() => { refreshConvs(); }, [convId, refreshConvs]);
+
   useEffect(() => {
     if (convId != null) { setOpenItems([]); return; }
     let cancelled = false;
     api.getOpenItems().then(items => { if (!cancelled) setOpenItems(items); }).catch(() => {});
     return () => { cancelled = true; };
   }, [convId]);
-
-  useEffect(() => { api.listConversations().then(setConvs).catch(() => {}); }, [convId]);
 
   async function loadConv(id: number) {
     const msgs = await api.getMessages(id);
@@ -207,6 +193,13 @@ export default function ChatPage() {
     setStage(null);
     setPanelOpen(false); setPinnedKey(null);
   }
+
+  // 侧边栏「开启新对话 / 对话记录」点击后经 location.state 到达这里。
+  useEffect(() => {
+    const st = location.state as { selectConv?: unknown; newChat?: unknown } | null;
+    if (typeof st?.selectConv === 'number') void loadConv(st.selectConv);
+    else if (st?.newChat) newChat();
+  }, [location.state]);
 
   function send(override?: string) {
     const text = (override ?? input).trim();
@@ -308,7 +301,7 @@ export default function ChatPage() {
             }
             return m;
           });
-          api.listConversations().then(setConvs).catch(() => {});
+          refreshConvs();
         },
         onError: msg => {
           if (activeStreamId.current !== myStreamId) return;
@@ -384,32 +377,7 @@ export default function ChatPage() {
 
   return (
     <div className="h-full flex bg-transparent">
-      {/* 左侧会话列表 (Qwen 风格: 分组 + 时间) */}
-      <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 border-r editorial-rule bg-[#f8f7f3] flex flex-col transition-all overflow-hidden`}>
-        <div className="px-4 py-5 border-b editorial-rule shrink-0">
-          <button onClick={newChat} className="w-full px-3.5 py-2.5 bg-ink-900 hover:bg-black text-[#f2f1ec] rounded-[10px] text-sm font-semibold flex items-center justify-center gap-2 transition shadow-sm hover:shadow-md hover:-translate-y-px">
-            <span className="text-lg leading-none">+</span><span>开启新对话</span>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-3">
-          {groupConvs(convs).map(g => (
-            <div key={g.label}>
-              <div className="px-2 py-1.5 text-[10px] font-semibold text-ink-500 uppercase tracking-[.12em]">{g.label}</div>
-              <div className="space-y-0.5">
-                {g.items.map(c => (
-                  <button key={c.id} onClick={() => loadConv(c.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition flex items-center ${
-                            convId === c.id ? 'bg-white text-ink-900 font-medium shadow-sm' : 'text-ink-700 hover:bg-white/85'
-                          }`}>
-                    {convId === c.id && <span className="conv-current-dot" aria-hidden="true" />}
-                    <div className="truncate text-xs">{c.title || '(无标题)'}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </aside>
+      {/* 会话列表已并入左侧导航栏 (Qwen 风格)，此处只保留主对话区 */}
 
       {/* 主区: 顶部固定 header + 消息流 + 底部输入 */}
       <div className="flex-1 flex flex-col min-w-0"
@@ -426,9 +394,6 @@ export default function ChatPage() {
         {/* 顶部固定: 标题 + 上下滚动提示 */}
         <header className="shrink-0 px-7 py-4 border-b editorial-rule glass-bar flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(o => !o)} className="text-ink-500 hover:text-accent-600 hover:bg-white p-2 rounded-lg transition" title={sidebarOpen ? '折叠历史' : '展开历史'}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
             <div>
               <div className="editorial-kicker mb-1">当前工作区</div><div className="font-serif text-[15.5px] font-semibold tracking-[-.012em] text-ink-900">
                 {convId ? `对话 #${convId}` : '新对话'}
@@ -568,8 +533,18 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           ) : m.content ? (
             <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
           ) : m.clarify ? null : (
-            <div className="flex items-center gap-1.5 py-2" role="status" aria-label="教练正在思考">
-              <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
+            <div className="flex items-center gap-2.5 py-2" role="status" aria-label="教练正在思考">
+              {streaming ? (
+                <>
+                  <span className="flex items-center gap-1.5">
+                    <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
+                  </span>
+                  {/* 思考模型 (如 GLM-4.5-Flash) 首个 token 前有数十秒静默, 无文字时体感等同卡死 */}
+                  <span className="text-[12.5px] text-ink-400">教练正在思考…</span>
+                </>
+              ) : (
+                <span className="text-[12.5px] text-ink-400">本次回答未能生成，请重新发送</span>
+              )}
             </div>
           )}
           {streaming && isLast && !m.locked && m.content && <span className="stream-caret" aria-hidden="true" />}
