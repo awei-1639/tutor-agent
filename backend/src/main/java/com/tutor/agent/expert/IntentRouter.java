@@ -67,6 +67,11 @@ public class IntentRouter {
     static final double RULE_CONFIDENCE = 0.6D;
     static final String REASON_RULE_SHORTCUT = "RULE_CONVERSATIONAL_FILLER";
 
+    /** 供回答阶段复用同一判定：filler 轮次无需工具调用，跳过工具循环直接流式作答。 */
+    public static boolean isConversationalFiller(String question) {
+        return question != null && CONVERSATIONAL_FILLER.matcher(question.strip()).matches();
+    }
+
     private final RoutingConfidenceCalibrator confidenceCalibrator;
     private final StructuredOutputService structuredOutputService;
     private final boolean ruleShortcutEnabled;

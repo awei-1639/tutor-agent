@@ -18,6 +18,7 @@ import com.tutor.contract.Intent;
 import com.tutor.contract.Purpose;
 import com.tutor.agent.expert.Aggregator;
 import com.tutor.agent.expert.ExpertRunner;
+import com.tutor.agent.expert.IntentRouter;
 import com.tutor.platform.llm.budget.BudgetPressureService;
 import com.tutor.platform.llm.LlmMessage;
 import com.tutor.platform.llm.LlmStreamHandler;
@@ -199,7 +200,10 @@ final class ChatAnswerStage {
         PromptAssembler.Assembled assembled = assembleDirectPrompt(context, retrieved, traceId);
         List<LlmMessage> messages = directMessages(assembled, history, question);
         String intentName = intent.name().toLowerCase();
-        if (toolLoopEnabled && toolCallLoop != null
+        // filler 轮次（问候/致谢等）不需要工具调用：工具循环的 JSON 调用在慢供应商下动辄
+        // 数十秒并耗尽 SSE 通道预算，前端会在回答开始前断流（实测 2026-10-05）。直接流式作答。
+        boolean fillerTurn = IntentRouter.isConversationalFiller(question);
+        if (toolLoopEnabled && toolCallLoop != null && !fillerTurn
                 && streamViaToolLoop(context, question, retrieved, messages, assembled, intentName, traceId,
                 events, cancellation, claim)) return;
 
