@@ -266,7 +266,8 @@ llm:
     user-daily-token-limit: ${LLM_USER_DAILY_TOKEN_LIMIT:300000}  # 每用户每日限额 (trace 归属后生效)
     background-share-percent: ${LLM_BACKGROUND_SHARE_PERCENT:20}  # 后台任务 (摘要/抽取/批量嵌入) 日子预算占比
   timeout:
-    router-seconds: 10
+    # 2026-10-05 提到 20: 混合思考模型路由含思考延迟, 且免费档偶发拥塞, 10s 下实测多次超时。
+    router-seconds: 20
     chat-seconds: 60
     summary-seconds: 120
     expert-seconds: 25
@@ -275,7 +276,10 @@ llm:
       input-tokens: 1200
       # 96 会截断输出: JSON 骨架 (枚举字段 + 引号) 已占约 70 token，剩下不够写完
       # reason_codes 里的中文理由，JSON 在第 288 列断在字符串中间 (见 Badcase 07)。
-      output-tokens: 160
+      # 2026-10-05 提到 500: 混合思考模型 (GLM-4.5/4.7-Flash) 默认开启思考, 思考 token 与
+      # content 共享 max_tokens, 160 级预算会被思考耗尽后空内容截断 (实测, 见 evals 2026-10-05)。
+      # 若 router 换回思考系模型, 此预算必须保留。
+      output-tokens: 500
     chat:
       input-tokens: 8000
       output-tokens: 1600
