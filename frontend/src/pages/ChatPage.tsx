@@ -533,14 +533,14 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           ) : m.content ? (
             <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
           ) : m.clarify ? null : (
-            <div className="flex items-center gap-2.5 py-2" role="status" aria-label="教练正在思考">
+            <div className="flex items-center gap-2.5 py-2" role="status" aria-label="正在思考">
               {streaming ? (
                 <>
                   <span className="flex items-center gap-1.5">
                     <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
                   </span>
                   {/* 思考模型 (如 GLM-4.5-Flash) 首个 token 前有数十秒静默, 无文字时体感等同卡死 */}
-                  <span className="text-[12.5px] text-ink-400">教练正在思考…</span>
+                  <span className="text-[12.5px] text-ink-400">正在思考…</span>
                 </>
               ) : (
                 <span className="text-[12.5px] text-ink-400">本次回答未能生成，请重新发送</span>
