@@ -67,11 +67,26 @@ public class ChatController {
         ChatTurnService.Turn turn = turns == null ? null
                 : turns.submit(userId, req.conversationId(), requestId, req.message(),
                 UUID.randomUUID().toString().replace("-", "").substring(0, 16));
-        SseEmitter emitter = new SseEmitter(120_000L);
+        // 180s: 慢供应商 (免费档思考模型) 下工具循环+直答可超过 2 分钟; SSE 注释心跳保活中间代理层
+        // (Vite dev proxy 实测约 20s 空闲即断开浏览器侧连接, curl 直连无此问题, 见 2026-10-05 排查)。
+        SseEmitter emitter = new SseEmitter(180_000L);
         CancellationToken cancellation = new CancellationToken();
         emitter.onCompletion(cancellation::cancel);
         emitter.onTimeout(cancellation::cancel);
         emitter.onError(error -> cancellation.cancel());
+        // SSE 注释帧 (: keepalive) 对前端解析器不可见, 仅防止中间层因空闲掐断连接;
+        // completion/timeout/error 都会取消 CancellationToken, 心跳线程随之退出。
+        Thread.startVirtualThread(() -> {
+            while (!cancellation.isCancelled()) {
+                try {
+                    Thread.sleep(15_000);
+                    if (cancellation.isCancelled()) return;
+                    emitter.send(SseEmitter.event().comment("keepalive"));
+                } catch (Exception e) {
+                    return;
+                }
+            }
+        });
         AtomicLong tokenSequence = new AtomicLong();
         ChatTurnEvents callbacks = new ChatTurnEvents() {
                     @Override public void onMeta(long conversationId, String traceId) {
