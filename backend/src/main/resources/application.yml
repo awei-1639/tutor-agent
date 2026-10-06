@@ -270,7 +270,9 @@ llm:
     router-seconds: 20
     chat-seconds: 60
     summary-seconds: 120
-    expert-seconds: 25
+    # 2026-10-06 提到 60: 免费档思考模型下规划专家 25s 频繁超时, 且超时中断会打断
+    # 专家事务内的 DB 写入 (连接被标记 broken)。
+    expert-seconds: 60
   tokens:
     router:
       input-tokens: 1200
