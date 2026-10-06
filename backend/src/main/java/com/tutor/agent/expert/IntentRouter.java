@@ -120,11 +120,27 @@ public class IntentRouter {
                 return RouteDecision.degraded("ROUTER_INVALID_JSON");
             }
             String json = mapper.writeValueAsString(structured.value());
-            return applyCalibration(parseDecision(json, mapper));
+            return overrideConceptQuestion(question, applyCalibration(parseDecision(json, mapper)));
         } catch (Exception e) {
             log.warn("router不可用, 降级CHAT+SINGLE trace={} type={}", traceId, e.getClass().getSimpleName());
             return RouteDecision.degraded("ROUTER_UNAVAILABLE");
         }
+    }
+
+    /** 概念定义类问题 ("X是什么/什么是X/是啥"): 弱路由常把它们随机分进建议类意图,
+     *  触发澄清或专家扇出后答非所问 (A2A协议案例 2026-10-06)。规则强制归位 CHAT+单跳,
+     *  检索照常执行; 仅覆盖领域内非降级决策。 */
+    static final Pattern CONCEPT_QUESTION = Pattern.compile(".*(什么是|是什么|是啥).*");
+
+    static RouteDecision overrideConceptQuestion(String question, RouteDecision decision) {
+        if (decision == null || decision.degraded() || question == null) return decision;
+        if (decision.scope() != Scope.IN_SCOPE || decision.intent() == Intent.CHAT) return decision;
+        if (!CONCEPT_QUESTION.matcher(question.strip()).matches()) return decision;
+        List<String> reasons = new ArrayList<>(decision.reasonCodes());
+        reasons.add("RULE_CONCEPT_QUESTION");
+        return new RouteDecision(Scope.IN_SCOPE, Intent.CHAT, List.of(Intent.CHAT), List.of(),
+                RetrievalHint.SINGLE, Math.max(decision.confidence(), RULE_CONFIDENCE),
+                decision.calibratedConfidence(), null, List.copyOf(reasons), decision.degraded());
     }
 
     /** 规则短路命中返回决策, 否则 null 交给模型路由。 */
