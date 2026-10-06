@@ -259,6 +259,10 @@ final class LlmStreamingExecutor {
         if ("length".equals(choice.path("finish_reason").asText(null))) truncated.set(true);
         JsonNode delta = choice.path("delta");
         String token = delta.path("content").asText("");
+        // 混合思考模型 (如 GLM-4.5-Flash) 的推理增量 (reasoning_content): 原样转发给关心
+        // 思考过程的调用方, 不计入回答 token 预算 (计费口径以服务端 usage 为准)。
+        String reasoning = delta.path("reasoning_content").asText("");
+        if (!reasoning.isEmpty()) handler.onReasoning(reasoning);
         if (!token.isEmpty()) {
             int remaining = maxOutputTokens - tokenBudget.count(fullText.toString());
             if (remaining <= 0) {

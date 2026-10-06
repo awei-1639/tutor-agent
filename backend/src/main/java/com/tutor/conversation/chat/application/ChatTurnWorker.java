@@ -119,6 +119,7 @@ final class ChatTurnWorker {
             }
             @Override public void onCitations(List<com.tutor.contract.Evidence> evidences) { target.onCitations(evidences); }
             @Override public void onToken(String token) { target.onToken(token); }
+            @Override public void onReasoningToken(String token) { target.onReasoningToken(token); }
             @Override public void onClarify(String question) { target.onClarify(question); }
             @Override public void onClarify(String question, List<Map<String, String>> options) {
                 target.onClarify(question, options);

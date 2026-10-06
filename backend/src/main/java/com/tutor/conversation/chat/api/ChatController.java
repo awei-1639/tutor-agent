@@ -152,6 +152,11 @@ public class ChatController {
                         send(emitter, "token", Map.of("text", token, "seq", tokenSequence.getAndIncrement()), cancellation);
                     }
 
+                    @Override public void onReasoningToken(String token) {
+                        // 前端按 payload 键名区分 token 与思考增量, 复用 seq 无必要 (思考流不需乱序重排)。
+                        send(emitter, "reasoning", Map.of("reasoning", token), cancellation);
+                    }
+
                     @Override public void onDone(long messageId, String fullText) {
                         send(emitter, "done", Map.of("message_id", messageId), cancellation);
                         emitter.complete();

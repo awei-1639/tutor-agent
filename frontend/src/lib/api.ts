@@ -818,6 +818,7 @@ export function streamChat(
     onTool?: (e: { tool: string; step: number }) => void;
     onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string }) => void;
     onMemories?: (e: { items: MemoryRef[] }) => void;
+    onReasoning?: (text: string) => void;
     onToken?: (text: string, seq?: number) => void;
     onClarify?: (event: { question: string; options?: Array<{ id: string; label: string }> }) => void;
     onDone?: (e: { message_id: number; trace_id?: string; citation_status?: string; citation_issues?: string[]; truncated?: boolean }) => void;
@@ -889,6 +890,7 @@ export function streamChat(
           else if ('phase' in evt) handlers.onStage?.(evt);
           else if ('sid' in evt) handlers.onCitation?.(evt);
           else if ('items' in evt) handlers.onMemories?.(evt);
+          else if (typeof evt.reasoning === 'string') handlers.onReasoning?.(evt.reasoning);
           else if (typeof evt.text === 'string') {
             if (typeof evt.seq === 'number') {
               if (evt.seq < nextTokenSequence) continue;

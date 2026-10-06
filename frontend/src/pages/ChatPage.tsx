@@ -6,7 +6,7 @@ import { renderMarkdown } from '../lib/markdown';
 
 interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; }
 interface DisplayCitation extends Citation { key: string; }
-interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; citations?: Citation[]; memories?: MemoryRef[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; clarifyOptions?: Array<{ id: string; label: string }>; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; truncated?: boolean; }
+interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; reasoning?: string; citations?: Citation[]; memories?: MemoryRef[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; clarifyOptions?: Array<{ id: string; label: string }>; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; truncated?: boolean; }
 
 function safeSourceUrl(value?: string): string | null {
   try {
@@ -206,7 +206,7 @@ export default function ChatPage() {
     if (!text || streaming) return;
     setInput('');
     const userMsg: Msg = { role: 'user', content: text };
-    const assistantPlaceholder: Msg & { citations?: Citation[]; tokens?: string; clarify?: string } = { role: 'assistant', content: '', tokens: '' };
+    const assistantPlaceholder: Msg & { citations?: Citation[]; tokens?: string; reasoning?: string; clarify?: string } = { role: 'assistant', content: '', tokens: '' };
     let memoriesBuffer: MemoryRef[] = [];
     // 不可变更新最后一条 assistant 消息：替换对象而非原地修改，使 React.memo 能按引用跳过历史消息。
     const patchLast = (patch: Partial<Msg>, allowLocked = false) => {
@@ -220,7 +220,7 @@ export default function ChatPage() {
     const flushTokens = () => {
       tokenRafRef.current = null;
       if (activeStreamId.current !== myStreamId) return;
-      patchLast({ content: assistantPlaceholder.tokens ?? '' });
+      patchLast({ content: assistantPlaceholder.tokens ?? '', reasoning: assistantPlaceholder.reasoning });
     };
     const scheduleTokenFlush = () => {
       if (tokenRafRef.current == null) tokenRafRef.current = requestAnimationFrame(flushTokens);
@@ -251,6 +251,11 @@ export default function ChatPage() {
         onToken: t => {
           if (activeStreamId.current !== myStreamId) return;
           assistantPlaceholder.tokens = (assistantPlaceholder.tokens ?? '') + t;
+          scheduleTokenFlush();
+        },
+        onReasoning: t => {
+          if (activeStreamId.current !== myStreamId) return;
+          assistantPlaceholder.reasoning = (assistantPlaceholder.reasoning ?? '') + t;
           scheduleTokenFlush();
         },
         onCitation: c => {
@@ -508,6 +513,22 @@ interface MessageItemProps {
   onToggleFeedback: (index: number) => void;
 }
 
+// 思考过程块: 默认收起, 点击展开; live 表示思考仍在进行 (回答尚未开始)。
+function ThinkingBlock({ reasoning, live }: { reasoning: string; live: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-2 rounded-lg border border-black/[0.06] bg-black/[0.03]">
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] text-ink-400 hover:text-ink-600 transition">
+        <span>{live ? '思考中' : '深度思考'}</span>
+        {live && <span className="flex items-center gap-0.5"><span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" /></span>}
+        <span className="ml-auto">{open ? '收起' : '展开'}</span>
+      </button>
+      {open && <div className="px-3 pb-2.5 text-[12px] leading-[1.7] text-ink-500 whitespace-pre-wrap break-words">{reasoning}</div>}
+    </div>
+  );
+}
+
 // memo：历史消息 props 按引用稳定即跳过重渲染；流式期间只有最后一条（对象每帧替换）重渲染。
 const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, feedbackOpen, onOptionClick, onContinue, onFeedback, onToggleFeedback }: MessageItemProps) {
   // 失败/中断会留下零内容的教练消息（历史里也有）：只渲染头像+名字的空壳很突兀，直接隐藏。
@@ -528,23 +549,20 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           <span className="text-[11px] font-bold text-ink-500 tracking-[.12em] uppercase">成长教练</span>
         </div>
         <div className="pl-8">
+          {m.reasoning ? <ThinkingBlock reasoning={m.reasoning} live={!!streaming && !m.content} /> : null}
           {clarifyText != null ? (
             <div className="mt-1 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">❓ 追问: {clarifyText}</div>
           ) : m.content ? (
             <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
-          ) : m.clarify ? null : (
+          ) : m.clarify ? null : !streaming ? (
+            <div className="py-2 text-[12.5px] text-ink-400">本次回答未能生成，请重新发送</div>
+          ) : m.reasoning ? null : (
             <div className="flex items-center gap-2.5 py-2" role="status" aria-label="正在思考">
-              {streaming ? (
-                <>
-                  <span className="flex items-center gap-1.5">
-                    <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
-                  </span>
-                  {/* 思考模型 (如 GLM-4.5-Flash) 首个 token 前有数十秒静默, 无文字时体感等同卡死 */}
-                  <span className="text-[12.5px] text-ink-400">正在思考…</span>
-                </>
-              ) : (
-                <span className="text-[12.5px] text-ink-400">本次回答未能生成，请重新发送</span>
-              )}
+              <span className="flex items-center gap-1.5">
+                <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
+              </span>
+              {/* 思考模型 (如 GLM-4.5-Flash) 首个 token 前有数十秒静默, 无文字时体感等同卡死 */}
+              <span className="text-[12.5px] text-ink-400">正在思考…</span>
             </div>
           )}
           {streaming && isLast && !m.locked && m.content && <span className="stream-caret" aria-hidden="true" />}

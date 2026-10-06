@@ -214,6 +214,10 @@ final class ChatAnswerStage {
                 if (!cancellation.isCancelled()) events.onToken(token);
             }
 
+            @Override public void onReasoning(String token) {
+                if (!cancellation.isCancelled()) events.onReasoningToken(token);
+            }
+
             @Override public void onComplete(com.tutor.platform.llm.LlmStreamResult response) {
                 completionFinalizer.completeAnswer(full.toString(), intentName, context, question,
                         retrieved.evidences(), assembled.citationIds(), traceId, events, cancellation,
