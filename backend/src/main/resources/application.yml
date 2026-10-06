@@ -284,7 +284,8 @@ llm:
       output-tokens: 500
     chat:
       input-tokens: 8000
-      output-tokens: 1600
+      # 2026-10-06 提到 2400: 用户反馈回答偏短, 放宽输出预算以支持分节详述。
+      output-tokens: 2400
     expert:
       input-tokens: 5000
       output-tokens: 1800
