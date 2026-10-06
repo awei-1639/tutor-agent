@@ -59,7 +59,7 @@ class ChatServiceTurnPathsTest {
         ChatServiceFixture fixture = new ChatServiceFixture();
         fixture.routeAsDirectChat();
         fixture.stubRetrieval(List.of(evidence("skill:rag")));
-        streamAnswer(fixture, "RAG 是检索增强生成");
+        streamAnswer(fixture, "RAG 是检索增强生成[S1]");
         AuthContext.set(ChatServiceFixture.USER_ID);
 
         RecordingEvents events = new RecordingEvents();
@@ -70,7 +70,25 @@ class ChatServiceTurnPathsTest {
         assertThat(events.tokens).contains("RAG 是检索增强生成");
         assertThat(events.done).isTrue();
         verify(fixture.conversations).appendMessage(eq(ChatServiceFixture.CONVERSATION_ID), eq("assistant"),
-                eq("RAG 是检索增强生成"), anyString(), any(), anyString(), anyInt(), anyString(), any());
+                eq("RAG 是检索增强生成[S1]"), anyString(), any(), anyString(), anyInt(), anyString(), any());
+    }
+
+    @Test
+    void directChatAnswerWithoutMarkersEmitsNoCitations() {
+        ChatServiceFixture fixture = new ChatServiceFixture();
+        fixture.routeAsDirectChat();
+        fixture.stubRetrieval(List.of(evidence("skill:rag")));
+        streamAnswer(fixture, "RAG 是检索增强生成");
+        AuthContext.set(ChatServiceFixture.USER_ID);
+
+        RecordingEvents events = new RecordingEvents();
+        fixture.build().turn(null, "什么是 RAG", events);
+
+        // 回答没有 [S#] 标记 (如问候/闲聊) 时不得向 SSE 倾倒检索候选,
+        // 否则参考材料面板会挂满与回答无关的证据 (2026-10-05)。
+        assertThat(events.citationCount).isEqualTo(0);
+        assertThat(events.tokens).contains("RAG 是检索增强生成");
+        assertThat(events.done).isTrue();
     }
 
     @Test

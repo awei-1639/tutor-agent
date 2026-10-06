@@ -89,6 +89,24 @@ final class TurnCitations {
                 && evidences.get(index) != null;
     }
 
+    /**
+     * 按标记序号对齐的"实际被引用"证据列表：位置 i 为 evidences.get(i) 当且仅当回答里有 [S(i+1)]，
+     * 未使用的位置为 null。供完成阶段只向 SSE 发送真正支撑回答的证据——
+     * 检索阶段倾倒全部候选会让问候/闲聊轮次挂满无关材料 (2026-10-05)。
+     */
+    List<Evidence> usedAligned(String text, List<Evidence> evidences, Set<String> availableCitationIds) {
+        if (evidences == null || evidences.isEmpty()) return List.of();
+        List<Evidence> aligned = new ArrayList<>();
+        Matcher matcher = CITE.matcher(text);
+        while (matcher.find()) {
+            int index = parseIndex(matcher.group(1));
+            if (!isCitable(index, evidences, availableCitationIds)) continue;
+            while (aligned.size() <= index) aligned.add(null);
+            aligned.set(index, evidences.get(index));
+        }
+        return Collections.unmodifiableList(aligned);
+    }
+
     private Map<String, String> describe(Evidence evidence, int index) {
         CitationSourcePolicy.Provenance provenance = CitationSourcePolicy.inspect(evidence);
         String[] parts = evidence.chunkText().split("\\|", 3);

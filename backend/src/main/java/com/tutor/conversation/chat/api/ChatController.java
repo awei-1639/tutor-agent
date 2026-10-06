@@ -127,8 +127,10 @@ public class ChatController {
                     }
 
                     @Override public void onCitations(List<Evidence> evidences) {
+                        // 列表按标记序号对齐 (完成阶段只发回答里实际用到的), 未使用位置为 null, 跳过。
                         for (int i = 0; i < evidences.size(); i++) {
                             Evidence e = evidences.get(i);
+                            if (e == null) continue;
                             CitationSourcePolicy.Provenance provenance = CitationSourcePolicy.inspect(e);
                             send(emitter, "citation", Map.of(
                                     "sid", "S" + (i + 1), "node_id", e.nodeId(), "type", e.nodeType(),

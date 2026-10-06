@@ -76,7 +76,8 @@ final class ChatRetrievalStage {
         List<Evidence> evidences = result.evidences();
         trace.span(traceId, context.convId(), "retrieve", start, false,
                 retrievalTrace(plan, graphPolicy, result, evidences));
-        events.onCitations(evidences);
+        // 引用事件不再在此倾倒全部检索候选：问候/闲聊轮次的候选与回答无关，
+        // 完成阶段会按回答里的 [S#] 标记只发实际用到的证据 (TurnCitations.usedAligned)。
         return new RetrievedContext(evidences, memoryRecall.episodes(), facts);
     }
 

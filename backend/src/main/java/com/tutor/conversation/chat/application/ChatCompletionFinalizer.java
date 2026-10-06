@@ -49,6 +49,9 @@ final class ChatCompletionFinalizer {
                 text.length() / 2, bundle.status(), bundle.issuesJson(), claim, cancellation);
         if (messageId == null) return;
 
+        // 只发回答里 [S#] 实际引用的证据, sid 与文本标记对齐; 没有标记 (问候/闲聊) 就不发。
+        List<Evidence> usedCitations = citations.usedAligned(text, evidences, citationIds);
+        if (!usedCitations.isEmpty() && !cancellation.isCancelled()) events.onCitations(usedCitations);
         events.onDone(messageId, text, bundle.status(), citations.parseIssues(bundle.issuesJson()), truncated);
         background.submit(() -> postTurnTasks.run(context.convId(), context.userId(), question, text,
                 traceId, context.memoryGeneration()));

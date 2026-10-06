@@ -108,7 +108,7 @@ final class ChatServiceFixture {
 
     private void stubContextDefaults() {
         when(promptAssembler.assembleWithMetadata(any(), anyString()))
-                .thenReturn(new PromptAssembler.Assembled("system", Set.of()));
+                .thenReturn(new PromptAssembler.Assembled("system", Set.of("S1")));
         when(profileSection.render(any(), any())).thenReturn("profile");
         when(episodeSection.render(any(), any())).thenReturn("episodes");
         when(resumes.latestStructuredCompact(anyLong(), anyInt())).thenReturn("resume");
