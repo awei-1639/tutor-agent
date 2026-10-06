@@ -81,6 +81,14 @@ final class TurnCitations {
         }
     }
 
+    /**
+     * 清除弱模型把区块标题当成引用标记复述进回答的畸形产物 (如 "[知识证据]")。
+     * 提示词规则已禁止, 此处兜底保证落库与展示文本干净。
+     */
+    static String stripSectionArtifacts(String text) {
+        return text == null ? null : text.replaceAll("\\s*\\[知识证据\\]", "");
+    }
+
     private boolean isCitable(int index, List<Evidence> evidences, Set<String> availableCitationIds) {
         return index >= 0
                 && index < Math.min(evidences.size(), MAX_CITED_EVIDENCE)
