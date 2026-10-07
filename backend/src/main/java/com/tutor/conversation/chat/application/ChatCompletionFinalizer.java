@@ -44,7 +44,7 @@ final class ChatCompletionFinalizer {
                         List<Evidence> evidences, Set<String> citationIds, String traceId,
                         ChatTurnEvents events, CancellationToken cancellation,
                         Claim claim, boolean truncated) {
-        String cleaned = TurnCitations.stripSectionArtifacts(text);
+        String cleaned = TurnCitations.sanitize(text);
         CitationBundle bundle = citationsFor(cleaned, evidences, citationIds);
         Long messageId = persistAssistant(context.convId(), cleaned, intent, bundle.json(), traceId,
                 cleaned.length() / 2, bundle.status(), bundle.issuesJson(), claim, cancellation);

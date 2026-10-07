@@ -243,7 +243,7 @@ final class ChatAnswerStage {
                     });
             // 工具循环的答案是一次性产出的: 不发 token 事件前端气泡会是空壳
             // (done 事件只带 message_id, 前端不回拉内容), 因此这里补发整段文本。
-            String answer = TurnCitations.stripSectionArtifacts(loopResult.answer());
+            String answer = TurnCitations.sanitize(loopResult.answer());
             if (!cancellation.isCancelled() && answer != null && !answer.isBlank()) {
                 events.onToken(answer);
             }

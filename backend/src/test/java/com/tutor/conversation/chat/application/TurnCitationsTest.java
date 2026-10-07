@@ -44,4 +44,20 @@ class TurnCitationsTest {
         assertEquals("干净文本", TurnCitations.stripSectionArtifacts("干净文本"));
         assertNull(TurnCitations.stripSectionArtifacts(null));
     }
+
+    @Test
+    void sanitizeNormalizesMalformedCiteMarkers() {
+        assertEquals("引用[S1]与[S2]与[S3]",
+                TurnCitations.sanitize("引用【S1】与[s 2]与[ S3 ]"));
+        assertEquals("中文括号但非引用标记【注意】保持原样",
+                TurnCitations.sanitize("中文括号但非引用标记【注意】保持原样"));
+        assertNull(TurnCitations.sanitize(null));
+    }
+
+    @Test
+    void sanitizeRunsTheFullChain() {
+        // 先剥区块标题再归一化标记: 两个步骤都要生效
+        assertEquals("当前日期是2026年10月7日。来源[S1]。",
+                TurnCitations.sanitize("当前日期是2026年10月7日[知识证据]。来源[s1]。"));
+    }
 }
