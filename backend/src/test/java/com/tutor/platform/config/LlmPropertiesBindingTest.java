@@ -15,18 +15,20 @@ class LlmPropertiesBindingTest {
     @Test
     void bindsTheFullNestedTimeoutConstructor() {
         Binder binder = new Binder(new MapConfigurationPropertySource(Map.of(
-                "llm.timeout.router-seconds", "10",
+                "llm.profile", "slow",
                 "llm.timeout.chat-seconds", "60",
-                "llm.timeout.summary-seconds", "120",
-                "llm.timeout.expert-seconds", "25")));
+                "llm.timeout.summary-seconds", "120")));
 
         LlmProperties properties = binder.bind("llm", Bindable.of(LlmProperties.class))
                 .orElseThrow(() -> new AssertionError("llm properties were not bound"));
 
-        assertEquals(10, properties.timeout().routerSeconds());
+        // router/expert/SSE 由模型画像推导, 不再逐项 yml 绑定; chat/summary 仍为显式配置。
+        assertEquals("slow", properties.profile());
+        assertEquals(30, properties.timeout().routerSeconds());
         assertEquals(60, properties.timeout().chatSeconds());
         assertEquals(120, properties.timeout().summarySeconds());
-        assertEquals(25, properties.timeout().expertSeconds());
+        assertEquals(90, properties.timeout().expertSeconds());
+        assertEquals(240, properties.stabilityBudget().sseSeconds());
     }
 
     /**

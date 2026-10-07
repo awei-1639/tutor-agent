@@ -6,6 +6,7 @@ import com.tutor.conversation.chat.application.ChatService;
 import com.tutor.conversation.chat.application.ChatModels;
 import com.tutor.conversation.chat.application.ChatTurnService;
 import com.tutor.conversation.chat.application.ChatTurnEvents;
+import com.tutor.platform.config.LlmProperties;
 import com.tutor.conversation.chat.support.ChatRateLimiter;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
@@ -36,17 +37,20 @@ public class ChatController {
     private final ChatService chatService;
     private final ChatRateLimiter rateLimiter;
     private final ChatTurnService turns;
+    private final LlmProperties llmProperties;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ChatController(ChatService chatService, ChatRateLimiter rateLimiter) {
-        this(chatService, rateLimiter, null);
+        this(chatService, rateLimiter, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
-    public ChatController(ChatService chatService, ChatRateLimiter rateLimiter, ChatTurnService turns) {
+    public ChatController(ChatService chatService, ChatRateLimiter rateLimiter, ChatTurnService turns,
+                          LlmProperties llmProperties) {
         this.chatService = chatService;
         this.rateLimiter = rateLimiter;
         this.turns = turns;
+        this.llmProperties = llmProperties;
     }
 
     public record ChatRequest(Long conversationId,
@@ -69,7 +73,9 @@ public class ChatController {
                 UUID.randomUUID().toString().replace("-", "").substring(0, 16));
         // 180s: 慢供应商 (免费档思考模型) 下工具循环+直答可超过 2 分钟; SSE 注释心跳保活中间代理层
         // (Vite dev proxy 实测约 20s 空闲即断开浏览器侧连接, curl 直连无此问题, 见 2026-10-05 排查)。
-        SseEmitter emitter = new SseEmitter(180_000L);
+        // SSE 通道预算由模型画像推导 (fast=120s / moderate=180s / slow=240s)。
+        int sseSeconds = llmProperties != null ? llmProperties.stabilityBudget().sseSeconds() : 180;
+        SseEmitter emitter = new SseEmitter(sseSeconds * 1000L);
         CancellationToken cancellation = new CancellationToken();
         emitter.onCompletion(cancellation::cancel);
         emitter.onTimeout(cancellation::cancel);

@@ -3,6 +3,8 @@ package com.tutor.conversation.chat.application;
 import com.tutor.identity.auth.AuthContext;
 import com.tutor.contract.CancellationToken;
 import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Executes admitted chat turns and owns their recovery, cancellation, and lease renewal. */
 @Component
 final class ChatTurnWorker {
+    private static final Logger log = LoggerFactory.getLogger(ChatTurnWorker.class);
     private final ChatTurnJobStore jobs;
     private final ObjectProvider<ChatService> chatService;
     private final ExecutorService executor;
@@ -83,10 +86,13 @@ final class ChatTurnWorker {
                      CancellationToken cancellation, boolean ownsSlot) {
         ActiveRun run = new ActiveRun(claim, cancellation);
         active.put(claim.id(), run);
+        // 交付不变量仅对有真实客户端的回合生效; 恢复路径的 NoopEvents 无从交付。
+        boolean liveClient = !(events instanceof NoopEvents);
+        TurnDeliveryGuard guard = new TurnDeliveryGuard();
         executor.execute(() -> {
             AuthContext.set(claim.userId());
             AtomicBoolean turnFailed = new AtomicBoolean();
-            ChatTurnEvents executionEvents = forwardingEvents(events, turnFailed);
+            ChatTurnEvents executionEvents = forwardingEvents(events, turnFailed, guard);
             try {
                 chatService.getObject().turn(claim.conversationId(), claim.question(), executionEvents,
                         cancellation, claim);
@@ -96,8 +102,16 @@ final class ChatTurnWorker {
                     else jobs.fail(claim, "聊天回合未产生终态");
                 }
             } catch (Exception error) {
+                guard.onError();
                 jobs.fail(claim, safeError(error));
             } finally {
+                if (liveClient) {
+                    // 交付不变量: 静默死亡/空泡立即大声记录, 不允许再次潜伏一周 (2026-10-06)。
+                    guard.verdict(cancellation.isCancelled()).ifPresent(problem ->
+                            log.error("交付不变量被破坏 claim={} conv={} tokens={} reasonings={} problem={}",
+                                    claim.id(), claim.conversationId(), guard.tokensDelivered(),
+                                    guard.reasoningsDelivered(), problem));
+                }
                 AuthContext.clear();
                 active.remove(claim.id(), run);
                 if (ownsSlot) slots.release();
@@ -110,7 +124,7 @@ final class ChatTurnWorker {
         return message.length() <= 500 ? message : message.substring(0, 500);
     }
 
-    private ChatTurnEvents forwardingEvents(ChatTurnEvents target, AtomicBoolean failed) {
+    private ChatTurnEvents forwardingEvents(ChatTurnEvents target, AtomicBoolean failed, TurnDeliveryGuard guard) {
         return new ChatTurnEvents() {
             @Override public void onMeta(long conversationId, String traceId) { target.onMeta(conversationId, traceId); }
             @Override public void onStage(String phase) { target.onStage(phase); }
@@ -118,18 +132,19 @@ final class ChatTurnWorker {
                 target.onExpertDone(expert, status, detail);
             }
             @Override public void onCitations(List<com.tutor.contract.Evidence> evidences) { target.onCitations(evidences); }
-            @Override public void onToken(String token) { target.onToken(token); }
-            @Override public void onReasoningToken(String token) { target.onReasoningToken(token); }
-            @Override public void onClarify(String question) { target.onClarify(question); }
+            @Override public void onToken(String token) { guard.onToken(); target.onToken(token); }
+            @Override public void onReasoningToken(String token) { guard.onReasoning(); target.onReasoningToken(token); }
+            @Override public void onClarify(String question) { guard.onClarify(); target.onClarify(question); }
             @Override public void onClarify(String question, List<Map<String, String>> options) {
                 target.onClarify(question, options);
             }
-            @Override public void onDone(long messageId, String fullText) { target.onDone(messageId, fullText); }
+            @Override public void onDone(long messageId, String fullText) { guard.onDone(); target.onDone(messageId, fullText); }
             @Override public void onDone(long messageId, String fullText, String status, List<String> issues) {
                 target.onDone(messageId, fullText, status, issues);
             }
             @Override public void onError(String message) {
                 failed.set(true);
+                guard.onError();
                 target.onError(message);
             }
         };

@@ -265,14 +265,11 @@ llm:
     turn-token-limit: 50000      # 单轮熔断
     user-daily-token-limit: ${LLM_USER_DAILY_TOKEN_LIMIT:300000}  # 每用户每日限额 (trace 归属后生效)
     background-share-percent: ${LLM_BACKGROUND_SHARE_PERCENT:20}  # 后台任务 (摘要/抽取/批量嵌入) 日子预算占比
+  # 模型画像 (fast/moderate/slow) 推导 router/expert/SSE 稳定性预算; 换模型改 LLM_MODEL_PROFILE 即可。
+  profile: ${LLM_MODEL_PROFILE:moderate}
   timeout:
-    # 2026-10-05 提到 20: 混合思考模型路由含思考延迟, 且免费档偶发拥塞, 10s 下实测多次超时。
-    router-seconds: 20
     chat-seconds: 60
     summary-seconds: 120
-    # 2026-10-06 提到 60: 免费档思考模型下规划专家 25s 频繁超时, 且超时中断会打断
-    # 专家事务内的 DB 写入 (连接被标记 broken)。
-    expert-seconds: 60
   tokens:
     router:
       input-tokens: 1200
