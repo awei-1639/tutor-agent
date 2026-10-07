@@ -11,6 +11,16 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Spring Boot 4 是大版本迁移（Jakarta/依赖树/native 兼容），#75 CI 失败关闭时结论。
+      - dependency-name: "org.springframework.boot:spring-boot-starter-parent"
+        update-types: ["version-update:semver-major"]
+      # Neo4j driver 6 为 major 断代（API 变更 + CI 失败），#69 关闭时结论。
+      - dependency-name: "org.neo4j.driver:neo4j-java-driver"
+        update-types: ["version-update:semver-major"]
+      # springdoc 3 依赖 Spring Boot 4 系，与 SB4 升级窗口绑定，#74 关闭时结论。
+      - dependency-name: "org.springdoc:springdoc-openapi-starter-webmvc-ui"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /frontend
