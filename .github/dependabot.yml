@@ -21,6 +21,9 @@ updates:
       # springdoc 3 依赖 Spring Boot 4 系，与 SB4 升级窗口绑定，#74 关闭时结论。
       - dependency-name: "org.springdoc:springdoc-openapi-starter-webmvc-ui"
         update-types: ["version-update:semver-major"]
+      # json-schema-validator 3 为 major 断代（API 变更 + CI 挂 6 项），#79 关闭时结论。
+      - dependency-name: "com.networknt:json-schema-validator"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /frontend
