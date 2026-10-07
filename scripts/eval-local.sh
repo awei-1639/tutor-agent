@@ -96,7 +96,12 @@ export LLM_USER_DAILY_TOKEN_LIMIT="${LLM_USER_DAILY_TOKEN_LIMIT:-20000000}"
 # 路由 token; 生产配置默认关闭, 行为不变。
 export TUTOR_RETRIEVAL_ROUTE_CACHE_ENABLED=true
 export JWT_SECRET="${JWT_SECRET:-agent-local-eval-secret-32-bytes-minimum-2026}"
-java -jar "$JAR" >"$BACKEND_LOG" 2>&1 &
+# 与 start_backend_wsl.sh 一致: WSL 直连外网 LLM API 会被本机 mihomo TUN 劫持导致超时,
+# JVM 不读 http_proxy 环境变量, 必须显式挂代理 (本地/内网直连)。
+PROXY_HOST="${https_proxy#http://}"; PROXY_HOST="${PROXY_HOST%%:*}"; PROXY_HOST="${PROXY_HOST:-127.0.0.1}"
+PROXY_PORT="${https_proxy##*:}"; PROXY_PORT="${PROXY_PORT:-7897}"
+JVM_PROXY_ARGS="-Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttp.nonProxyHosts=localhost|127.*|192.168.*|10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*"
+java $JVM_PROXY_ARGS -jar "$JAR" >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID="$!"
 
 ready=0

@@ -6,6 +6,7 @@ import com.tutor.conversation.chat.application.ChatService;
 import com.tutor.conversation.chat.application.ChatModels;
 import com.tutor.conversation.chat.application.ChatTurnService;
 import com.tutor.conversation.chat.application.ChatTurnEvents;
+import com.tutor.platform.config.LlmProperties;
 import com.tutor.conversation.chat.support.ChatRateLimiter;
 import com.tutor.contract.CancellationToken;
 import com.tutor.contract.Evidence;
@@ -36,17 +37,20 @@ public class ChatController {
     private final ChatService chatService;
     private final ChatRateLimiter rateLimiter;
     private final ChatTurnService turns;
+    private final LlmProperties llmProperties;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ChatController(ChatService chatService, ChatRateLimiter rateLimiter) {
-        this(chatService, rateLimiter, null);
+        this(chatService, rateLimiter, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
-    public ChatController(ChatService chatService, ChatRateLimiter rateLimiter, ChatTurnService turns) {
+    public ChatController(ChatService chatService, ChatRateLimiter rateLimiter, ChatTurnService turns,
+                          LlmProperties llmProperties) {
         this.chatService = chatService;
         this.rateLimiter = rateLimiter;
         this.turns = turns;
+        this.llmProperties = llmProperties;
     }
 
     public record ChatRequest(Long conversationId,
@@ -67,11 +71,28 @@ public class ChatController {
         ChatTurnService.Turn turn = turns == null ? null
                 : turns.submit(userId, req.conversationId(), requestId, req.message(),
                 UUID.randomUUID().toString().replace("-", "").substring(0, 16));
-        SseEmitter emitter = new SseEmitter(120_000L);
+        // 180s: 慢供应商 (免费档思考模型) 下工具循环+直答可超过 2 分钟; SSE 注释心跳保活中间代理层
+        // (Vite dev proxy 实测约 20s 空闲即断开浏览器侧连接, curl 直连无此问题, 见 2026-10-05 排查)。
+        // SSE 通道预算由模型画像推导 (fast=120s / moderate=180s / slow=240s)。
+        int sseSeconds = llmProperties != null ? llmProperties.stabilityBudget().sseSeconds() : 180;
+        SseEmitter emitter = new SseEmitter(sseSeconds * 1000L);
         CancellationToken cancellation = new CancellationToken();
         emitter.onCompletion(cancellation::cancel);
         emitter.onTimeout(cancellation::cancel);
         emitter.onError(error -> cancellation.cancel());
+        // SSE 注释帧 (: keepalive) 对前端解析器不可见, 仅防止中间层因空闲掐断连接;
+        // completion/timeout/error 都会取消 CancellationToken, 心跳线程随之退出。
+        Thread.startVirtualThread(() -> {
+            while (!cancellation.isCancelled()) {
+                try {
+                    Thread.sleep(15_000);
+                    if (cancellation.isCancelled()) return;
+                    emitter.send(SseEmitter.event().comment("keepalive"));
+                } catch (Exception e) {
+                    return;
+                }
+            }
+        });
         AtomicLong tokenSequence = new AtomicLong();
         ChatTurnEvents callbacks = new ChatTurnEvents() {
                     @Override public void onMeta(long conversationId, String traceId) {
@@ -112,8 +133,10 @@ public class ChatController {
                     }
 
                     @Override public void onCitations(List<Evidence> evidences) {
+                        // 列表按标记序号对齐 (完成阶段只发回答里实际用到的), 未使用位置为 null, 跳过。
                         for (int i = 0; i < evidences.size(); i++) {
                             Evidence e = evidences.get(i);
+                            if (e == null) continue;
                             CitationSourcePolicy.Provenance provenance = CitationSourcePolicy.inspect(e);
                             send(emitter, "citation", Map.of(
                                     "sid", "S" + (i + 1), "node_id", e.nodeId(), "type", e.nodeType(),
@@ -133,6 +156,11 @@ public class ChatController {
 
                     @Override public void onToken(String token) {
                         send(emitter, "token", Map.of("text", token, "seq", tokenSequence.getAndIncrement()), cancellation);
+                    }
+
+                    @Override public void onReasoningToken(String token) {
+                        // 前端按 payload 键名区分 token 与思考增量, 复用 seq 无必要 (思考流不需乱序重排)。
+                        send(emitter, "reasoning", Map.of("reasoning", token), cancellation);
                     }
 
                     @Override public void onDone(long messageId, String fullText) {

@@ -75,6 +75,11 @@ public class RoutingPolicy {
         if (decision == null || decision.scope() != IntentRouter.Scope.IN_SCOPE || decision.degraded()) {
             return false;
         }
+        // CHAT 是一般问答, 没有可分歧的执行路径: 弱路由对知识类问题常自报歧义/低置信,
+        // 若放行会得到「A2A协议是什么 → 追问简历/面试/规划」式答非所问, 直接回答。
+        if (decision.intent() == Intent.CHAT) {
+            return false;
+        }
         if (hasNarrowIntentMargin(decision)) return true;
         if (decision.alternativeConfidence() != null) return false;
         if (decision.confidence() >= clarificationConfidenceThreshold) return false;

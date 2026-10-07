@@ -12,6 +12,7 @@ import AdminPage from './pages/AdminPage';
 import KnowledgeBasePage from './pages/KnowledgeBasePage';
 import MemoryPage from './pages/MemoryPage';
 import { hasSessionHint } from './lib/api';
+import { ChatConversationsProvider } from './lib/chatConversations';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   if (!hasSessionHint()) return <Navigate to="/login" replace />;
@@ -22,7 +23,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route element={<RequireAuth><Layout /></RequireAuth>}>
+      <Route element={<RequireAuth><ChatConversationsProvider><Layout /></ChatConversationsProvider></RequireAuth>}>
         <Route index element={<Navigate to="/chat" replace />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/profile" element={<ProfilePage />} />

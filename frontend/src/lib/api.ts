@@ -818,6 +818,7 @@ export function streamChat(
     onTool?: (e: { tool: string; step: number }) => void;
     onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string }) => void;
     onMemories?: (e: { items: MemoryRef[] }) => void;
+    onReasoning?: (text: string) => void;
     onToken?: (text: string, seq?: number) => void;
     onClarify?: (event: { question: string; options?: Array<{ id: string; label: string }> }) => void;
     onDone?: (e: { message_id: number; trace_id?: string; citation_status?: string; citation_issues?: string[]; truncated?: boolean }) => void;
@@ -856,20 +857,32 @@ export function streamChat(
     let buf = '';
     let nextTokenSequence = 0;
     const pendingTokens = new Map<number, string>();
-    while (true) {
-      // 读之前先检查是否仍活跃 (StrictMode 双流竞争 / 新 send 中断旧流)
-      if (handlers.isActive && !handlers.isActive()) {
-        try { await reader.cancel(); } catch { /* best-effort cancellation */ }
-        return;
-      }
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split('\n');
-      buf = lines.pop() ?? '';
-      for (const line of lines) {
-        const m = /^data:\s*(.+)$/.exec(line.trim());
-        if (!m) continue;
+    // 空闲看门狗: 后端每 15s 发 SSE 注释心跳, 正常慢回合会不断重置此计时;
+    // 连接半开/代理静默断开时 read() 永远挂起, 90s 无字节则主动 abort 转为可重试失败,
+    // 避免气泡无限转圈 (2026-10-06)。
+    const IDLE_LIMIT_MS = 90_000;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    const armIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => ctrl.abort(), IDLE_LIMIT_MS);
+    };
+    armIdleTimer();
+    try {
+      while (true) {
+        // 读之前先检查是否仍活跃 (StrictMode 双流竞争 / 新 send 中断旧流)
+        if (handlers.isActive && !handlers.isActive()) {
+          try { await reader.cancel(); } catch { /* best-effort cancellation */ }
+          return;
+        }
+        const { value, done } = await reader.read();
+        armIdleTimer();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          const m = /^data:\s*(.+)$/.exec(line.trim());
+          if (!m) continue;
         try {
           const evt = JSON.parse(m[1]);
           if ('conversation_id' in evt) handlers.onMeta?.(evt);
@@ -877,6 +890,7 @@ export function streamChat(
           else if ('phase' in evt) handlers.onStage?.(evt);
           else if ('sid' in evt) handlers.onCitation?.(evt);
           else if ('items' in evt) handlers.onMemories?.(evt);
+          else if (typeof evt.reasoning === 'string') handlers.onReasoning?.(evt.reasoning);
           else if (typeof evt.text === 'string') {
             if (typeof evt.seq === 'number') {
               if (evt.seq < nextTokenSequence) continue;
@@ -896,6 +910,9 @@ export function streamChat(
           // 忽略非 JSON 行
         }
       }
+      }
+    } finally {
+      if (idleTimer) clearTimeout(idleTimer);
     }
   }).catch(err => handlers.onError?.(toUserMessage(err, '网络连接异常，请稍后重试。')));
   return ctrl;

@@ -59,7 +59,7 @@ class ChatServiceTurnPathsTest {
         ChatServiceFixture fixture = new ChatServiceFixture();
         fixture.routeAsDirectChat();
         fixture.stubRetrieval(List.of(evidence("skill:rag")));
-        streamAnswer(fixture, "RAG 是检索增强生成");
+        streamAnswer(fixture, "RAG 是检索增强生成[S1]");
         AuthContext.set(ChatServiceFixture.USER_ID);
 
         RecordingEvents events = new RecordingEvents();
@@ -70,7 +70,25 @@ class ChatServiceTurnPathsTest {
         assertThat(events.tokens).contains("RAG 是检索增强生成");
         assertThat(events.done).isTrue();
         verify(fixture.conversations).appendMessage(eq(ChatServiceFixture.CONVERSATION_ID), eq("assistant"),
-                eq("RAG 是检索增强生成"), anyString(), any(), anyString(), anyInt(), anyString(), any());
+                eq("RAG 是检索增强生成[S1]"), anyString(), any(), anyString(), anyInt(), anyString(), any());
+    }
+
+    @Test
+    void directChatAnswerWithoutMarkersEmitsNoCitations() {
+        ChatServiceFixture fixture = new ChatServiceFixture();
+        fixture.routeAsDirectChat();
+        fixture.stubRetrieval(List.of(evidence("skill:rag")));
+        streamAnswer(fixture, "RAG 是检索增强生成");
+        AuthContext.set(ChatServiceFixture.USER_ID);
+
+        RecordingEvents events = new RecordingEvents();
+        fixture.build().turn(null, "什么是 RAG", events);
+
+        // 回答没有 [S#] 标记 (如问候/闲聊) 时不得向 SSE 倾倒检索候选,
+        // 否则参考材料面板会挂满与回答无关的证据 (2026-10-05)。
+        assertThat(events.citationCount).isEqualTo(0);
+        assertThat(events.tokens).contains("RAG 是检索增强生成");
+        assertThat(events.done).isTrue();
     }
 
     @Test
@@ -195,7 +213,7 @@ class ChatServiceTurnPathsTest {
         AuthContext.set(ChatServiceFixture.USER_ID);
 
         RecordingEvents events = new RecordingEvents();
-        fixture.buildWithToolLoop(loop, true).turn(null, "hello", events);
+        fixture.buildWithToolLoop(loop, true).turn(null, "帮我分析一下当前的学习状态", events);
 
         assertThat(events.done).isTrue();
         verify(fixture.gateway, never()).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
@@ -214,9 +232,28 @@ class ChatServiceTurnPathsTest {
         AuthContext.set(ChatServiceFixture.USER_ID);
 
         RecordingEvents events = new RecordingEvents();
-        fixture.buildWithToolLoop(loop, true).turn(null, "hello", events);
+        fixture.buildWithToolLoop(loop, true).turn(null, "帮我分析一下当前的学习状态", events);
 
         assertThat(events.tokens).contains("流式兜底回答");
+        assertThat(events.done).isTrue();
+        assertThat(events.errors).isEmpty();
+    }
+
+    @Test
+    void fillerSkipsToolLoopAndStreamsDirectly() {
+        ChatServiceFixture fixture = new ChatServiceFixture();
+        fixture.routeAsDirectChat();
+        streamAnswer(fixture, "你好！有什么可以帮助你的吗？");
+        com.tutor.agent.tool.ToolCallLoop loop = org.mockito.Mockito.mock(com.tutor.agent.tool.ToolCallLoop.class);
+        AuthContext.set(ChatServiceFixture.USER_ID);
+
+        RecordingEvents events = new RecordingEvents();
+        fixture.buildWithToolLoop(loop, true).turn(null, "你好", events);
+
+        // filler 轮次无需工具调用: 慢供应商下工具循环的 JSON 调用会耗尽 SSE 通道预算导致前端断流。
+        verify(loop, never()).run(any(), any(), anyString(), any(), any());
+        verify(fixture.gateway).chatStream(any(), any(), anyString(), any(), any(CancellationToken.class));
+        assertThat(events.tokens).contains("你好！有什么可以帮助你的吗？");
         assertThat(events.done).isTrue();
         assertThat(events.errors).isEmpty();
     }

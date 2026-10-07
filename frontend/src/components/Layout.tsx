@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { api, clearToken, getUserId, getUserRole, hasSessionHint } from '../lib/api';
+import { groupConvs, useChatConversations } from '../lib/chatConversations';
 import { useEffect, useState } from 'react';
 
 const NAV = [
@@ -18,10 +19,22 @@ export default function Layout() {
   const [name] = useState(() => localStorage.getItem('tutor_user_name') ?? '');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isAdmin = getUserRole() === 'ADMIN';
+  const { convs, currentId } = useChatConversations();
 
   useEffect(() => {
     if (!hasSessionHint()) nav('/login');
   }, [nav]);
+
+  // 通过 location.state 把指令带给 ChatPage：选中会话 / 开启新会话。
+  function openConversation(id: number) {
+    setMobileNavOpen(false);
+    nav('/chat', { state: { selectConv: id } });
+  }
+
+  function startNewChat() {
+    setMobileNavOpen(false);
+    nav('/chat', { state: { newChat: true } });
+  }
 
   return (
     <div className="app-shell flex h-screen min-h-0">
@@ -32,7 +45,7 @@ export default function Layout() {
         onClick={() => setMobileNavOpen(false)}
       />}
       <aside id="app-navigation" className={`app-sidebar fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 -translate-x-full flex-col overflow-hidden text-white transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${mobileNavOpen ? 'translate-x-0' : ''}`}>
-        <div className="px-4 py-5 border-b border-white/10 relative">
+        <div className="px-4 py-4 border-b border-white/10 relative">
           <div className="flex items-center gap-3">
             <div className="brand-mark h-8 w-8 rounded-[9px] flex items-center justify-center text-[15px] font-bold">T</div>
             <div>
@@ -41,15 +54,24 @@ export default function Layout() {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-2 pt-4 space-y-0.5 relative">
-          <div className="px-3 pb-2 editorial-kicker text-white/35">工作区</div>
+        <div className="px-3 pt-2.5 shrink-0 relative">
+          <button
+            type="button"
+            onClick={startNewChat}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] border border-white/20 text-[13px] font-semibold text-white/90 transition hover:bg-white/10 hover:text-white"
+          >
+            <span className="text-base leading-none">+</span><span>开启新对话</span>
+          </button>
+        </div>
+        <nav className="shrink-0 px-2 pt-2 space-y-px relative">
+          <div className="px-3 pb-1 editorial-kicker text-white/35">工作区</div>
           {NAV.map(n => (
             <NavLink
               key={n.to}
               to={n.to}
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
+                  `flex items-center gap-2.5 px-3 py-1.5 rounded-sm text-[12.5px] transition ${
                   isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                 }`}
               >
@@ -59,12 +81,12 @@ export default function Layout() {
           ))}
           {isAdmin && (
             <>
-              <div className="px-3 pt-5 pb-2 editorial-kicker text-white/35">管理</div>
+              <div className="px-3 pt-3 pb-1 editorial-kicker text-white/35">管理</div>
               <NavLink
                 to="/admin"
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
+                    `flex items-center gap-2.5 px-3 py-1.5 rounded-sm text-[12.5px] transition ${
                     isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                   }`}
               >
@@ -75,7 +97,7 @@ export default function Layout() {
                 to="/admin/documents"
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-sm text-[13px] transition ${
+                    `flex items-center gap-2.5 px-3 py-1.5 rounded-sm text-[12.5px] transition ${
                     isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
                   }`}
               >
@@ -85,6 +107,33 @@ export default function Layout() {
             </>
           )}
         </nav>
+        <div className="flex min-h-0 flex-1 flex-col mt-1 border-t border-white/10 relative">
+          <div className="px-5 pt-2.5 pb-1 editorial-kicker text-white/35 shrink-0">对话记录</div>
+          <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-3">
+            {groupConvs(convs).length === 0 && (
+              <div className="px-3 py-2 text-[11px] text-white/30">暂无历史对话</div>
+            )}
+            {groupConvs(convs).map(g => (
+              <div key={g.label}>
+                <div className="px-3 py-1 text-[10px] font-semibold text-white/30 uppercase tracking-[.12em]">{g.label}</div>
+                <div className="space-y-0.5">
+                  {g.items.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => openConversation(c.id)}
+                      className={`w-full text-left px-3 py-2 rounded-md text-xs truncate transition ${
+                        currentId === c.id ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                      }`}
+                    >
+                      {c.title || '(无标题)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="p-4 border-t border-white/10 relative">
           <div className="flex items-center gap-2.5 rounded-md bg-white/6 p-2">
             <div className="h-7 w-7 rounded-full bg-white/15 flex items-center justify-center text-[11px] font-bold">{(name || 'U').slice(0, 1).toUpperCase()}</div>
@@ -139,5 +188,5 @@ function NavIcon({ name }: { name: string }) {
     admin: <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8 9h8M8 13h5M8 17h3" /></>,
     knowledge: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v17H6.5A2.5 2.5 0 0 0 4 22zM20 5.5A2.5 2.5 0 0 0 17.5 3H13v17h4.5A2.5 2.5 0 0 1 20 22z" /></>,
   };
-  return <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{path[name]}</svg>;
+  return <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{path[name]}</svg>;
 }

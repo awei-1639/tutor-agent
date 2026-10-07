@@ -31,6 +31,25 @@ class IntentRouterTest {
     }
 
     @Test
+    void conceptQuestionOverrideRoutesPlanningMisclassificationToChat() {
+        // 线上案例: 「A2A协议是什么」被弱路由分进 PLANNING, 专家扇出后答非所问。
+        var decision = IntentRouter.parseDecision(
+                "{\"scope\":\"in_scope\",\"intent\":\"planning\",\"retrieval_facets\":[\"learning\"],\"retrieval_hint\":\"multi_candidate\",\"confidence\":0.6,\"alternative_intent\":\"resume\",\"alternative_confidence\":0.55}", mapper);
+        var overridden = IntentRouter.overrideConceptQuestion("A2A协议是什么", decision);
+        assertThat(overridden.intent()).isEqualTo(Intent.CHAT);
+        assertThat(overridden.retrievalFacets()).isEmpty();
+        assertThat(overridden.reasonCodes()).contains("RULE_CONCEPT_QUESTION");
+    }
+
+    @Test
+    void nonConceptQuestionKeepsModelIntent() {
+        var decision = IntentRouter.parseDecision(
+                "{\"scope\":\"in_scope\",\"intent\":\"planning\",\"retrieval_facets\":[\"learning\"],\"retrieval_hint\":\"single\",\"confidence\":0.9}", mapper);
+        var kept = IntentRouter.overrideConceptQuestion("帮我制定学习计划", decision);
+        assertThat(kept.intent()).isEqualTo(Intent.PLANNING);
+    }
+
+    @Test
     void unknownValueFallsBackSafelyAndMarksDegraded() {
         var decision = IntentRouter.parseDecision(
                 "{\"scope\":\"in_scope\",\"intent\":\"banana\",\"retrieval_facets\":[],\"retrieval_hint\":\"single\",\"confidence\":0.8}", mapper);

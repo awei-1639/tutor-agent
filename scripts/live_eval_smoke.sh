@@ -34,7 +34,13 @@ set +a
 export INTERNAL_ENDPOINTS_ENABLED=true
 export JWT_SECRET="agent-live-eval-test-secret-32-bytes-minimum-2026"
 
-java -jar "$PROJECT_ROOT/backend/target/personal-ai-tutor-0.1.0-SNAPSHOT.jar" >"$BACKEND_LOG" 2>&1 &
+# 与 start_backend_wsl.sh 一致: WSL 直连外网 LLM API 会被本机 mihomo TUN 劫持导致超时,
+# JVM 不读 http_proxy 环境变量, 必须显式挂代理 (本地/内网直连)。
+PROXY_HOST="${https_proxy#http://}"; PROXY_HOST="${PROXY_HOST%%:*}"; PROXY_HOST="${PROXY_HOST:-127.0.0.1}"
+PROXY_PORT="${https_proxy##*:}"; PROXY_PORT="${PROXY_PORT:-7897}"
+JVM_PROXY_ARGS="-Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dhttp.proxyHost=$PROXY_HOST -Dhttp.proxyPort=$PROXY_PORT -Dhttp.nonProxyHosts=localhost|127.*|192.168.*|10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*"
+
+java $JVM_PROXY_ARGS -jar "$PROJECT_ROOT/backend/target/personal-ai-tutor-0.1.0-SNAPSHOT.jar" >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID="$!"
 
 ready=0
@@ -72,7 +78,8 @@ fi
 
 for _ in $(seq 1 300); do
   detail=$(curl --noproxy '*' -sS "http://127.0.0.1:8180/internal/evals/$run_id")
-  status=$(printf '%s' "$detail" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
+  # detail 里嵌套的 qualityGate.status (如 "sample_only") 会干扰匹配, 只取首个顶层 status。
+  status=$(printf '%s' "$detail" | grep -oE '"status" *: *"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')
   echo "POLL status=$status"
   if [ "$status" = "completed" ] || [ "$status" = "failed" ]; then
     echo "$detail"

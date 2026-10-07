@@ -81,12 +81,58 @@ final class TurnCitations {
         }
     }
 
+    /**
+     * 输出净化链: 按顺序应用确定性规范化步骤, 与供应商/模型无关。
+     * 新增步骤时在 SANITIZERS 中追加并配套单测。
+     */
+    private static final List<java.util.function.UnaryOperator<String>> SANITIZERS = List.of(
+            TurnCitations::stripSectionArtifacts,
+            TurnCitations::normalizeCiteMarkers);
+
+    /** 净化入口: 落库与 SSE 交付的文本都必须经过此链。 */
+    static String sanitize(String text) {
+        if (text == null) return null;
+        String cleaned = text;
+        for (var step : SANITIZERS) cleaned = step.apply(cleaned);
+        return cleaned;
+    }
+
+    /** 清除弱模型把区块标题当成引用标记复述进回答的畸形产物 (如 "[知识证据]")。 */
+    static String stripSectionArtifacts(String text) {
+        return text == null ? null : text.replaceAll("\\s*\\[知识证据\\]", "");
+    }
+
+    /** 归一化畸形引用标记: 【S1】/[s1]/[S 1] → [S1] (免费模型常见变体)。 */
+    static String normalizeCiteMarkers(String text) {
+        return text == null ? null
+                : text.replaceAll("【\\s*([sS])\\s*(\\d+)\\s*】", "[S$2]")
+                      .replaceAll("\\[\\s*([sS])\\s*(\\d+)\\s*\\]", "[S$2]");
+    }
+
     private boolean isCitable(int index, List<Evidence> evidences, Set<String> availableCitationIds) {
         return index >= 0
                 && index < Math.min(evidences.size(), MAX_CITED_EVIDENCE)
                 && availableCitationIds != null
                 && availableCitationIds.contains("S" + (index + 1))
                 && evidences.get(index) != null;
+    }
+
+    /**
+     * 按标记序号对齐的"实际被引用"证据列表：位置 i 为 evidences.get(i) 当且仅当回答里有 [S(i+1)]，
+     * 未使用的位置为 null。供完成阶段只向 SSE 发送真正支撑回答的证据——
+     * 检索阶段倾倒全部候选会让问候/闲聊轮次挂满无关材料 (2026-10-05)。
+     */
+    List<Evidence> usedAligned(String text, List<Evidence> evidences, Set<String> availableCitationIds) {
+        if (evidences == null || evidences.isEmpty()) return List.of();
+        List<Evidence> aligned = new ArrayList<>();
+        Matcher matcher = CITE.matcher(text);
+        while (matcher.find()) {
+            int index = parseIndex(matcher.group(1));
+            if (!isCitable(index, evidences, availableCitationIds)) continue;
+            while (aligned.size() <= index) aligned.add(null);
+            aligned.set(index, evidences.get(index));
+        }
+        return Collections.unmodifiableList(aligned);
     }
 
     private Map<String, String> describe(Evidence evidence, int index) {

@@ -44,15 +44,19 @@ final class ChatCompletionFinalizer {
                         List<Evidence> evidences, Set<String> citationIds, String traceId,
                         ChatTurnEvents events, CancellationToken cancellation,
                         Claim claim, boolean truncated) {
-        CitationBundle bundle = citationsFor(text, evidences, citationIds);
-        Long messageId = persistAssistant(context.convId(), text, intent, bundle.json(), traceId,
-                text.length() / 2, bundle.status(), bundle.issuesJson(), claim, cancellation);
+        String cleaned = TurnCitations.sanitize(text);
+        CitationBundle bundle = citationsFor(cleaned, evidences, citationIds);
+        Long messageId = persistAssistant(context.convId(), cleaned, intent, bundle.json(), traceId,
+                cleaned.length() / 2, bundle.status(), bundle.issuesJson(), claim, cancellation);
         if (messageId == null) return;
 
-        events.onDone(messageId, text, bundle.status(), citations.parseIssues(bundle.issuesJson()), truncated);
-        background.submit(() -> postTurnTasks.run(context.convId(), context.userId(), question, text,
+        // 只发回答里 [S#] 实际引用的证据, sid 与文本标记对齐; 没有标记 (问候/闲聊) 就不发。
+        List<Evidence> usedCitations = citations.usedAligned(cleaned, evidences, citationIds);
+        if (!usedCitations.isEmpty() && !cancellation.isCancelled()) events.onCitations(usedCitations);
+        events.onDone(messageId, cleaned, bundle.status(), citations.parseIssues(bundle.issuesJson()), truncated);
+        background.submit(() -> postTurnTasks.run(context.convId(), context.userId(), question, cleaned,
                 traceId, context.memoryGeneration()));
-        background.submit(() -> citationVerification.verify(messageId, text,
+        background.submit(() -> citationVerification.verify(messageId, cleaned,
                 citations.forVerification(evidences, citationIds), traceId));
     }
 

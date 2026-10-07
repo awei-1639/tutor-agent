@@ -237,14 +237,21 @@ final class LlmStreamingExecutor {
         }
     }
 
-    private boolean consumeSseData(String data, StringBuilder fullText,
+    boolean consumeSseData(String data, StringBuilder fullText,
                                    AtomicLong inputTokens, AtomicLong outputTokens,
                                    AtomicLong actualTokens, AtomicBoolean truncated,
                                    LlmStreamHandler handler, CancellationToken cancellation,
                                    int maxOutputTokens) throws IOException {
         if (data == null || data.isBlank()) return false;
         if ("[DONE]".equals(data.trim())) return true;
-        JsonNode root = mapper.readTree(data);
+        JsonNode root;
+        try {
+            root = mapper.readTree(data);
+        } catch (IOException malformed) {
+            // 供应商偶发坏行不应杀死整个流: 跳过并继续 (容错供应商偏差)。
+            log.debug("跳过无法解析的 SSE 数据行 trace 不可用 len={}", data.length());
+            return false;
+        }
         JsonNode usage = root.path("usage");
         if (usage.isObject()) {
             inputTokens.set(usage.path("prompt_tokens").asLong(usage.path("input_tokens").asLong(-1)));
@@ -259,6 +266,10 @@ final class LlmStreamingExecutor {
         if ("length".equals(choice.path("finish_reason").asText(null))) truncated.set(true);
         JsonNode delta = choice.path("delta");
         String token = delta.path("content").asText("");
+        // 混合思考模型 (如 GLM-4.5-Flash) 的推理增量 (reasoning_content): 原样转发给关心
+        // 思考过程的调用方, 不计入回答 token 预算 (计费口径以服务端 usage 为准)。
+        String reasoning = delta.path("reasoning_content").asText("");
+        if (!reasoning.isEmpty()) handler.onReasoning(reasoning);
         if (!token.isEmpty()) {
             int remaining = maxOutputTokens - tokenBudget.count(fullText.toString());
             if (remaining <= 0) {

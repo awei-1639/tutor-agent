@@ -35,6 +35,10 @@ public interface ChatTurnEvents {
 
     void onToken(String token);
 
+    /** 混合思考模型的推理增量 (直答流式路径); 默认忽略, 展示层自行决定是否透出。 */
+    default void onReasoningToken(String token) {
+    }
+
     void onClarify(String question);
 
     default void onClarify(String question, List<Map<String, String>> options) {

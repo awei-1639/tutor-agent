@@ -16,17 +16,43 @@ public record LlmProperties(
         Budget budget,
         Timeout timeout,
         TokenLimits tokens,
-        Fallback fallback
+        Fallback fallback,
+        String profile
 ) {
     /** 标记唯一的规范构造器，供 Spring Boot 绑定不可变配置记录。 */
     @ConstructorBinding
     public LlmProperties {
+        // 模型画像 (fast/moderate/slow): 稳定性预算 (router/expert/SSE) 由画像整体推导,
+        // 换模型只改 LLM_MODEL_PROFILE 一个变量, 超时不再逐项硬编码 (2026-10-06)。
+        profile = profile == null || profile.isBlank() ? "moderate" : profile.trim().toLowerCase();
+        timeout = timeout == null ? null : timeout.withStability(StabilityBudget.ofProfile(profile));
     }
 
     /** 向后兼容的构造器：未显式配置备用供应商时保持单供应商行为。 */
     public LlmProperties(Endpoint deepseek, Endpoint siliconflow, Map<String, String> routing,
                          Budget budget, Timeout timeout, TokenLimits tokens) {
-        this(deepseek, siliconflow, routing, budget, timeout, tokens, null);
+        this(deepseek, siliconflow, routing, budget, timeout, tokens, null, "moderate");
+    }
+
+    /** 向后兼容的构造器：显式配置备用供应商、未指定模型画像时按 moderate 预算。 */
+    public LlmProperties(Endpoint deepseek, Endpoint siliconflow, Map<String, String> routing,
+                         Budget budget, Timeout timeout, TokenLimits tokens, Fallback fallback) {
+        this(deepseek, siliconflow, routing, budget, timeout, tokens, fallback, "moderate");
+    }
+
+    /** 稳定性预算: router/expert/SSE 三项由模型画像预设推导。 */
+    public record StabilityBudget(int routerSeconds, int expertSeconds, int sseSeconds) {
+        public static StabilityBudget ofProfile(String profile) {
+            return switch (profile == null ? "" : profile) {
+                case "fast" -> new StabilityBudget(10, 25, 120);   // deepseek-chat 级延迟
+                case "slow" -> new StabilityBudget(30, 90, 240);   // 免费档深度拥堵
+                default -> new StabilityBudget(20, 60, 180);       // glm-4.5-flash 免费档 (默认)
+            };
+        }
+    }
+
+    public StabilityBudget stabilityBudget() {
+        return StabilityBudget.ofProfile(profile);
     }
 
     public record Endpoint(String apiKey, String baseUrl) {}
@@ -114,9 +140,14 @@ public record LlmProperties(
     }
 
     public record Timeout(int routerSeconds, int chatSeconds, int summarySeconds, int expertSeconds) {
-        /** 使用完整构造器绑定不可变嵌套配置。 */
+        /** 使用完整构造器绑定不可变配置记录。 */
         @ConstructorBinding
         public Timeout {
+        }
+
+        /** router/expert 两项由模型画像的稳定性预算覆写 (chat/summary 等非关键路径保持显式配置)。 */
+        public Timeout withStability(StabilityBudget budget) {
+            return new Timeout(budget.routerSeconds(), chatSeconds(), summarySeconds(), budget.expertSeconds());
         }
     }
 

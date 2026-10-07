@@ -98,6 +98,18 @@ class RoutingPolicyTest {
     }
 
     @Test
+    void chatIntentNeverClarifiesEvenWhenModelSelfReportsAmbiguity() {
+        // 线上案例: 「A2A协议是什么」被弱路由自报歧义后追问简历/面试/规划, 答非所问。
+        // CHAT 是一般问答, 没有可分歧的执行路径, 任何置信度/歧义标记都不澄清。
+        var decision = new IntentRouter.RouteDecision(
+                IntentRouter.Scope.IN_SCOPE, Intent.CHAT, List.of(Intent.CHAT),
+                List.of(), IntentRouter.RetrievalHint.SINGLE,
+                0.55, null, List.of("MODEL_AMBIGUITY"), false);
+
+        assertThat(policy.shouldClarify(decision)).isFalse();
+    }
+
+    @Test
     void wideMarginCompetingIntentAnswersDirectlyDespiteReasonCode() {
         // 线上案例：「推荐一个可做的实战项目」0.72 vs 次优 0.25 差距悬殊，
         // 即使模型自报竞争意图也按主意图直接回答，不再追问。

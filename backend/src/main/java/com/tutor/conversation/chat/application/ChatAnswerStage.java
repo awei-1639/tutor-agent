@@ -18,6 +18,7 @@ import com.tutor.contract.Intent;
 import com.tutor.contract.Purpose;
 import com.tutor.agent.expert.Aggregator;
 import com.tutor.agent.expert.ExpertRunner;
+import com.tutor.agent.expert.IntentRouter;
 import com.tutor.platform.llm.budget.BudgetPressureService;
 import com.tutor.platform.llm.LlmMessage;
 import com.tutor.platform.llm.LlmStreamHandler;
@@ -199,7 +200,10 @@ final class ChatAnswerStage {
         PromptAssembler.Assembled assembled = assembleDirectPrompt(context, retrieved, traceId);
         List<LlmMessage> messages = directMessages(assembled, history, question);
         String intentName = intent.name().toLowerCase();
-        if (toolLoopEnabled && toolCallLoop != null
+        // filler 轮次（问候/致谢等）不需要工具调用：工具循环的 JSON 调用在慢供应商下动辄
+        // 数十秒并耗尽 SSE 通道预算，前端会在回答开始前断流（实测 2026-10-05）。直接流式作答。
+        boolean fillerTurn = IntentRouter.isConversationalFiller(question);
+        if (toolLoopEnabled && toolCallLoop != null && !fillerTurn
                 && streamViaToolLoop(context, question, retrieved, messages, assembled, intentName, traceId,
                 events, cancellation, claim)) return;
 
@@ -208,6 +212,10 @@ final class ChatAnswerStage {
             @Override public void onToken(String token) {
                 full.append(token);
                 if (!cancellation.isCancelled()) events.onToken(token);
+            }
+
+            @Override public void onReasoning(String token) {
+                if (!cancellation.isCancelled()) events.onReasoningToken(token);
             }
 
             @Override public void onComplete(com.tutor.platform.llm.LlmStreamResult response) {
@@ -233,7 +241,13 @@ final class ChatAnswerStage {
                     (tool, step) -> {
                         if (!cancellation.isCancelled()) events.onToolCall(tool, step);
                     });
-            completionFinalizer.completeAnswer(loopResult.answer(), intentName, context, question,
+            // 工具循环的答案是一次性产出的: 不发 token 事件前端气泡会是空壳
+            // (done 事件只带 message_id, 前端不回拉内容), 因此这里补发整段文本。
+            String answer = TurnCitations.sanitize(loopResult.answer());
+            if (!cancellation.isCancelled() && answer != null && !answer.isBlank()) {
+                events.onToken(answer);
+            }
+            completionFinalizer.completeAnswer(answer, intentName, context, question,
                     retrieved.evidences(), assembled.citationIds(), traceId, events, cancellation, claim, false);
             return true;
         } catch (RuntimeException error) {
