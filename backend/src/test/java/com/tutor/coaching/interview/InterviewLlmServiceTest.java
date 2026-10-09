@@ -54,4 +54,43 @@ class InterviewLlmServiceTest {
         org.assertj.core.api.Assertions.assertThat(scorecard.score()).isEqualTo(8);
         org.assertj.core.api.Assertions.assertThat(scorecard.confidence()).isEqualTo(0.85D);
     }
+
+    private static LlmGateway questionGateway() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.PLAN), any(List.class), eq("trace"), isNull(), eq(1)))
+                .thenReturn("""
+                        {"question":"Faiss 向量检索在召回链路里怎么选型?","required_points":["说明索引类型取舍"],
+                         "bonus_points":["说明召回率与延迟的权衡"],"critical_errors":["混淆ANN与精确 Top-K"]}
+                        """);
+        return gateway;
+    }
+
+    @Test
+    void injectsCareerGapContextIntoQuestionPrompt() {
+        LlmGateway gateway = questionGateway();
+        @SuppressWarnings("unchecked") org.mockito.ArgumentCaptor<List<com.tutor.platform.llm.LlmMessage>> captor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+
+        InterviewSession.QuestionSpec spec = new InterviewLlmService(gateway)
+                .generateQuestion("向量检索", "算法工程师", "", "technical", "MID", 1, "trace",
+                        List.of(), "已掌握: Python; 尚缺: FAISS; 需强化: PyMilvus");
+
+        org.mockito.Mockito.verify(gateway).chatJson(eq(Purpose.PLAN), captor.capture(), eq("trace"), isNull(), eq(1));
+        String prompt = captor.getValue().toString();
+        org.assertj.core.api.Assertions.assertThat(prompt).contains("候选人画像差距").contains("FAISS");
+        org.assertj.core.api.Assertions.assertThat(spec.question()).isNotBlank();
+    }
+
+    @Test
+    void omitsGapSectionWhenNoGapData() {
+        LlmGateway gateway = questionGateway();
+        @SuppressWarnings("unchecked") org.mockito.ArgumentCaptor<List<com.tutor.platform.llm.LlmMessage>> captor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+
+        new InterviewLlmService(gateway).generateQuestion("向量检索", "算法工程师", "", "technical", "MID", 1,
+                "trace", List.of(), null);
+
+        org.mockito.Mockito.verify(gateway).chatJson(eq(Purpose.PLAN), captor.capture(), eq("trace"), isNull(), eq(1));
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().toString()).doesNotContain("候选人画像差距");
+    }
 }

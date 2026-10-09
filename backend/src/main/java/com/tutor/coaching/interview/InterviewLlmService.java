@@ -43,6 +43,13 @@ public class InterviewLlmService {
 
     InterviewSession.QuestionSpec generateQuestion(String topic, String targetRole, String jobDescription, String interviewType,
                                                     String difficulty, int number, String traceId, List<String> priorQuestions) {
+        return generateQuestion(topic, targetRole, jobDescription, interviewType, difficulty, number, traceId, priorQuestions, null);
+    }
+
+    /** gapContext: 候选人画像差距 (已掌握 vs 岗位要求尚缺), 由调用方从 CareerGapService 构造; null 时降级为通用出题。 */
+    InterviewSession.QuestionSpec generateQuestion(String topic, String targetRole, String jobDescription, String interviewType,
+                                                    String difficulty, int number, String traceId, List<String> priorQuestions,
+                                                    String gapContext) {
         String dimension = questionDimension(interviewType, number);
         try {
             StructuredOutputResult<InterviewQuestionOutput> structured = structuredOutputService.generate(
@@ -51,9 +58,12 @@ public class InterviewLlmService {
                     List.of(
                     LlmMessage.system("你是技术面试官。输出 JSON：{\"question\":\"问题\",\"required_points\":[\"关键点\"],"
                             + "\"bonus_points\":[\"加分点\"],\"critical_errors\":[\"关键错误\"]}。"
-                            + "问题必须符合岗位、JD、难度和考察维度；只出一道问题，30字内。"),
+                            + "问题必须符合岗位、JD、难度和考察维度；只出一道问题，30字内。"
+                            + (gapContext == null || gapContext.isBlank() ? ""
+                                : "优先考察候选人尚缺或需强化的方向, 并可利用其已掌握内容设置知识迁移点。")),
                     LlmMessage.user("岗位: " + targetRole + "\n主题: " + topic + "\nJD: " + excerpt(jobDescription, 2000)
                             + "\n面试类型: " + interviewType + "\n难度: " + difficulty + "\n考察维度: " + dimension
+                            + (gapContext == null || gapContext.isBlank() ? "" : "\n候选人画像差距: " + gapContext)
                             + "\n第 " + number + " 题\n已考题（必须避免语义重复）: "
                             + String.join("；", priorQuestions.stream().map(this::shorten).toList()))),
                     InterviewQuestionOutput.class,

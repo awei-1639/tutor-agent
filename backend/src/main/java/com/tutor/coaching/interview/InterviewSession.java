@@ -28,29 +28,32 @@ public class InterviewSession {
     private final InterviewLlmService interviewer;
     private final InterviewSessionRepository sessions;
     private final InterviewReportService reports;
+    private final com.tutor.coaching.push.CareerGapService careerGaps;
     private final InterviewPolicy policy = new InterviewPolicy();
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Autowired
     public InterviewSession(InterviewLlmService interviewer, InterviewSessionRepository sessions,
-                            InterviewReportService reports, PlanService plans) {
+                            InterviewReportService reports, PlanService plans,
+                            com.tutor.coaching.push.CareerGapService careerGaps) {
         this.interviewer = interviewer;
         this.sessions = sessions;
         this.reports = reports;
+        this.careerGaps = careerGaps;
     }
 
     /** Compatibility constructor retained for database-focused integration tests. */
     public InterviewSession(JdbcTemplate jdbc, InterviewLlmService interviewer,
                             InterviewSessionRepository sessions, InterviewReportService reports,
                             PlanService plans) {
-        this(interviewer, sessions, reports, plans);
+        this(interviewer, sessions, reports, plans, null);
     }
 
     /** Convenience constructor retained for focused tests with a mock gateway. */
     public InterviewSession(JdbcTemplate jdbc, JsonGenerationGateway gateway, PlanService plans,
                             ProfileService profiles) {
         this(new InterviewLlmService(gateway), new InterviewSessionRepository(jdbc),
-                new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans, profiles), plans);
+                new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans, profiles), plans, null);
     }
 
     public record InterviewMessage(String sessionId, String status, String message) {}
@@ -78,11 +81,12 @@ public class InterviewSession {
         String type = interviewType == null || interviewType.isBlank() ? "technical" : interviewType;
         String level = difficulty == null || difficulty.isBlank() ? "MID" : difficulty;
         int duration = durationMinutes == null ? 45 : durationMinutes;
-        TopicPlan topicPlan = resolveTopic(role, jd);
+        TopicPlan topicPlan = resolveTopic(userId, role, jd);
         String topic = topicPlan.topic();
         String sessionId = UUID.randomUUID().toString();
         String blueprintId = UUID.randomUUID().toString();
-        QuestionSpec firstSpec = generateQuestion(topic, role, jd, type, level, 1, traceId, priorPrompts(retestOf));
+        String gapContext = gapContextFor(userId);
+        QuestionSpec firstSpec = generateQuestion(topic, role, jd, type, level, 1, traceId, priorPrompts(retestOf), gapContext);
 
         sessions.insertBlueprint(blueprintId, userId, role, topic, topicPlan.skillIds(),
                 blueprintJson(role, topicPlan.skillIds(), type, level, duration), jd, type, level, duration);
@@ -118,7 +122,7 @@ public class InterviewSession {
         } else if (decision.action() == InterviewPolicy.Action.ASK_MAIN) {
             nextSpec = generateQuestion(session.topic(), session.targetRole(), session.jobDescription(),
                     session.interviewType(), session.difficulty(), decision.nextMainQuestionCount(), traceId,
-                    priorPrompts(session.id(), session.retestOf()));
+                    priorPrompts(session.id(), session.retestOf()), gapContextFor(userId));
         }
         return new TurnEvaluation(scorecard, decision, followUp, nextSpec);
     }
@@ -217,8 +221,14 @@ public class InterviewSession {
         return sessions.history(userId, limit);
     }
 
-    private TopicPlan resolveTopic(String targetRole, String jobDescription) {
+    private TopicPlan resolveTopic(long userId, String targetRole, String jobDescription) {
         List<String> skills = new ArrayList<>();
+        // 岗位差距驱动: 目标岗位要求但证据薄弱的技能优先进入考察范围 (P1-a)
+        for (com.tutor.coaching.push.CareerGapService.GapCard card : topGapCards(userId)) {
+            skills.addAll(card.missing().stream().limit(2).toList());
+            skills.addAll(card.speedup());
+            if (skills.size() >= 3) break;
+        }
         try {
             skills.addAll(sessions.requiredSkillsForRole(targetRole));
         } catch (Exception ignored) {
@@ -228,6 +238,34 @@ public class InterviewSession {
         if (skills.isEmpty()) skills.add("通用算法与系统设计");
         List<String> normalized = skills.stream().map(this::normalizeSkill).distinct().limit(3).toList();
         return new TopicPlan(String.join(", ", skills), normalized, normalized.getFirst());
+    }
+
+    /** 画像差距上下文 (供出题 prompt): 已掌握 vs 岗位要求尚缺。无差距数据时返回 null 降级为通用出题。 */
+    private String gapContextFor(long userId) {
+        var cards = topGapCards(userId);
+        if (cards.isEmpty()) return null;
+        var card = cards.getFirst();
+        if (card.missing().isEmpty() && card.speedup().isEmpty()) return null;
+        StringBuilder ctx = new StringBuilder();
+        if (!card.matched().isEmpty()) ctx.append("已掌握: ").append(String.join(",", card.matched())).append("; ");
+        if (!card.missing().isEmpty()) ctx.append("尚缺: ").append(String.join(",", card.missing())).append("; ");
+        if (!card.speedup().isEmpty()) ctx.append("需强化: ").append(String.join(",", card.speedup()));
+        return ctx.isEmpty() ? null : ctx.toString().replaceAll("; $", "");
+    }
+
+    private List<com.tutor.coaching.push.CareerGapService.GapCard> topGapCards(long userId) {
+        if (careerGaps == null) return List.of();
+        try {
+            return careerGaps.topGaps(userId).stream()
+                    .filter(c -> !c.missing().isEmpty() || !c.speedup().isEmpty())
+                    .sorted(java.util.Comparator.comparingDouble(
+                            com.tutor.coaching.push.CareerGapService.GapCard::coverage).reversed())
+                    .limit(1)
+                    .toList();
+        } catch (Exception ignored) {
+            // 画像/岗位数据缺失时保持通用出题, 差距是增强不是前提。
+            return List.of();
+        }
     }
 
     private void insertQuestion(String sessionId, int sequence, String kind, String prompt, String skillId, String contract) {
@@ -251,8 +289,10 @@ public class InterviewSession {
     }
 
     private QuestionSpec generateQuestion(String topic, String targetRole, String jobDescription, String interviewType,
-                                          String difficulty, int number, String traceId, List<String> priorQuestions) {
-        return interviewer.generateQuestion(topic, targetRole, jobDescription, interviewType, difficulty, number, traceId, priorQuestions);
+                                          String difficulty, int number, String traceId, List<String> priorQuestions,
+                                          String gapContext) {
+        return interviewer.generateQuestion(topic, targetRole, jobDescription, interviewType, difficulty, number,
+                traceId, priorQuestions, gapContext);
     }
 
     private String generateFollowUp(String question, String answer, List<String> missingPoints, String traceId) {
