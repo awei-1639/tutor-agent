@@ -45,3 +45,4 @@ docs/项目学习/
 
 # 会话诊断临时文件 (Agent 诊断日志/gh API 中间产物, 仅本机使用)
 .workbuddy_*
+graph_data/seed_skills.backup-*.json
