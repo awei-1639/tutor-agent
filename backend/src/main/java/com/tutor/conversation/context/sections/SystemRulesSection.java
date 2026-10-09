@@ -31,7 +31,7 @@ public class SystemRulesSection implements ContextSection {
             """;
 
     @Override public String name() { return "rules"; }
-    @Override public int budget() { return 400; }
+    @Override public int budget() { return 700; }
 
     @Override
     public String render(TurnContextView ctx, TokenBudget budget) {
