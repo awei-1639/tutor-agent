@@ -161,7 +161,7 @@ export default function ChatPage() {
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' }); }, [messages, stage]);
 
-  const { refresh: refreshConvs, setCurrentId } = useChatConversations();
+  const { convs, refresh: refreshConvs, setCurrentId } = useChatConversations();
   const location = useLocation();
 
   // 侧边栏会话列表共享同一份数据：当前会话高亮 + 变更后刷新。
@@ -400,8 +400,8 @@ export default function ChatPage() {
         <header className="shrink-0 px-7 py-4 border-b editorial-rule glass-bar flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
-              <div className="editorial-kicker mb-1">当前工作区</div><div className="font-serif text-[15.5px] font-semibold tracking-[-.012em] text-ink-900">
-                {convId ? `对话 #${convId}` : '新对话'}
+              <div className="editorial-kicker mb-1">当前工作区</div><div className="font-serif text-[15.5px] font-semibold tracking-[-.012em] text-ink-900 truncate max-w-[420px]">
+                {convId ? (convs.find(c => c.id === convId)?.title || `对话 #${convId}`) : '新对话'}
               </div>
               <div className="text-xs text-ink-500 mt-1">你的专属成长教练 · 每条建议均可溯源</div>
             </div>
@@ -513,19 +513,60 @@ interface MessageItemProps {
   onToggleFeedback: (index: number) => void;
 }
 
-// 思考过程块: 默认收起, 点击展开; live 表示思考仍在进行 (回答尚未开始)。
+// 思考过程块: live (回答尚未开始) 时默认展开流式展示思考内容, 结束后自动收起;
+// 用户手动点过展开/收起则尊重用户选择 (userToggled 覆盖默认值)。历史消息默认收起。
 function ThinkingBlock({ reasoning, live }: { reasoning: string; live: boolean }) {
-  const [open, setOpen] = useState(false);
+  const [userToggled, setUserToggled] = useState<boolean | null>(null);
+  const open = userToggled ?? live;
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // 流式期间新内容到达时贴住底部, 像终端滚动一样展示最新思考。
+  useEffect(() => {
+    if (open && live && bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [reasoning, open, live]);
   return (
     <div className="mb-2 rounded-lg border border-black/[0.06] bg-black/[0.03]">
-      <button onClick={() => setOpen(o => !o)}
+      <button onClick={() => setUserToggled(!open)}
         className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] text-ink-400 hover:text-ink-600 transition">
         <span>{live ? '思考中' : '深度思考'}</span>
         {live && <span className="flex items-center gap-0.5"><span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" /></span>}
         <span className="ml-auto">{open ? '收起' : '展开'}</span>
       </button>
-      {open && <div className="px-3 pb-2.5 text-[12px] leading-[1.7] text-ink-500 whitespace-pre-wrap break-words">{reasoning}</div>}
+      {open && (
+        <div ref={bodyRef} className="px-3 pb-2.5 max-h-56 overflow-y-auto text-[12px] leading-[1.7] text-ink-500 whitespace-pre-wrap break-words">
+          {reasoning || '正在整理思路…'}
+        </div>
+      )}
     </div>
+  );
+}
+
+// 复制按钮：clipboard API 失败时降级到 execCommand（非 https 环境）。
+function CopyBtn({ text, className = '' }: { text: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-label="复制内容"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      }}
+      className={`px-1.5 py-1 rounded text-[11px] text-ink-500 hover:bg-ink-50 hover:text-ink-700 transition ${className}`}
+    >
+      {copied ? '已复制 ✓' : '复制'}
+    </button>
   );
 }
 
@@ -539,8 +580,11 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
   return (
     <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       {m.role === 'user' ? (
-        <div className="max-w-[78%] rounded-[15px_15px_5px_15px] px-[17px] py-3 bg-ink-900 text-[#efeeea] text-sm leading-[1.7] shadow-[0_1px_3px_rgba(26,25,23,.18)]">
-          <div className="whitespace-pre-wrap break-words">{m.content}</div>
+        <div className="max-w-[78%] flex items-end gap-1.5 group">
+          <CopyBtn text={m.content} className="opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0" />
+          <div className="rounded-[15px_15px_5px_15px] px-[17px] py-3 bg-accent-50 text-ink-900 text-sm leading-[1.7] ring-1 ring-accent-100 select-text selection:bg-[#b7c8f5] selection:text-ink-900 shadow-[0_1px_3px_rgba(26,25,23,.10)]">
+            <div className="whitespace-pre-wrap break-words">{m.content}</div>
+          </div>
         </div>
       ) : (
       <div className="w-full max-w-[92%] text-ink-900">
@@ -598,6 +642,7 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
         )}
         {m.role === 'assistant' && m.id && clarifyText == null && !m.clarify && (
           <div className="mt-3 pt-2.5 border-t border-ink-100 flex items-center gap-2 text-xs text-ink-500">
+            {m.content ? <CopyBtn text={m.content} /> : null}
             <span>这条回答有帮助吗？</span>
             <button onClick={() => onFeedback(index, 'helpful')}
               className={`px-2 py-1 rounded transition ${m.feedback === 'helpful' ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-ink-50 hover:text-ink-700'}`}>有帮助</button>

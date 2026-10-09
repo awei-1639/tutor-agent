@@ -18,8 +18,12 @@ export default function Layout() {
   const nav = useNavigate();
   const [name] = useState(() => localStorage.getItem('tutor_user_name') ?? '');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const isAdmin = getUserRole() === 'ADMIN';
   const { convs, currentId } = useChatConversations();
+  // 按标题过滤（纯前端）；空查询时展示全部分组。
+  const q = search.trim().toLowerCase();
+  const visibleConvs = q ? convs.filter(c => (c.title || '').toLowerCase().includes(q)) : convs;
 
   useEffect(() => {
     if (!hasSessionHint()) nav('/login');
@@ -108,12 +112,22 @@ export default function Layout() {
           )}
         </nav>
         <div className="flex min-h-0 flex-1 flex-col mt-1 border-t border-white/10 relative">
-          <div className="px-5 pt-2.5 pb-1 editorial-kicker text-white/35 shrink-0">对话记录</div>
+          <div className="px-5 pt-2.5 pb-1.5 editorial-kicker text-white/35 shrink-0">对话记录</div>
+          <div className="px-3 pb-1.5 shrink-0">
+            <input
+              type="search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="搜索对话标题"
+              aria-label="搜索对话"
+              className="w-full rounded-md bg-white/6 border border-transparent px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
+            />
+          </div>
           <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-3">
-            {groupConvs(convs).length === 0 && (
-              <div className="px-3 py-2 text-[11px] text-white/30">暂无历史对话</div>
+            {visibleConvs.length === 0 && (
+              <div className="px-3 py-2 text-[11px] text-white/30">{q ? '无匹配对话' : '暂无历史对话'}</div>
             )}
-            {groupConvs(convs).map(g => (
+            {groupConvs(visibleConvs).map(g => (
               <div key={g.label}>
                 <div className="px-3 py-1 text-[10px] font-semibold text-white/30 uppercase tracking-[.12em]">{g.label}</div>
                 <div className="space-y-0.5">
