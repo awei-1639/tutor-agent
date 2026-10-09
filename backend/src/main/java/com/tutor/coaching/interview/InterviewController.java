@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import io.micrometer.core.instrument.Timer;
 
+import java.util.List;
+
 /** HTTP boundary for the durable, authenticated interview runtime. */
 @RestController
 @RequestMapping("/interview")
@@ -129,6 +131,12 @@ public class InterviewController {
     @GetMapping("/{sessionId}/report")
     public InterviewSession.Report report(@PathVariable @NotBlank String sessionId) {
         return sessions.report(currentUserId(), sessionId);
+    }
+
+    @PostMapping("/{sessionId}/learning-plan")
+    @TrackedOperation(counter = "tutor.interview.requests", operation = "learning_plan")
+    public List<com.tutor.coaching.plan.PlanModels.PlanTask> learningPlan(@PathVariable @NotBlank String sessionId) {
+        return sessions.planFromWeakSkills(currentUserId(), sessionId);
     }
 
     @GetMapping("/{sessionId}/completion")

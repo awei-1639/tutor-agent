@@ -112,6 +112,15 @@ class InterviewSessionRepository {
                 sessionId);
     }
 
+    /** 低分题关联的技能 (由弱到强), 供面试后生成针对性学习任务。 */
+    List<String> weakSkills(String sessionId, int threshold) {
+        return jdbc.query("""
+                SELECT skill_id FROM interview_questions
+                WHERE session_id=? AND score IS NOT NULL AND score < ? AND skill_id IS NOT NULL
+                ORDER BY score ASC LIMIT 5
+                """, (rs, i) -> rs.getString(1), sessionId, threshold);
+    }
+
     boolean hasExactlyOneUnansweredQuestion(String sessionId, int sequence) {
         Integer count = jdbc.queryForObject("""
                 SELECT count(*) FROM interview_questions

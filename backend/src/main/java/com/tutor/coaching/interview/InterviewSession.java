@@ -29,6 +29,7 @@ public class InterviewSession {
     private final InterviewSessionRepository sessions;
     private final InterviewReportService reports;
     private final com.tutor.coaching.push.CareerGapService careerGaps;
+    private final PlanService plans;
     private final InterviewPolicy policy = new InterviewPolicy();
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -40,6 +41,7 @@ public class InterviewSession {
         this.sessions = sessions;
         this.reports = reports;
         this.careerGaps = careerGaps;
+        this.plans = plans;
     }
 
     /** Compatibility constructor retained for database-focused integration tests. */
@@ -205,6 +207,17 @@ public class InterviewSession {
     public InterviewReportService.CompletionStatus completionStatus(long userId, String sessionId) {
         findSession(userId, sessionId);
         return reports.completionStatus(userId, sessionId);
+    }
+
+    /** P1-b: 把面试弱项转成学习任务 —— 打通 interview→plan 闭环的证据流。 */
+    public List<com.tutor.coaching.plan.PlanModels.PlanTask> planFromWeakSkills(long userId, String sessionId) {
+        SessionRow session = findSession(userId, sessionId);
+        InterviewStateGuard.requireCompleted(session.status());
+        List<String> weak = sessions.weakSkills(sessionId, 7);
+        List<String> skills = weak.isEmpty() ? session.skills() : weak;
+        String goal = "补齐面试薄弱项: "
+                + (session.topic() == null || session.topic().isBlank() ? session.targetRole() : session.topic());
+        return plans.createEvidenceTasks(userId, goal, skills);
     }
 
     /** Captures a user-visible calibration signal without exposing reports across accounts. */
