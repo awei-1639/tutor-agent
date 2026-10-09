@@ -78,19 +78,25 @@ for (const j of jobs) {
 writeFileSync(join(OUT, 'seed.cypher'), cy);
 console.log(`seed.cypher: ${skills.length} skills, ${resources.length} resources, ${jobs.length} jobs, ${companies.size} companies`);
 
-// ============ 2. chunk 文本 (模板: 类型|名称|关键属性|一跳关系摘要) ============
+// ============ 2. chunk 文本 (自然语句模板: 供 embedding 与 LLM 证据直接阅读, 禁止裸字段清单) ============
 const names = ids => ids.map(i => skillById.get(i)?.name || i).join(',');
 const chunks = [];
 for (const s of skills) {
   const leads = jobs.filter(j => j.requires[0] === s.id).slice(0, 3).map(j => j.title).join(',');
-  chunks.push([s.id, 'skill', `skill|${s.name}|别名:${s.aliases.join('/')}|难度:${s.difficulty},约${s.est_hours}小时|${s.description}|前置:${names(s.prerequisites || []) || '无'} 进阶:${names(s.advances_to || []) || '无'}${leads ? ' 通往:' + leads : ''}`, null, s.name]);
+  const prereq = names(s.prerequisites || []);
+  const adv = names(s.advances_to || []);
+  const alias = s.aliases.length ? `(又称${s.aliases.join('/')}) ` : '';
+  const pre = prereq ? ` 学习它之前建议先掌握:${prereq}。` : '';
+  const to = adv ? ` 掌握后可进阶到:${adv}。` : '';
+  const lead = leads ? ` 对应的岗位方向:${leads}。` : '';
+  chunks.push([s.id, 'skill', `『${s.name}』${alias}是一项难度为${s.difficulty}的AI技能, 系统学习约需${s.est_hours}小时。${s.description}${pre}${to}${lead}`, null, s.name]);
 }
 for (const r of resources) {
   const sourceUrl = r.url || sourceOverrides[r.id] || null;
-  chunks.push([r.id, 'resource', `resource|${r.title}|${r.format},${r.language},约${r.duration_hours}小时,难度:${r.difficulty}|${r.description}|教授:${names(r.teaches)}`, sourceUrl, r.title]);
+  chunks.push([r.id, 'resource', `《${r.title}》是一个${r.format}格式的${r.language}学习资源, 约${r.duration_hours}小时, 难度${r.difficulty}。${r.description} 学习它可以掌握:${names(r.teaches)}。`, sourceUrl, r.title]);
 }
 for (const j of jobs) {
-  chunks.push([j.id, 'job', `job|${j.title}-${j.company}(${j.city})|薪资:${j.salary},学历:${j.education}|要求:${names(j.requires)}|${j.jd_snapshot}`, null, `${j.title} - ${j.company}`]);
+  chunks.push([j.id, 'job', `${j.title}岗位(公司:${j.company}, 城市:${j.city}, 薪资:${j.salary}, 学历要求:${j.education})正在招聘。该岗位要求的技能:${names(j.requires)}。${j.jd_snapshot}`, null, `${j.title} - ${j.company}`]);
 }
 
 // ============ 3. embedding ============
