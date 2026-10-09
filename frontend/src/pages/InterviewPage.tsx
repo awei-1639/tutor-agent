@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, toUserMessage, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob } from '../lib/api';
+import { api, toUserMessage, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask } from '../lib/api';
 
 interface Transcript { speaker: 'ai' | 'me'; content: string; }
 const STORAGE_KEY = 'tutor_active_interview_session';
@@ -43,8 +43,22 @@ export default function InterviewPage() {
   const [feedbackSent, setFeedbackSent] = useState<'accurate' | 'inaccurate' | null>(null);
   const [historyReport, setHistoryReport] = useState<{ item: InterviewHistoryItem; report: InterviewReport } | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [learningPlanState, setLearningPlanState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [learningTasks, setLearningTasks] = useState<LearningTask[]>([]);
   const [reportError, setReportError] = useState('');
   const reportRequestRef = useRef(0);
+
+  async function buildLearningPlan(id: string) {
+    setLearningPlanState('loading');
+    try {
+      const tasks = await api.createLearningPlan(id);
+      setLearningTasks(tasks);
+      setLearningPlanState('done');
+    } catch (err) {
+      setLearningPlanState('error');
+      setError(toUserMessage(err, '学习计划暂时无法生成，请稍后重试。'));
+    }
+  }
 
   function loadHistory() {
     api.getInterviewHistory().then(setHistory).catch(() => { /* History is supplementary to the active interview. */ });
@@ -460,6 +474,18 @@ export default function InterviewPage() {
               <ReportList title="亮点" items={report.strengths} marker="✓" />
               <ReportList title="改进点" items={report.improvements} marker="→" />
               <ReportList title="推荐学习" items={report.resources} marker="📚" />
+              <div className="rounded-md border border-accent-100 bg-accent-50/40 px-4 py-3 space-y-2">
+                <div className="text-sm font-medium text-ink-900">把这场面试的弱项变成学习计划</div>
+                <div className="text-xs text-ink-500">按低分题目对应的技能生成针对性学习任务，直接进入「学习计划」推进。</div>
+                <button onClick={() => void buildLearningPlan(sessionId!)} disabled={learningPlanState === 'loading'}
+                  className="rounded-md border border-accent-200 px-3 py-1.5 text-xs font-medium hover:bg-accent-50 disabled:opacity-60">
+                  {learningPlanState === 'loading' ? '正在生成…' : '生成我的补强计划'}
+                </button>
+                {learningPlanState === 'done' && <ul className="space-y-1 pt-1">
+                  {learningTasks.map(task => <li key={task.id} className="flex gap-2 text-sm text-ink-800">
+                    <span className="text-accent-600">→</span><span>{task.day} · {task.content}</span></li>)}
+                </ul>}
+              </div>
               <div className="border-t border-ink-100 pt-3 text-sm">
                 <div className="text-xs text-ink-500 mb-2">这份评分是否符合你的实际表现？</div>
                 {feedbackSent ? <div className="text-emerald-700">感谢反馈，已记录用于后续评分校准。</div> : <div className="space-y-2">

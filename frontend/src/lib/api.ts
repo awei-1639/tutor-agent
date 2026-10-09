@@ -241,6 +241,8 @@ export const api = {
   getInterviewCompletion: (sessionId: string) => request<InterviewCompletionStatus>(`/interview/${encodeURIComponent(sessionId)}/completion`),
   submitInterviewFeedback: (sessionId: string, rating: 'accurate' | 'inaccurate', reason = '') =>
     request<void>(`/interview/${encodeURIComponent(sessionId)}/feedback`, { method: 'POST', body: JSON.stringify({ rating, reason }) }),
+  createLearningPlan: (sessionId: string) =>
+    request<LearningTask[]>(`/interview/${encodeURIComponent(sessionId)}/learning-plan`, { method: 'POST' }),
   // RAG 评测（开发/内部工作台）
   listEvalRuns: () => request<EvalRunSummary[]>('/internal/evals'),
   getEvalRun: (id: number) => request<EvalRunDetail>(`/internal/evals/${id}`),
@@ -549,6 +551,17 @@ export interface InterviewCompletionStatus {
   finishedAt?: string | null;
   evidenceStatus?: 'queued' | 'completed' | string;
   learningPlanStatus?: 'queued' | 'completed' | 'failed' | string;
+}
+
+/** 面试复盘「把弱项变成学习计划」返回的学习任务。 */
+export interface LearningTask {
+  id: number;
+  planId: number;
+  day: string;
+  content: string;
+  kind: string;
+  minutes: number;
+  evidenceHint: string | null;
 }
 
 export interface InterviewTurnJob {
