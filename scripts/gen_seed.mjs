@@ -57,7 +57,7 @@ const posInt = (v, dflt) => (Number.isFinite(+v) && +v > 0) ? Math.round(+v) : d
 
 // ============ 1. 技能 (3批串行, 后批可引用前批id) ============
 const SKILL_SYS = `你是AI教育领域的知识图谱构建专家。输出严格的JSON。技能命名用业界通用中文名。
-每个技能: {"id":"skill:英文kebab-case小写","name":"中文名","aliases":["2-4个别名含英文缩写"],"description":"30-50字客观描述","difficulty":"入门|进阶|高级","est_hours":整数学习小时,"prerequisites":["前置技能id"],"advances_to":["进阶方向技能id"]}
+每个技能: {"id":"skill:英文kebab-case小写","name":"中文名","aliases":["2-4个别名含英文缩写"],"description":"100-200字客观描述(定义/学什么/为什么重要/用在哪)","difficulty":"入门|进阶|高级","est_hours":整数学习小时,"prerequisites":["前置技能id"],"advances_to":["进阶方向技能id"]}
 prerequisites/advances_to 只能引用本批或已有id列表中的id, 基础技能可为空数组。`;
 
 const skillBatches = [

@@ -1,6 +1,6 @@
 {
   "generated_by": "deepseek-chat",
-  "generated_at": "2026-07-26T11:17:19.518Z",
+  "generated_at": "2026-10-09T08:35:31.194Z",
   "review_status": "pending_human_review",
   "skills": [
     {
@@ -10,7 +10,7 @@
         "Python编程",
         "Python入门"
       ],
-      "description": "学习Python语法、数据类型、控制流、函数和模块等基础知识。",
+      "description": "Python基础是学习Python编程语言的基础语法、数据类型、控制流、函数和模块等知识。它涵盖了编程的基本概念和结构，对于AI学习和求职来说，是构建复杂程序和算法的基础，适用于所有编程领域，特别是在数据科学和机器学习中的应用尤为广泛。",
       "difficulty": "入门",
       "est_hours": 40,
       "prerequisites": [],
@@ -27,7 +27,7 @@
         "SQL查询",
         "数据库基础"
       ],
-      "description": "掌握SQL查询语言，包括SELECT、JOIN、子查询和数据操作。",
+      "description": "SQL基础是学习结构化查询语言（SQL）的基础，包括数据查询、连接、子查询以及数据操作。对于AI学习和求职，SQL是处理和分析数据库数据的关键技能，尤其在数据科学和大数据领域，能够高效地从数据库中提取和操作数据。",
       "difficulty": "入门",
       "est_hours": 20,
       "prerequisites": [],
@@ -42,7 +42,7 @@
         "Git",
         "版本管理"
       ],
-      "description": "学习Git的基本操作，如提交、分支、合并和远程仓库管理。",
+      "description": "Git版本控制是学习Git版本控制系统的基本操作，包括提交、分支、合并和远程仓库管理等。对于AI学习和求职，Git是团队协作和代码管理的重要工具，有助于维护代码版本和协作开发。",
       "difficulty": "入门",
       "est_hours": 10,
       "prerequisites": [],
@@ -55,7 +55,7 @@
         "Linux基础",
         "Shell命令"
       ],
-      "description": "熟悉Linux常用命令、文件操作、权限管理和脚本编写。",
+      "description": "Linux命令行是学习Linux操作系统下使用命令行界面进行文件操作、权限管理和脚本编写。对于AI学习和求职，Linux命令行是系统管理和自动化任务的基础，尤其在服务器管理和云计算领域应用广泛。",
       "difficulty": "入门",
       "est_hours": 15,
       "prerequisites": [],
@@ -70,7 +70,7 @@
         "DSA",
         "算法基础"
       ],
-      "description": "学习数组、链表、栈、队列、树、图及排序搜索等基础算法。",
+      "description": "数据结构与算法是学习数组、链表、栈、队列、树、图等数据结构和排序、搜索等算法的知识。对于AI学习和求职，这是理解和实现高效算法的基石，对于优化程序性能和解决复杂问题至关重要。",
       "difficulty": "进阶",
       "est_hours": 60,
       "prerequisites": [
@@ -88,7 +88,7 @@
         "线性代数基础",
         "矩阵运算"
       ],
-      "description": "掌握向量、矩阵、线性变换、特征值与特征向量等概念。",
+      "description": "线性代数是学习向量、矩阵、线性变换、特征值与特征向量等概念。对于AI学习和求职，线性代数是机器学习和数据分析的基础，尤其在处理多维数据和高维空间问题时不可或缺。",
       "difficulty": "进阶",
       "est_hours": 40,
       "prerequisites": [
@@ -106,7 +106,7 @@
         "概率统计",
         "统计基础"
       ],
-      "description": "学习概率分布、期望、方差、假设检验和回归分析等。",
+      "description": "概率论与数理统计是学习概率分布、期望、方差、假设检验和回归分析等知识。对于AI学习和求职，这是理解和应用统计模型和机器学习算法的基础，尤其在数据分析和预测建模中发挥关键作用。",
       "difficulty": "进阶",
       "est_hours": 40,
       "prerequisites": [
@@ -124,7 +124,7 @@
         "微积分基础",
         "导数积分"
       ],
-      "description": "掌握极限、导数、积分、多元函数微积分和梯度等概念。",
+      "description": "微积分是学习极限、导数、积分、多元函数微积分和梯度等概念。对于AI学习和求职，微积分是理解机器学习算法背后的数学原理的关键，尤其在深度学习和优化算法中应用广泛。",
       "difficulty": "进阶",
       "est_hours": 40,
       "prerequisites": [
@@ -142,7 +142,7 @@
         "NumPy数组",
         "数值计算"
       ],
-      "description": "学习NumPy库，掌握数组操作、矩阵运算和数学函数。",
+      "description": "NumPy是学习NumPy库，掌握数组操作、矩阵运算和数学函数。对于AI学习和求职，NumPy是Python中处理数值计算和数据科学的核心库，尤其在科学计算和数据分析中广泛应用。",
       "difficulty": "入门",
       "est_hours": 15,
       "prerequisites": [
@@ -160,7 +160,7 @@
         "Pandas数据处理",
         "DataFrame"
       ],
-      "description": "学习Pandas库，掌握数据清洗、转换、分组和合并等操作。",
+      "description": "Pandas是学习Pandas库，掌握数据清洗、转换、分组和合并等操作。对于AI学习和求职，Pandas是Python中处理和分析结构化数据的强大工具，尤其在数据科学和数据分析领域应用广泛。",
       "difficulty": "入门",
       "est_hours": 20,
       "prerequisites": [
@@ -179,7 +179,7 @@
         "Matplotlib",
         "Seaborn"
       ],
-      "description": "使用Matplotlib和Seaborn创建统计图表，如折线图、柱状图和散点图。",
+      "description": "数据可视化是一种将数据转换为图形或图像的技术，旨在通过图表和图形展示数据的分布、趋势和关系。它涵盖数据可视化工具的使用，如Matplotlib和Seaborn，以创建折线图、柱状图和散点图等统计图表。在AI学习和求职中，数据可视化技能对于清晰传达分析结果和发现数据中的洞察至关重要，特别是在数据科学和商业智能领域。",
       "difficulty": "入门",
       "est_hours": 15,
       "prerequisites": [
@@ -197,7 +197,7 @@
         "数据预处理",
         "数据整理"
       ],
-      "description": "处理缺失值、异常值、重复数据，并进行数据格式转换。",
+      "description": "数据清洗与整理是指对原始数据进行预处理，包括处理缺失值、异常值、重复数据，以及进行数据格式转换，以确保数据质量。这一技能的核心内容包括数据清洗技术和数据转换方法。在AI学习和求职中，数据清洗与整理是数据分析和机器学习流程中的基础步骤，对于构建准确和可靠的模型至关重要。",
       "difficulty": "入门",
       "est_hours": 20,
       "prerequisites": [
@@ -216,7 +216,7 @@
         "EDA",
         "数据探索"
       ],
-      "description": "通过统计摘要和可视化理解数据分布、相关性和模式。",
+      "description": "探索性数据分析（EDA）是一种通过统计摘要和可视化方法来理解数据分布、相关性和模式的过程。它涉及使用统计测试、图表和可视化工具来发现数据中的规律和异常。在AI学习和求职中，EDA技能有助于深入理解数据，为后续的数据分析和建模提供方向。",
       "difficulty": "入门",
       "est_hours": 15,
       "prerequisites": [
@@ -235,7 +235,7 @@
         "ML入门",
         "机器学习概念"
       ],
-      "description": "了解监督学习、无监督学习、过拟合、欠拟合和交叉验证等核心概念。",
+      "description": "机器学习基础涉及了解监督学习、无监督学习、过拟合、欠拟合和交叉验证等核心概念。它为学习更高级的机器学习算法和模型打下坚实的基础。在AI学习和求职中，掌握这些基础概念对于理解机器学习算法的工作原理和选择合适的模型至关重要。",
       "difficulty": "进阶",
       "est_hours": 30,
       "prerequisites": [
@@ -256,7 +256,7 @@
         "监督学习算法",
         "回归分类"
       ],
-      "description": "学习线性回归、逻辑回归、决策树、SVM和KNN等监督学习算法。",
+      "description": "监督学习是一种机器学习技术，通过学习输入数据和对应的输出标签来预测新的数据。它包括线性回归、逻辑回归、决策树、支持向量机（SVM）和K近邻（KNN）等算法。在AI学习和求职中，监督学习技能对于构建预测模型和分类系统至关重要。",
       "difficulty": "进阶",
       "est_hours": 40,
       "prerequisites": [
@@ -274,7 +274,7 @@
         "无监督学习算法",
         "聚类降维"
       ],
-      "description": "学习K-means、层次聚类、DBSCAN、PCA和t-SNE等算法。",
+      "description": "无监督学习是一种机器学习技术，用于发现数据中的结构和模式，而不依赖于标签。它包括K-means聚类、层次聚类、DBSCAN、主成分分析（PCA）和t-SNE等算法。在AI学习和求职中，无监督学习技能对于数据挖掘、异常检测和模式识别等领域至关重要。",
       "difficulty": "进阶",
       "est_hours": 30,
       "prerequisites": [
@@ -292,7 +292,7 @@
         "特征提取",
         "特征选择"
       ],
-      "description": "学习特征缩放、编码、构造、选择和降维等技巧以提升模型性能。",
+      "description": "特征工程是指通过特征缩放、编码、构造、选择和降维等技巧来提升机器学习模型的性能。它涉及理解数据特征和选择最有效的特征子集。在AI学习和求职中，特征工程技能对于提高模型准确性和效率至关重要。",
       "difficulty": "进阶",
       "est_hours": 25,
       "prerequisites": [
@@ -311,7 +311,7 @@
         "模型评估",
         "超参数调优"
       ],
-      "description": "掌握交叉验证、混淆矩阵、ROC曲线、AUC和网格搜索等方法。",
+      "description": "模型评估与调优涉及使用交叉验证、混淆矩阵、ROC曲线、AUC和网格搜索等方法来评估和改进机器学习模型。这些技术帮助确定模型性能，并指导参数调整以优化模型表现。在AI学习和求职中，模型评估与调优技能对于确保模型在实际应用中的有效性和可靠性至关重要。",
       "difficulty": "进阶",
       "est_hours": 20,
       "prerequisites": [
@@ -330,7 +330,7 @@
         "集成方法",
         "Bagging Boosting"
       ],
-      "description": "学习随机森林、AdaBoost、梯度提升和Stacking等集成技术。",
+      "description": "集成学习是一种通过结合多个模型来提高预测准确性和鲁棒性的机器学习技术。它包括随机森林、AdaBoost、梯度提升和Stacking等集成方法。在AI学习和求职中，集成学习技能对于构建高性能的预测模型和决策系统至关重要。",
       "difficulty": "进阶",
       "est_hours": 25,
       "prerequisites": [
@@ -349,7 +349,7 @@
         "XGBoost算法",
         "梯度提升"
       ],
-      "description": "掌握XGBoost的原理、参数调优和实际应用，处理分类与回归问题。",
+      "description": "XGBoost是一种高效的梯度提升决策树算法，广泛应用于分类和回归问题。它以其快速速度和准确度而闻名。在AI学习和求职中，掌握XGBoost的原理、参数调优和实际应用对于解决复杂的数据科学问题至关重要。",
       "difficulty": "进阶",
       "est_hours": 20,
       "prerequisites": [
@@ -367,7 +367,7 @@
         "LightGBM算法",
         "高效梯度提升"
       ],
-      "description": "学习LightGBM的直方图算法、叶子节点生长和并行训练等特性。",
+      "description": "LightGBM是一种基于直方图算法的梯度提升框架，它通过叶子节点生长和并行训练等特性，提高了模型的训练速度和效率。学习LightGBM有助于理解高效机器学习模型的构建，对于提升AI模型的性能和缩短训练时间具有重要意义。典型应用场景包括大规模数据集的快速分类和回归任务。",
       "difficulty": "进阶",
       "est_hours": 15,
       "prerequisites": [
@@ -384,7 +384,7 @@
         "CatBoost算法",
         "类别特征处理"
       ],
-      "description": "掌握CatBoost对类别特征的原生支持和有序提升等独特技术。",
+      "description": "CatBoost是一种集成学习算法，它对类别特征具有原生支持，并采用有序提升等独特技术。掌握CatBoost有助于提高模型对类别数据的处理能力，特别是在处理不平衡数据集时表现突出。在AI学习和求职中，CatBoost的应用可以增强模型在特定领域的表现。",
       "difficulty": "进阶",
       "est_hours": 10,
       "prerequisites": [
@@ -399,7 +399,7 @@
         "L1 L2正则化",
         "防止过拟合"
       ],
-      "description": "学习L1、L2正则化、Dropout和早停等防止过拟合的方法。",
+      "description": "正则化技术是一类防止机器学习模型过拟合的方法，包括L1、L2正则化、Dropout和早停等。学习正则化技术有助于提高模型的泛化能力，使模型在未见数据上的表现更稳定。在AI领域，正则化技术是构建鲁棒模型的关键。",
       "difficulty": "进阶",
       "est_hours": 10,
       "prerequisites": [
@@ -416,7 +416,7 @@
         "梯度下降",
         "优化算法"
       ],
-      "description": "理解批量梯度下降、随机梯度下降、动量法和Adam等优化器。",
+      "description": "梯度下降优化是一种用于寻找函数最小值的优化算法，包括批量梯度下降、随机梯度下降、动量法和Adam等。理解梯度下降优化对于调整模型参数、提高模型性能至关重要。在AI学习和求职中，掌握梯度下降优化算法是优化模型的基础。",
       "difficulty": "进阶",
       "est_hours": 15,
       "prerequisites": [
@@ -435,7 +435,7 @@
         "DL入门",
         "神经网络基础"
       ],
-      "description": "了解感知机、多层感知机、激活函数和反向传播等基本概念。",
+      "description": "深度学习基础包括感知机、多层感知机、激活函数和反向传播等基本概念。学习深度学习基础有助于理解复杂神经网络的工作原理，为后续学习更高级的AI模型打下坚实基础。在AI领域，深度学习基础是研究和应用各种深度学习模型的前提。",
       "difficulty": "进阶",
       "est_hours": 25,
       "prerequisites": [
@@ -455,7 +455,7 @@
         "NN",
         "人工神经网络"
       ],
-      "description": "学习神经网络的架构、训练技巧和调参，使用框架实现简单网络。",
+      "description": "神经网络是一种模拟人脑神经元连接的模型，学习神经网络的架构、训练技巧和调参，可以使用框架实现简单网络。掌握神经网络对于理解和应用各种AI算法至关重要，特别是在图像识别、语音识别等领域。",
       "difficulty": "进阶",
       "est_hours": 30,
       "prerequisites": [
@@ -473,7 +473,7 @@
         "CNN",
         "卷积网络"
       ],
-      "description": "掌握卷积层、池化层、经典架构（如LeNet、ResNet）和图像分类应用。",
+      "description": "卷积神经网络（CNN）是一种专门用于处理图像数据的神经网络，包括卷积层、池化层、经典架构（如LeNet、ResNet）和图像分类应用。掌握CNN有助于在图像识别、目标检测等领域构建高效模型。",
       "difficulty": "高级",
       "est_hours": 30,
       "prerequisites": [
@@ -490,7 +490,7 @@
         "RNN",
         "序列模型"
       ],
-      "description": "学习RNN、LSTM、GRU及其在时间序列和自然语言处理中的应用。",
+      "description": "循环神经网络（RNN）及其变体LSTM和GRU，能够处理序列数据，如时间序列和自然语言处理。学习RNN及其应用对于理解和构建能够处理序列数据的AI模型至关重要。",
       "difficulty": "高级",
       "est_hours": 25,
       "prerequisites": [
@@ -507,7 +507,7 @@
         "NLP",
         "文本处理"
       ],
-      "description": "学习文本预处理、词嵌入、情感分析和序列标注等NLP任务。",
+      "description": "自然语言处理（NLP）涉及文本预处理、词嵌入、情感分析和序列标注等任务。学习NLP有助于开发能够理解和生成人类语言的AI系统，是构建智能客服、机器翻译等应用的基础。",
       "difficulty": "高级",
       "est_hours": 30,
       "prerequisites": [
@@ -525,7 +525,7 @@
         "Transformer",
         "自注意力"
       ],
-      "description": "掌握Transformer架构、自注意力机制及其在NLP和CV中的应用。",
+      "description": "Transformer模型是一种基于自注意力机制的深度学习模型，它在NLP和计算机视觉领域有广泛应用。掌握Transformer架构和自注意力机制对于理解和应用最新的AI模型至关重要。",
       "difficulty": "高级",
       "est_hours": 25,
       "prerequisites": [
@@ -543,7 +543,7 @@
         "BERT",
         "预训练语言模型"
       ],
-      "description": "学习BERT的预训练与微调，用于文本分类、问答等下游任务。",
+      "description": "BERT模型是一种预训练语言表示模型，旨在捕捉语言中的深层语义表示。它涵盖了对大量文本数据进行预训练，以及如何将预训练模型应用于文本分类、问答等下游任务。在AI学习和求职语境中，BERT模型的重要性在于其能够提高文本处理任务的性能，是自然语言处理领域的关键技术。典型应用场景包括搜索引擎、聊天机器人、文本摘要等。",
       "difficulty": "高级",
       "est_hours": 20,
       "prerequisites": [
@@ -560,7 +560,7 @@
         "GPT",
         "生成式预训练"
       ],
-      "description": "了解GPT系列模型的自回归生成原理和提示工程等应用。",
+      "description": "GPT模型是一系列基于自回归生成原理的神经网络模型，它涵盖了对文本数据的生成和预测。学习GPT模型包括理解其自回归生成原理、提示工程等应用。在AI学习和求职语境中，GPT模型的重要性在于其能够生成高质量的自然语言文本，是自然语言生成领域的关键技术。典型应用场景包括文本生成、对话系统、机器翻译等。",
       "difficulty": "高级",
       "est_hours": 15,
       "prerequisites": [
@@ -577,7 +577,7 @@
         "微调",
         "迁移学习"
       ],
-      "description": "学习如何利用预训练模型进行迁移学习，针对特定任务微调参数。",
+      "description": "预训练模型微调是指利用预训练模型进行迁移学习，针对特定任务进行参数微调的过程。这一技能涵盖了对预训练模型的理解和如何进行有效的微调。在AI学习和求职语境中，预训练模型微调的重要性在于其能够提高模型在特定任务上的性能，是深度学习领域的关键技能。典型应用场景包括图像识别、语音识别、机器翻译等。",
       "difficulty": "高级",
       "est_hours": 15,
       "prerequisites": [
@@ -593,7 +593,7 @@
         "异常检测算法",
         "离群点检测"
       ],
-      "description": "学习孤立森林、LOF和Autoencoder等异常检测方法。",
+      "description": "异常检测是指识别数据集中偏离正常模式的异常值或异常事件。这一技能涵盖了对孤立森林、LOF和Autoencoder等异常检测方法的掌握。在AI学习和求职语境中，异常检测的重要性在于其能够帮助发现数据中的异常情况，是数据分析和安全领域的关键技术。典型应用场景包括金融欺诈检测、网络入侵检测、医疗诊断等。",
       "difficulty": "进阶",
       "est_hours": 15,
       "prerequisites": [
@@ -610,7 +610,7 @@
         "时间序列",
         "时序预测"
       ],
-      "description": "掌握ARIMA、季节性分解、LSTM和Prophet等时间序列建模方法。",
+      "description": "时间序列分析是研究时间序列数据的方法，涵盖了对ARIMA、季节性分解、LSTM和Prophet等时间序列建模方法的掌握。在AI学习和求职语境中，时间序列分析的重要性在于其能够对时间序列数据进行预测和分析，是金融、气象、交通等领域的关键技术。典型应用场景包括股票市场预测、天气预报、交通流量预测等。",
       "difficulty": "进阶",
       "est_hours": 25,
       "prerequisites": [
@@ -626,7 +626,7 @@
         "激活函数",
         "Activation"
       ],
-      "description": "神经网络中引入非线性的函数，如ReLU、Sigmoid、Tanh等，是深度学习基础组件。",
+      "description": "激活函数是神经网络中引入非线性的函数，如ReLU、Sigmoid、Tanh等。这一技能涵盖了对不同激活函数的理解和选择。在AI学习和求职语境中，激活函数的重要性在于其能够影响神经网络的性能和收敛速度，是深度学习基础组件。典型应用场景包括图像识别、语音识别、自然语言处理等。",
       "difficulty": "入门",
       "est_hours": 2,
       "prerequisites": [
@@ -643,7 +643,7 @@
         "优化器",
         "Optimizer"
       ],
-      "description": "用于更新神经网络参数的算法，如SGD、Adam、RMSprop等，影响模型收敛速度与性能。",
+      "description": "优化器是用于更新神经网络参数的算法，如SGD、Adam、RMSprop等。这一技能涵盖了对不同优化器的理解和应用。在AI学习和求职语境中，优化器的重要性在于其能够影响模型的收敛速度和最终性能，是深度学习训练过程中的关键技术。典型应用场景包括图像分类、目标检测、语音识别等。",
       "difficulty": "入门",
       "est_hours": 3,
       "prerequisites": [
@@ -662,7 +662,7 @@
         "损失函数",
         "Loss"
       ],
-      "description": "衡量模型预测与真实值差异的函数，如交叉熵、均方误差等，是训练优化的目标。",
+      "description": "损失函数是衡量模型预测与真实值差异的函数，如交叉熵、均方误差等。这一技能涵盖了对不同损失函数的理解和选择。在AI学习和求职语境中，损失函数的重要性在于其能够指导模型训练过程，是深度学习训练优化的目标。典型应用场景包括分类、回归、预测等。",
       "difficulty": "入门",
       "est_hours": 2,
       "prerequisites": [
@@ -679,7 +679,7 @@
         "正则化",
         "Regularization"
       ],
-      "description": "防止过拟合的方法，包括L1/L2正则化、Dropout、Batch Normalization等。",
+      "description": "正则化技术是防止过拟合的方法，包括L1/L2正则化、Dropout、Batch Normalization等。这一技能涵盖了对正则化技术的理解和应用。在AI学习和求职语境中，正则化技术的重要性在于其能够提高模型的泛化能力，是深度学习领域的关键技术。典型应用场景包括图像识别、自然语言处理、推荐系统等。",
       "difficulty": "入门",
       "est_hours": 3,
       "prerequisites": [
@@ -697,7 +697,7 @@
         "CNN",
         "卷积神经网络"
       ],
-      "description": "卷积神经网络的核心结构，包括卷积层、池化层、全连接层及经典模型如LeNet、AlexNet。",
+      "description": "CNN架构是卷积神经网络的核心结构，包括卷积层、池化层、全连接层及经典模型如LeNet、AlexNet。这一技能涵盖了对CNN架构的理解和设计。在AI学习和求职语境中，CNN架构的重要性在于其能够有效处理图像数据，是计算机视觉领域的关键技术。典型应用场景包括图像分类、目标检测、图像分割等。",
       "difficulty": "进阶",
       "est_hours": 5,
       "prerequisites": [
@@ -716,7 +716,7 @@
         "RNN",
         "循环神经网络"
       ],
-      "description": "处理序列数据的网络变体，包括LSTM、GRU，解决长程依赖和梯度消失问题。",
+      "description": "RNN变体是处理序列数据的网络结构，包括LSTM、GRU等，旨在解决长程依赖和梯度消失问题。它涵盖了序列建模的核心内容，对于AI在自然语言处理、语音识别等领域的应用至关重要，尤其是在处理复杂序列数据时，能够有效提升模型性能。",
       "difficulty": "进阶",
       "est_hours": 4,
       "prerequisites": [
@@ -735,7 +735,7 @@
         "词嵌入",
         "Word Embedding"
       ],
-      "description": "将词语映射为稠密向量的技术，包括Word2Vec、GloVe、FastText等，是NLP基础。",
+      "description": "词向量是一种将词语映射为稠密向量的技术，如Word2Vec、GloVe、FastText等。它是自然语言处理的基础，能够捕捉词语的语义和上下文信息，对于文本分类、情感分析等任务具有重要意义。",
       "difficulty": "进阶",
       "est_hours": 4,
       "prerequisites": [
@@ -753,7 +753,7 @@
         "文本分类",
         "Text Classification"
       ],
-      "description": "将文本分配到预定义类别的任务，常用方法包括CNN、RNN、Transformer等。",
+      "description": "文本分类是将文本分配到预定义类别的任务，常用方法包括CNN、RNN、Transformer等。它涵盖了文本表示和分类的核心内容，是信息检索、垃圾邮件过滤等应用的基础。",
       "difficulty": "进阶",
       "est_hours": 4,
       "prerequisites": [
@@ -790,7 +790,7 @@
         "Transformer",
         "自注意力"
       ],
-      "description": "基于自注意力机制的序列模型架构，是BERT、GPT等预训练模型的基础。",
+      "description": "Transformer架构是一种基于自注意力机制的序列模型架构，是BERT、GPT等预训练模型的基础。它涵盖了序列建模的新方法，对于处理长距离依赖和并行计算具有显著优势。",
       "difficulty": "进阶",
       "est_hours": 6,
       "prerequisites": [
@@ -881,7 +881,7 @@
         "RAG",
         "检索增强"
       ],
-      "description": "结合信息检索与文本生成，从外部知识库检索相关文档辅助大模型生成答案。",
+      "description": "检索增强生成是结合信息检索与文本生成，从外部知识库检索相关文档辅助大模型生成答案的技术。它涵盖了信息检索和文本生成的结合，对于提高问答系统、知识库应用等任务的性能具有重要意义。",
       "difficulty": "高级",
       "est_hours": 6,
       "prerequisites": [
@@ -899,7 +899,7 @@
         "LoRA",
         "低秩适配"
       ],
-      "description": "通过低秩矩阵更新大模型参数的高效微调方法，减少计算资源需求。",
+      "description": "LoRA微调是一种通过低秩矩阵更新大模型参数的高效微调方法。它主要涵盖了对大模型进行微调时减少计算资源需求的技术。在AI学习和求职语境中，LoRA微调的重要性在于其能够帮助研究者或工程师在有限的计算资源下实现对大模型的优化。典型应用场景包括自然语言处理、计算机视觉等领域，特别是在需要快速迭代和资源受限的环境中。",
       "difficulty": "高级",
       "est_hours": 5,
       "prerequisites": [
@@ -917,7 +917,7 @@
         "Agent",
         "AI Agent"
       ],
-      "description": "构建能自主执行任务、调用工具和记忆的AI智能体，如ReAct模式。",
+      "description": "智能体开发涉及构建能够自主执行任务、调用工具和记忆的AI智能体。这一技能的核心内容包括智能体的设计、实现和测试。在AI学习和求职语境中，智能体开发的重要性在于它能够培养AI系统的自主性和适应性。典型应用场景包括游戏AI、智能客服、机器人控制等。",
       "difficulty": "高级",
       "est_hours": 8,
       "prerequisites": [
@@ -933,7 +933,7 @@
         "LangChain",
         "链式调用"
       ],
-      "description": "用于构建大模型应用的框架，提供链、代理、记忆等组件，简化开发流程。",
+      "description": "LangChain框架是一个用于构建大模型应用的框架，它提供了链、代理、记忆等组件，旨在简化开发流程。该技能涵盖的内容包括框架的使用和定制。在AI学习和求职语境中，LangChain框架的重要性在于它能够帮助开发者快速构建复杂的大模型应用。典型应用场景包括问答系统、文本生成、多模态交互等。",
       "difficulty": "进阶",
       "est_hours": 6,
       "prerequisites": [
@@ -952,7 +952,7 @@
         "向量数据库",
         "Vector DB"
       ],
-      "description": "存储和检索高维向量嵌入的数据库，如FAISS、Pinecone，用于RAG和相似性搜索。",
+      "description": "向量数据库是一种用于存储和检索高维向量嵌入的数据库，如FAISS、Pinecone。它主要用于RAG（Retrieval-Augmented Generation）和相似性搜索。在AI学习和求职语境中，向量数据库的重要性在于其能够高效地处理高维数据，支持快速检索。典型应用场景包括推荐系统、图像搜索、知识图谱等。",
       "difficulty": "进阶",
       "est_hours": 4,
       "prerequisites": [
@@ -970,7 +970,7 @@
         "图像分类",
         "Image Classification"
       ],
-      "description": "将图像分配到预定义类别的任务，常用CNN架构如ResNet、EfficientNet。",
+      "description": "图像分类是将图像分配到预定义类别的任务。它常用CNN（卷积神经网络）架构，如ResNet、EfficientNet。该技能的核心内容包括图像预处理、模型选择和训练。在AI学习和求职语境中，图像分类的重要性在于其广泛应用于计算机视觉领域。典型应用场景包括医疗影像分析、自动驾驶、内容审核等。",
       "difficulty": "进阶",
       "est_hours": 5,
       "prerequisites": [
@@ -987,7 +987,7 @@
         "目标检测",
         "Object Detection"
       ],
-      "description": "识别图像中物体位置和类别的任务，常用方法包括YOLO、Faster R-CNN。",
+      "description": "目标检测是识别图像中物体位置和类别的任务。常用方法包括YOLO、Faster R-CNN等。该技能的核心内容包括目标检测算法的理解和应用。在AI学习和求职语境中，目标检测的重要性在于其对于物体识别和定位的广泛应用。典型应用场景包括视频监控、自动驾驶、工业检测等。",
       "difficulty": "高级",
       "est_hours": 6,
       "prerequisites": [
@@ -1002,7 +1002,7 @@
         "PyTorch",
         "Torch"
       ],
-      "description": "深度学习框架PyTorch的核心概念，包括张量、自动求导、神经网络模块。",
+      "description": "PyTorch基础涉及深度学习框架PyTorch的核心概念，包括张量、自动求导、神经网络模块等。该技能的核心内容包括框架的基本使用和基础概念。在AI学习和求职语境中，PyTorch基础的重要性在于其作为深度学习领域的流行框架，能够帮助开发者快速上手。典型应用场景包括图像处理、自然语言处理、强化学习等。",
       "difficulty": "入门",
       "est_hours": 4,
       "prerequisites": [
@@ -1020,7 +1020,7 @@
         "PyTorch高级",
         "Torch高级"
       ],
-      "description": "PyTorch高级特性，包括自定义数据集、分布式训练、模型部署。",
+      "description": "PyTorch高级特性包括自定义数据集、分布式训练、模型部署等。该技能的核心内容包括PyTorch的高级功能和高级应用。在AI学习和求职语境中，PyTorch高级的重要性在于其能够帮助开发者处理更复杂的问题和更大规模的数据。典型应用场景包括大规模数据集处理、高性能计算、跨平台部署等。",
       "difficulty": "进阶",
       "est_hours": 5,
       "prerequisites": [
@@ -1037,7 +1037,7 @@
         "TensorFlow",
         "TF"
       ],
-      "description": "深度学习框架TensorFlow的核心概念，包括张量、计算图、Keras API。",
+      "description": "TensorFlow基础包括深度学习框架TensorFlow的核心概念，如张量、计算图、Keras API等。该技能的核心内容包括框架的基本使用和基础概念。在AI学习和求职语境中，TensorFlow基础的重要性在于其作为深度学习领域的另一个流行框架，能够帮助开发者快速上手。典型应用场景包括图像处理、自然语言处理、强化学习等。",
       "difficulty": "入门",
       "est_hours": 4,
       "prerequisites": [
@@ -1055,7 +1055,7 @@
         "TensorFlow高级",
         "TF高级"
       ],
-      "description": "TensorFlow高级特性，包括自定义训练循环、TFRecord、TPU训练。",
+      "description": "TensorFlow高级特性包括自定义训练循环、TFRecord、TPU训练等。该技能的核心内容包括TensorFlow的高级功能和高级应用。在AI学习和求职语境中，TensorFlow高级的重要性在于其能够帮助开发者处理更复杂的问题和更大规模的数据。典型应用场景包括大规模数据集处理、高性能计算、跨平台部署等。",
       "difficulty": "进阶",
       "est_hours": 5,
       "prerequisites": [
@@ -1072,7 +1072,7 @@
         "部署",
         "Model Serving"
       ],
-      "description": "将训练好的模型部署到生产环境，包括ONNX、TensorRT、Flask/FastAPI服务。",
+      "description": "模型部署是将训练好的模型部署到生产环境的过程，涵盖ONNX、TensorRT、Flask/FastAPI等服务。在AI学习中，它确保模型能够高效运行；在求职语境中，掌握模型部署能力是展示技术实力的关键。典型应用场景包括在线服务、移动应用等。",
       "difficulty": "进阶",
       "est_hours": 5,
       "prerequisites": [
@@ -1088,7 +1088,7 @@
         "分布式训练",
         "Distributed Training"
       ],
-      "description": "利用多GPU或多节点加速模型训练的技术，包括数据并行、模型并行。",
+      "description": "分布式训练是利用多GPU或多节点加速模型训练的技术，包括数据并行和模型并行。它涵盖了如何高效处理大规模数据集和复杂模型。在AI学习中，分布式训练能显著缩短训练时间；在求职语境中，是解决大规模问题的重要技能。典型应用场景包括大规模图像识别、自然语言处理等。",
       "difficulty": "高级",
       "est_hours": 6,
       "prerequisites": [
@@ -1104,7 +1104,7 @@
         "GAN",
         "生成对抗"
       ],
-      "description": "由生成器和判别器组成的生成模型，用于图像生成、风格迁移等。",
+      "description": "生成对抗网络是由生成器和判别器组成的生成模型，用于图像生成、风格迁移等。它涵盖了生成模型的设计和训练。在AI学习中，GANs能够生成高质量的数据；在求职语境中，是创新数据生成方法的关键。典型应用场景包括艺术创作、数据增强等。",
       "difficulty": "高级",
       "est_hours": 5,
       "prerequisites": [
@@ -1119,7 +1119,7 @@
         "VAE",
         "变分自编码"
       ],
-      "description": "基于变分推断的生成模型，学习数据的潜在表示，用于图像生成、降维。",
+      "description": "变分自编码器是基于变分推断的生成模型，学习数据的潜在表示，用于图像生成、降维。它涵盖了生成模型和降维技术。在AI学习中，VAEs能够有效处理高维数据；在求职语境中，是处理复杂数据问题的有力工具。典型应用场景包括图像压缩、数据可视化等。",
       "difficulty": "高级",
       "est_hours": 4,
       "prerequisites": [
@@ -1135,7 +1135,7 @@
         "RL",
         "强化学习"
       ],
-      "description": "智能体通过与环境交互学习最优策略的框架，包括Q-learning、策略梯度。",
+      "description": "强化学习基础是智能体通过与环境交互学习最优策略的框架，包括Q-learning、策略梯度。它涵盖了强化学习的基本概念和方法。在AI学习中，强化学习是解决决策问题的有效途径；在求职语境中，是构建智能决策系统的核心技能。典型应用场景包括游戏、机器人控制等。",
       "difficulty": "进阶",
       "est_hours": 5,
       "prerequisites": [
@@ -1152,7 +1152,7 @@
         "深度RL",
         "Deep RL"
       ],
-      "description": "结合深度学习与强化学习的方法，如DQN、PPO，处理高维状态空间。",
+      "description": "深度强化学习是结合深度学习与强化学习的方法，如DQN、PPO，处理高维状态空间。它涵盖了复杂决策问题的解决方案。在AI学习中，DRL能够处理高度复杂的环境；在求职语境中，是解决复杂决策问题的关键技术。典型应用场景包括自动驾驶、资源分配等。",
       "difficulty": "高级",
       "est_hours": 6,
       "prerequisites": [
@@ -1168,7 +1168,7 @@
         "可解释性",
         "XAI"
       ],
-      "description": "解释深度学习模型决策的方法，如LIME、SHAP、注意力可视化。",
+      "description": "模型可解释性是解释深度学习模型决策的方法，如LIME、SHAP、注意力可视化。它涵盖了模型决策背后的机制。在AI学习中，模型可解释性有助于提高模型的可信度；在求职语境中，是提升模型应用价值的重要技能。典型应用场景包括医疗诊断、金融风险评估等。",
       "difficulty": "进阶",
       "est_hours": 4,
       "prerequisites": [
@@ -1183,7 +1183,7 @@
         "迁移学习",
         "Transfer Learning"
       ],
-      "description": "将预训练模型知识迁移到新任务的技术，减少训练数据需求。",
+      "description": "迁移学习是将预训练模型知识迁移到新任务的技术，减少训练数据需求。它涵盖了如何利用已有知识解决新问题。在AI学习中，迁移学习能够加速新模型的开发；在求职语境中，是解决数据稀缺问题的有效方法。典型应用场景包括自然语言处理、计算机视觉等。",
       "difficulty": "进阶",
       "est_hours": 3,
       "prerequisites": [
@@ -1201,7 +1201,7 @@
         "数据增强",
         "Data Augmentation"
       ],
-      "description": "通过对原始数据施加变换生成新样本的技术，提升模型泛化能力，如图像旋转、文本回译。",
+      "description": "数据增强是通过对原始数据施加变换生成新样本的技术，提升模型泛化能力，如图像旋转、文本回译。它涵盖了如何扩展数据集和提高模型性能。在AI学习中，数据增强能够提高模型的鲁棒性；在求职语境中，是提升模型泛化能力的关键技能。典型应用场景包括图像识别、语音识别等。",
       "difficulty": "入门",
       "est_hours": 2,
       "prerequisites": [
@@ -1219,7 +1219,7 @@
         "超参数调优",
         "HPO"
       ],
-      "description": "系统搜索最优超参数的方法，包括网格搜索、随机搜索、贝叶斯优化。",
+      "description": "超参数调优是系统搜索最优超参数的方法，包括网格搜索、随机搜索、贝叶斯优化。它涵盖了如何优化模型性能。在AI学习中，超参数调优能够显著提升模型效果；在求职语境中，是提高模型性能的重要手段。典型应用场景包括模型训练、参数优化等。",
       "difficulty": "进阶",
       "est_hours": 3,
       "prerequisites": [
@@ -1234,7 +1234,7 @@
         "容器化",
         "Docker容器"
       ],
-      "description": "学习Docker容器化技术，包括镜像构建、容器运行、Docker Compose编排等，用于模型部署。",
+      "description": "Docker是一种开源的应用容器引擎，通过使用Docker容器化技术，可以构建、运行和编排应用程序。核心内容包括镜像构建、容器运行、Docker Compose编排等。在AI学习和求职语境中，Docker用于模型部署，能够提高部署效率和可移植性。典型应用场景包括云服务、持续集成/持续部署（CI/CD）流程以及跨平台部署。",
       "difficulty": "入门",
       "est_hours": 20,
       "prerequisites": [
@@ -1252,7 +1252,7 @@
         "FastAPI框架",
         "Python Web API"
       ],
-      "description": "学习使用FastAPI构建高性能RESTful API，用于模型服务化部署。",
+      "description": "FastAPI是一个现代、快速（高性能）的Web框架，用于构建API。学习FastAPI涉及构建高性能RESTful API，适用于模型服务化部署。在AI领域，FastAPI有助于快速开发可访问的模型接口。典型应用场景包括Web服务和微服务架构。",
       "difficulty": "入门",
       "est_hours": 15,
       "prerequisites": [
@@ -1269,7 +1269,7 @@
         "开放神经网络交换",
         "ONNX格式"
       ],
-      "description": "学习ONNX模型格式，用于模型转换和跨框架部署，提升推理效率。",
+      "description": "ONNX（Open Neural Network Exchange）是一种开放神经网络交换格式，用于模型转换和跨框架部署。学习ONNX能够提升推理效率，支持模型在不同框架间的迁移。在AI学习和求职中，ONNX有助于实现模型的跨平台兼容性。典型应用场景包括深度学习模型部署和模型交换。",
       "difficulty": "进阶",
       "est_hours": 10,
       "prerequisites": [
@@ -1288,7 +1288,7 @@
         "量化",
         "INT8量化"
       ],
-      "description": "学习模型量化技术，减少模型大小和加速推理，包括PTQ和QAT。",
+      "description": "模型量化是一种技术，通过减少模型参数的精度来减小模型大小和加速推理。学习模型量化技术，包括PTQ（Post-Training Quantization）和QAT（Quantization-Aware Training），有助于优化AI模型在资源受限环境下的性能。在AI学习和求职中，模型量化技术对于提高模型效率和降低成本至关重要。典型应用场景包括移动设备和嵌入式系统。",
       "difficulty": "进阶",
       "est_hours": 15,
       "prerequisites": [
@@ -1306,7 +1306,7 @@
         "MLOps",
         "机器学习运维"
       ],
-      "description": "学习MLOps核心概念，包括实验跟踪、模型版本管理、CI/CD流水线、模型监控。",
+      "description": "MLOps（Machine Learning Operations）是机器学习与软件工程相结合的领域，涉及实验跟踪、模型版本管理、CI/CD流水线、模型监控等核心概念。学习MLOps基础有助于在AI项目中实现高效、可重复的模型部署和运维。在AI学习和求职中，MLOps能力对于确保模型在生产环境中的稳定运行至关重要。典型应用场景包括数据科学团队和AI产品开发。",
       "difficulty": "进阶",
       "est_hours": 25,
       "prerequisites": [
@@ -1322,7 +1322,7 @@
         "Spark",
         "Spark大数据"
       ],
-      "description": "学习Spark分布式计算框架，包括RDD、DataFrame、Spark SQL，用于大规模数据处理。",
+      "description": "Apache Spark是一个开源的分布式计算系统，用于大规模数据处理。学习Spark涉及RDD（弹性分布式数据集）、DataFrame、Spark SQL等组件。在AI学习和求职中，Spark适用于处理大规模数据集，是大数据分析的重要工具。典型应用场景包括数据挖掘、机器学习和实时分析。",
       "difficulty": "进阶",
       "est_hours": 30,
       "prerequisites": [
@@ -1340,7 +1340,7 @@
         "数仓",
         "数据仓库"
       ],
-      "description": "学习数据仓库概念、维度建模、ETL流程，以及常用工具如Hive、Snowflake。",
+      "description": "数据仓库是一种用于存储大量数据的系统，用于支持企业决策。学习数据仓库基础包括概念、维度建模、ETL（提取、转换、加载）流程以及常用工具如Hive、Snowflake。在AI学习和求职中，数据仓库是数据分析和报告的基础。典型应用场景包括商业智能和数据分析。",
       "difficulty": "进阶",
       "est_hours": 20,
       "prerequisites": [
@@ -1355,7 +1355,7 @@
         "Java",
         "Java编程"
       ],
-      "description": "学习Java语言核心，包括面向对象、集合框架、多线程、I/O等。",
+      "description": "Java是一种面向对象的编程语言，具有跨平台特性。学习Java基础包括面向对象、集合框架、多线程、I/O等核心概念。在AI学习和求职中，Java是构建高性能应用程序和系统的基础。典型应用场景包括企业级应用、Android开发和大数据处理。",
       "difficulty": "入门",
       "est_hours": 40,
       "prerequisites": [],
@@ -1370,7 +1370,7 @@
         "Spring Boot框架",
         "Spring Boot开发"
       ],
-      "description": "学习Spring Boot框架，包括依赖注入、REST API、数据访问、安全配置等。",
+      "description": "Spring Boot是一个开源的Java框架，用于简化Spring应用的初始搭建以及开发过程。学习Spring Boot涉及依赖注入、REST API、数据访问、安全配置等。在AI学习和求职中，Spring Boot有助于快速开发可扩展的Web应用程序。典型应用场景包括企业级Web服务和微服务架构。",
       "difficulty": "进阶",
       "est_hours": 30,
       "prerequisites": [
@@ -1387,7 +1387,7 @@
         "微服务架构",
         "微服务"
       ],
-      "description": "学习微服务架构设计原则、服务拆分、服务发现、API网关等。",
+      "description": "微服务是一种架构风格，将单个应用程序开发为一组小型服务，每个服务都在自己的进程中运行，并与轻量级机制（通常是HTTP资源API）进行通信。学习微服务基础包括架构设计原则、服务拆分、服务发现、API网关等。在AI学习和求职中，微服务架构有助于构建可扩展、可维护的软件系统。典型应用场景包括分布式系统和云原生应用。",
       "difficulty": "进阶",
       "est_hours": 20,
       "prerequisites": [
@@ -1402,7 +1402,7 @@
         "Redis缓存",
         "Redis数据库"
       ],
-      "description": "学习Redis内存数据库，包括数据结构、缓存策略、持久化、集群等。",
+      "description": "Redis是一种高性能的内存数据库，支持多种数据结构，如字符串、列表、集合、哈希表等。学习内容包括数据结构、缓存策略、持久化机制和集群部署。在AI学习和求职中，掌握Redis有助于提升数据处理速度和系统性能，适用于缓存热点数据、实现分布式存储等场景。",
       "difficulty": "进阶",
       "est_hours": 15,
       "prerequisites": [
@@ -1417,7 +1417,7 @@
         "MQ",
         "消息中间件"
       ],
-      "description": "学习消息队列原理及常用系统如Kafka、RabbitMQ，包括生产消费模型、分区、可靠性。",
+      "description": "消息队列是一种用于异步通信的系统，支持生产者-消费者模型。学习内容包括消息队列的原理、常用系统如Kafka、RabbitMQ的使用，以及分区、可靠性等特性。在AI领域，消息队列用于处理大量数据流，保证系统间的解耦和消息传递的可靠性。",
       "difficulty": "进阶",
       "est_hours": 20,
       "prerequisites": [
@@ -1432,7 +1432,7 @@
         "简历技巧",
         "简历优化"
       ],
-      "description": "学习如何撰写技术简历，突出项目经验、技能和成果，吸引面试官。",
+      "description": "简历撰写是一项关键技能，旨在通过突出项目经验、技能和成果来吸引面试官。学习内容包括如何撰写技术简历，包括项目描述、技术栈和成果展示。在求职过程中，一份优秀的简历是获得面试机会的关键。",
       "difficulty": "入门",
       "est_hours": 5,
       "prerequisites": [],
@@ -1482,7 +1482,7 @@
         "模型容器化",
         "Docker部署"
       ],
-      "description": "学习使用Docker打包机器学习模型并部署为服务，结合FastAPI。",
+      "description": "Docker模型部署涉及使用Docker打包机器学习模型并部署为服务。学习内容包括Docker的基本操作和FastAPI框架的使用，适用于将模型部署到生产环境。",
       "difficulty": "进阶",
       "est_hours": 10,
       "prerequisites": [
@@ -1562,7 +1562,7 @@
         "REST API开发",
         "Spring Boot API"
       ],
-      "description": "深入学习使用Spring Boot构建RESTful API，包括异常处理、验证、文档。",
+      "description": "Spring Boot REST API是一种使用Spring Boot框架构建RESTful API的技能。它涵盖了使用Spring Boot创建RESTful服务、异常处理、数据验证和API文档编写等核心内容。在AI学习和求职语境中，掌握Spring Boot REST API对于开发高效、可维护的Web服务至关重要，尤其在构建微服务架构时。典型应用场景包括企业级应用、移动应用后端服务。",
       "difficulty": "进阶",
       "est_hours": 15,
       "prerequisites": [
@@ -1579,7 +1579,7 @@
         "缓存设计",
         "Redis缓存"
       ],
-      "description": "学习Redis缓存模式，包括缓存穿透、击穿、雪崩的解决方案。",
+      "description": "Redis缓存策略是利用Redis数据库进行数据缓存的技术。它包括解决缓存穿透、击穿和雪崩等问题的策略。学习Redis缓存模式有助于提高应用性能和响应速度，减少数据库负载。在AI学习和求职中，掌握Redis缓存策略对于优化数据处理和存储至关重要。典型应用场景包括电商网站、在线游戏。",
       "difficulty": "进阶",
       "est_hours": 10,
       "prerequisites": [
@@ -1594,7 +1594,7 @@
         "Kafka",
         "消息队列Kafka"
       ],
-      "description": "学习Apache Kafka核心概念，包括主题、分区、消费者组、可靠性保证。",
+      "description": "Kafka基础是学习Apache Kafka核心概念和原理的技能。它涵盖了主题、分区、消费者组、消息传递和可靠性保证等核心内容。在AI学习和求职中，Kafka是处理大规模数据流和构建实时系统的关键工具。典型应用场景包括大数据处理、实时分析。",
       "difficulty": "进阶",
       "est_hours": 15,
       "prerequisites": [
@@ -1609,7 +1609,7 @@
         "行为问题",
         "软技能面试"
       ],
-      "description": "学习行为面试技巧，使用STAR方法回答项目经验、团队合作等问题。",
+      "description": "行为面试是一种基于STAR（Situation, Task, Action, Result）方法的面试技巧。学习行为面试技巧有助于求职者更有效地展示自己的项目经验和团队合作能力。在AI学习和求职中，掌握行为面试技巧对于成功通过面试至关重要。典型应用场景包括求职面试、职业发展。",
       "difficulty": "入门",
       "est_hours": 5,
       "prerequisites": [
@@ -1626,7 +1626,7 @@
         "算法刷题",
         "编程练习"
       ],
-      "description": "通过LeetCode练习算法和数据结构题目，提升编程能力和面试通过率。",
+      "description": "LeetCode刷题是通过LeetCode平台练习算法和数据结构题目的技能。它旨在提升编程能力和解决复杂问题的能力，从而提高面试通过率。在AI学习和求职中，LeetCode刷题是检验和提升编程技能的重要途径。典型应用场景包括技术面试、编程竞赛。",
       "difficulty": "进阶",
       "est_hours": 60,
       "prerequisites": [
@@ -1643,7 +1643,7 @@
         "GoF设计模式",
         "软件设计模式"
       ],
-      "description": "学习常用设计模式，如单例、工厂、观察者等，提升代码可维护性。",
+      "description": "设计模式是软件工程中常用的一套设计原则和模式。学习常用设计模式，如单例、工厂、观察者等，有助于提升代码的可维护性和可扩展性。在AI学习和求职中，掌握设计模式对于编写高质量代码至关重要。典型应用场景包括软件开发、系统架构。",
       "difficulty": "进阶",
       "est_hours": 20,
       "prerequisites": [
@@ -1660,7 +1660,7 @@
         "云服务",
         "AWS/Azure/GCP"
       ],
-      "description": "学习云平台基础，如AWS EC2、S3，用于部署模型和应用。",
+      "description": "云部署基础是学习如何使用云平台（如AWS EC2、S3）部署模型和应用的技能。它涵盖了云平台的基本概念和操作。在AI学习和求职中，云部署基础对于快速部署和扩展应用至关重要。典型应用场景包括云计算服务、大数据平台。",
       "difficulty": "入门",
       "est_hours": 15,
       "prerequisites": [
@@ -1677,7 +1677,7 @@
         "K8s",
         "容器编排"
       ],
-      "description": "学习Kubernetes容器编排，包括Pod、Service、Deployment等，用于微服务部署。",
+      "description": "Kubernetes基础是学习Kubernetes容器编排技术的技能。它包括Pod、Service、Deployment等核心概念。在AI学习和求职中，Kubernetes是微服务架构和容器化部署的关键技术。典型应用场景包括容器化应用、云原生架构。",
       "difficulty": "进阶",
       "est_hours": 25,
       "prerequisites": [
@@ -1694,7 +1694,7 @@
         "RESTful设计",
         "API规范"
       ],
-      "description": "学习RESTful API设计原则，包括资源命名、状态码、版本控制。",
+      "description": "API设计是学习RESTful API设计原则的技能。它涵盖了资源命名、状态码、版本控制等核心内容。在AI学习和求职中，掌握API设计对于构建高效、易于使用的API至关重要。典型应用场景包括Web服务、移动应用。",
       "difficulty": "入门",
       "est_hours": 10,
       "prerequisites": [
@@ -1712,7 +1712,7 @@
         "复杂SQL",
         "SQL优化"
       ],
-      "description": "学习高级SQL技巧，包括窗口函数、CTE、查询优化、索引策略。",
+      "description": "SQL进阶是学习高级SQL技巧的技能，包括窗口函数、公用表表达式（CTE）、查询优化和索引策略等。它有助于提高数据库查询性能和数据处理效率。在AI学习和求职中，SQL进阶对于高效利用数据库资源至关重要。典型应用场景包括数据分析和数据库管理。",
       "difficulty": "进阶",
       "est_hours": 20,
       "prerequisites": [
