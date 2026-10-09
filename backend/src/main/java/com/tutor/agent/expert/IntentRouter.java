@@ -67,6 +67,19 @@ public class IntentRouter {
     static final double RULE_CONFIDENCE = 0.6D;
     static final String REASON_RULE_SHORTCUT = "RULE_CONVERSATIONAL_FILLER";
 
+    /**
+     * 纯概念定义题（整条消息就是 "什么是X / X是什么 / X是啥"，可带结尾标点）。
+     * 这类请求无论模型怎么判，in_scope 的结果都会被 {@link #overrideConceptQuestion} 强制归位
+     * CHAT+单跳——与其先付一次路由调用再改写，不如直接规则短路，省掉这次 meta-call。
+     *
+     * <p>内容段禁止包含子句标点（逗号/问号等），保证 "什么是RAG，顺便帮我改简历" 这类复合请求
+     * 仍走模型路由 + 事后归位。行为差异仅一处：域外纯概念题（如"缘分是什么"）从 out_of_scope
+     * 礼貌拒绝变为 CHAT + (通用知识)兜底，与系统规则1的语义一致。
+     */
+    static final Pattern FULL_CONCEPT_QUESTION = Pattern.compile(
+            "^(?:什么是[^，。？！,?!]+|[^，。？！,?!]+是什么|[^，。？！,?!]+是啥)[?？!！。.~～\\s]*$",
+            Pattern.CASE_INSENSITIVE);
+
     /** 供回答阶段复用同一判定：filler 轮次无需工具调用，跳过工具循环直接流式作答。 */
     public static boolean isConversationalFiller(String question) {
         return question != null && CONVERSATIONAL_FILLER.matcher(question.strip()).matches();
@@ -146,9 +159,16 @@ public class IntentRouter {
     /** 规则短路命中返回决策, 否则 null 交给模型路由。 */
     private RouteDecision shortcut(String question) {
         if (!ruleShortcutEnabled || question == null) return null;
-        if (!CONVERSATIONAL_FILLER.matcher(question.strip()).matches()) return null;
-        return new RouteDecision(Scope.IN_SCOPE, Intent.CHAT, List.of(Intent.CHAT), List.of(),
-                RetrievalHint.SINGLE, RULE_CONFIDENCE, null, List.of(REASON_RULE_SHORTCUT), false);
+        String q = question.strip();
+        if (CONVERSATIONAL_FILLER.matcher(q).matches()) {
+            return new RouteDecision(Scope.IN_SCOPE, Intent.CHAT, List.of(Intent.CHAT), List.of(),
+                    RetrievalHint.SINGLE, RULE_CONFIDENCE, null, List.of(REASON_RULE_SHORTCUT), false);
+        }
+        if (FULL_CONCEPT_QUESTION.matcher(q).matches()) {
+            return new RouteDecision(Scope.IN_SCOPE, Intent.CHAT, List.of(Intent.CHAT), List.of(),
+                    RetrievalHint.SINGLE, RULE_CONFIDENCE, null, List.of("RULE_CONCEPT_QUESTION"), false);
+        }
+        return null;
     }
 
     private RouteDecision applyCalibration(RouteDecision decision) {

@@ -106,6 +106,45 @@ class IntentRouterTest {
     }
 
     @Test
+    void conceptDefinitionQuestionsSkipTheRouterCallEntirely() {
+        // 「X是什么」的 in_scope 结果恒被 overrideConceptQuestion 归位 CHAT+单跳,
+        // 因此整条消息就是概念题时直接规则短路, 省掉这次 meta-call。
+        LlmGateway gateway = mock(LlmGateway.class);
+        var router = new IntentRouter(gateway, new RoutingConfidenceCalibrator(false, null),
+                new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), true);
+
+        for (String q : List.of("A2A协议是什么", "什么是机器学习", "transformer是啥", "RAG是什么?")) {
+            var decision = router.routeDecision(q, List.of(), "trace");
+            assertThat(decision.intent()).as("intent of %s", q).isEqualTo(Intent.CHAT);
+            assertThat(decision.retrievalHint()).as("hint of %s", q).isEqualTo(IntentRouter.RetrievalHint.SINGLE);
+            assertThat(decision.retrievalFacets()).as("facets of %s", q).isEmpty();
+            assertThat(decision.degraded()).as("degraded of %s", q).isFalse();
+            assertThat(decision.reasonCodes()).as("reasons of %s", q).contains("RULE_CONCEPT_QUESTION");
+        }
+        org.mockito.Mockito.verifyNoInteractions(gateway); // 概念题零路由调用
+    }
+
+    @Test
+    void compoundConceptRequestsStillRouteThroughTheModel() {
+        // 复合请求 ("什么是X，顺便帮我改简历") 不做调用前短路: 必须让模型看到完整请求。
+        // 既有契约: 模型给出 RESUME 后, overrideConceptQuestion 仍会把含"是什么"的
+        // in_scope 非CHAT 决策归位 CHAT——调用不能省, 归位不变。
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.ROUTER), anyList(), eq("trace"), isNull(), eq(1))).thenReturn(
+                "{\"scope\":\"in_scope\",\"intent\":\"resume\",\"intents\":[\"resume\"],"
+                        + "\"alternative_intent\":\"none\",\"alternative_confidence\":0,"
+                        + "\"ambiguity_flags\":[],\"retrieval_facets\":[\"career\"],"
+                        + "\"retrieval_hint\":\"single\",\"confidence\":0.8,\"reason_codes\":[]}");
+        var router = new IntentRouter(gateway, new RoutingConfidenceCalibrator(false, null),
+                new com.tutor.platform.llm.structured.StructuredOutputService(gateway, null), true);
+
+        var decision = router.routeDecision("什么是STAR法则，顺便帮我改简历", List.of(), "trace");
+
+        org.mockito.Mockito.verify(gateway).chatJson(eq(Purpose.ROUTER), anyList(), eq("trace"), isNull(), eq(1));
+        assertThat(decision.reasonCodes()).contains("RULE_CONCEPT_QUESTION");
+    }
+
+    @Test
     void domainQuestionsStillRouteThroughTheModel() {
         LlmGateway gateway = mock(LlmGateway.class);
         when(gateway.chatJson(eq(Purpose.ROUTER), anyList(), eq("trace"), isNull(), eq(1))).thenReturn(
