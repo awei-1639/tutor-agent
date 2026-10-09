@@ -27,6 +27,8 @@ body {
 }
 
 ::selection { background: rgba(47, 79, 212, .18); }
+/* 深色表面（代码块）上的选中高亮: 淡蓝在黑底不可见, 换半透明白 */
+.prose-chat pre::selection, .prose-chat pre ::selection { background: rgba(255, 255, 255, .28); }
 
 /* v2: 全站纸纹底噪 (极淡, 肉眼几乎不可察, 提供纸的物质感) */
 .app-shell {
