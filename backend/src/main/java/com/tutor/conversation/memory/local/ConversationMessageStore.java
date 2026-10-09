@@ -169,6 +169,16 @@ final class ConversationMessageStore {
         jdbc.update("DELETE FROM conversations WHERE user_id=?", userId);
     }
 
+    /** PII 占位符 (PiiMasker 产物, content 列存脱敏文本) — 会话标题不应向用户暴露。 */
+    private static final java.util.regex.Pattern PII_PLACEHOLDER =
+            java.util.regex.Pattern.compile("\\[(?:NAME|PHONE|EMAIL|IDCARD|BANKCARD|WECHAT|ADDRESS)_\\d+\\]");
+
+    /** 标题展示版: 去掉 PII 占位符 (首条消息是姓名时会得到 "[NAME_1]"); 清洗后为空则兜底。 */
+    static String displayTitle(String raw) {
+        String cleaned = PII_PLACEHOLDER.matcher(raw == null ? "" : raw).replaceAll("").strip();
+        return cleaned.isEmpty() ? "新对话" : cleaned;
+    }
+
     public List<java.util.Map<String, Object>> listConversations(long userId) {
         String title = encKey.isBlank() ? "content" : "COALESCE(pgp_sym_decrypt(content_encrypted, ?), content)";
         String sql = "SELECT c.id, c.last_active_at, " +
@@ -180,7 +190,7 @@ final class ConversationMessageStore {
                     java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
                     m.put("id", rs.getLong(1));
                     m.put("last_active_at", rs.getTimestamp(2) == null ? null : rs.getTimestamp(2).toInstant().toString());
-                    m.put("title", rs.getString(3));
+                    m.put("title", displayTitle(rs.getString(3)));
                     m.put("msg_count", rs.getLong(4));
                     return m;
                 }, userId) : jdbc.query(sql,
@@ -188,7 +198,7 @@ final class ConversationMessageStore {
                     java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
                     m.put("id", rs.getLong(1));
                     m.put("last_active_at", rs.getTimestamp(2) == null ? null : rs.getTimestamp(2).toInstant().toString());
-                    m.put("title", rs.getString(3));
+                    m.put("title", displayTitle(rs.getString(3)));
                     m.put("msg_count", rs.getLong(4));
                     return m;
                 }, encKey, userId);

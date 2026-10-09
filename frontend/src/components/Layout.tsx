@@ -76,7 +76,7 @@ export default function Layout() {
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
                   `flex items-center gap-2.5 px-3 py-1.5 rounded-sm text-[12.5px] transition ${
-                  isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                  isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
                 }`}
               >
               <NavIcon name={n.icon} />
@@ -91,7 +91,7 @@ export default function Layout() {
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
                     `flex items-center gap-2.5 px-3 py-1.5 rounded-sm text-[12.5px] transition ${
-                    isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                    isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
                   }`}
               >
                 <NavIcon name="admin" />
@@ -102,7 +102,7 @@ export default function Layout() {
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
                     `flex items-center gap-2.5 px-3 py-1.5 rounded-sm text-[12.5px] transition ${
-                    isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                    isActive ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
                   }`}
               >
                 <NavIcon name="knowledge" />
@@ -120,7 +120,7 @@ export default function Layout() {
               onChange={e => setSearch(e.target.value)}
               placeholder="搜索对话标题"
               aria-label="搜索对话"
-              className="w-full rounded-md bg-white/6 border border-transparent px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
+              className="w-full appearance-none rounded-md bg-white/[0.06] border border-transparent px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
             />
           </div>
           <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-3">
@@ -137,7 +137,7 @@ export default function Layout() {
                       type="button"
                       onClick={() => openConversation(c.id)}
                       className={`w-full text-left px-3 py-2 rounded-md text-xs truncate transition ${
-                        currentId === c.id ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/6'
+                        currentId === c.id ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
                       }`}
                     >
                       {c.title || '(无标题)'}
@@ -149,7 +149,7 @@ export default function Layout() {
           </div>
         </div>
         <div className="p-4 border-t border-white/10 relative">
-          <div className="flex items-center gap-2.5 rounded-md bg-white/6 p-2">
+          <div className="flex items-center gap-2.5 rounded-md bg-white/[0.06] p-2">
             <div className="h-7 w-7 rounded-full bg-white/15 flex items-center justify-center text-[11px] font-bold">{(name || 'U').slice(0, 1).toUpperCase()}</div>
             <div className="min-w-0 flex-1">
               <div className="text-xs text-white font-medium truncate">{name || '用户'}</div>
