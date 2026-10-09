@@ -104,19 +104,38 @@ final class ChatTurnWorker {
             } catch (Exception error) {
                 guard.onError();
                 jobs.fail(claim, safeError(error));
+                if (liveClient && !turnFailed.get()) {
+                    // 异常路径同样可能静默死亡: 下游没发过 error 事件时补发, 前端不能挂死等流 (2026-10-09)。
+                    notifySilentDeath(events, claim, "exception escaped turn: " + error.getClass().getSimpleName());
+                }
             } finally {
                 if (liveClient) {
                     // 交付不变量: 静默死亡/空泡立即大声记录, 不允许再次潜伏一周 (2026-10-06)。
-                    guard.verdict(cancellation.isCancelled()).ifPresent(problem ->
-                            log.error("交付不变量被破坏 claim={} conv={} tokens={} reasonings={} problem={}",
-                                    claim.id(), claim.conversationId(), guard.tokensDelivered(),
-                                    guard.reasoningsDelivered(), problem));
+                    guard.verdict(cancellation.isCancelled()).ifPresent(problem -> {
+                        log.error("交付不变量被破坏 claim={} conv={} tokens={} reasonings={} problem={}",
+                                claim.id(), claim.conversationId(), guard.tokensDelivered(),
+                                guard.reasoningsDelivered(), problem);
+                        if (!guard.doneDelivered() && !turnFailed.get()) {
+                            // 已发 done 的空泡不能对完成的 emitter 二次 send; 只有真静默死亡才补发错误。
+                            notifySilentDeath(events, claim, problem);
+                        }
+                    });
                 }
                 AuthContext.clear();
                 active.remove(claim.id(), run);
                 if (ownsSlot) slots.release();
             }
         });
+    }
+
+    /** 静默死亡兜底推送。emitter 可能已关闭 (客户端断开/竞态), 发送失败只降级记日志, 不打断清理。 */
+    private void notifySilentDeath(ChatTurnEvents events, ChatTurnService.Claim claim, String problem) {
+        try {
+            events.onError("TURN_INTERRUPTED", "回答生成中断，请重试");
+        } catch (RuntimeException e) {
+            log.warn("静默死亡补发错误事件失败 claim={} problem={} cause={}", claim.id(), problem,
+                    e.getClass().getSimpleName());
+        }
     }
 
     private String safeError(Exception error) {

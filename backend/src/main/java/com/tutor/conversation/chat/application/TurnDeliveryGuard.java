@@ -26,6 +26,7 @@ final class TurnDeliveryGuard {
 
     int tokensDelivered() { return tokens.get(); }
     int reasoningsDelivered() { return reasoning.get(); }
+    boolean doneDelivered() { return done.get(); }
 
     /**
      * 回合结束后的判定。返回问题描述 (可观测/告警用); empty 表示交付合规。
