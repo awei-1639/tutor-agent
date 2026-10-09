@@ -152,6 +152,10 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 export const api = {
   cancelChatTurn: (turnId: string) =>
     request<{ id: string; status: string }>(`/chat/turns/${encodeURIComponent(turnId)}/cancel`, { method: 'POST' }),
+  // 引用校验终态轮询 (SSE 已关, pending 的最终结果只能轮询拿)
+  chatCitation: (messageId: number) =>
+    request<{ message_id: number; citation_status: string; citation_issues: string | string[] | null }>(
+      `/chat/messages/${messageId}/citation`),
   // 认证
   login: (email: string, password: string) =>
     request<{ user_id: number; name: string; role: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),

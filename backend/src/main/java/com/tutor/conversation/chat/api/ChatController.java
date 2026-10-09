@@ -38,19 +38,22 @@ public class ChatController {
     private final ChatRateLimiter rateLimiter;
     private final ChatTurnService turns;
     private final LlmProperties llmProperties;
+    private final com.tutor.conversation.memory.local.ConversationStore conversations;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ChatController(ChatService chatService, ChatRateLimiter rateLimiter) {
-        this(chatService, rateLimiter, null, null);
+        this(chatService, rateLimiter, null, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public ChatController(ChatService chatService, ChatRateLimiter rateLimiter, ChatTurnService turns,
-                          LlmProperties llmProperties) {
+                          LlmProperties llmProperties,
+                          com.tutor.conversation.memory.local.ConversationStore conversations) {
         this.chatService = chatService;
         this.rateLimiter = rateLimiter;
         this.turns = turns;
         this.llmProperties = llmProperties;
+        this.conversations = conversations;
     }
 
     public record ChatRequest(Long conversationId,
@@ -213,6 +216,21 @@ public class ChatController {
     public ChatTurnService.Turn cancel(@org.springframework.web.bind.annotation.PathVariable String turnId) {
         if (turns == null) return throwUnsupportedCancellation();
         return turns.cancel(AuthContext.requireUserId(), turnId);
+    }
+
+    /**
+     * 引用校验终态轮询端点。SSE 在 done 时即关闭, 而引用校验是 done 之后异步完成的,
+     * "校验中"的最终结果无法从流里拿到——前端凭 message_id 轮询本端点直到非 pending。
+     */
+    @org.springframework.web.bind.annotation.GetMapping("/chat/messages/{messageId}/citation")
+    public java.util.Map<String, Object> citationStatus(
+            @org.springframework.web.bind.annotation.PathVariable long messageId) {
+        if (conversations == null) throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
+        try {
+            return conversations.citationForUser(messageId, AuthContext.requireUserId());
+        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
     }
 
     @org.springframework.web.bind.annotation.GetMapping("/chat/turns/{turnId}")

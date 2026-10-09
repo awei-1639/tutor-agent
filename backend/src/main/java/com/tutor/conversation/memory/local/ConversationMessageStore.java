@@ -37,6 +37,16 @@ final class ConversationMessageStore {
                 status, issuesJson == null ? "[]" : issuesJson, messageId);
     }
 
+    /** 引用校验状态查询 (JOIN conversations 做属主校验, 供前端在 pending 期间轮询终态)。查无此行抛 EmptyResultDataAccessException。 */
+    public java.util.Map<String, Object> citationForUser(long messageId, long userId) {
+        return jdbc.queryForMap("""
+                SELECT m.id AS message_id, m.citation_status,
+                       m.citation_issues::text AS citation_issues
+                FROM messages m JOIN conversations c ON c.id = m.conversation_id
+                WHERE m.id = ? AND c.user_id = ?
+                """, messageId, userId);
+    }
+
     public long appendMessage(long conversationId, String role, String content,
                               String intent, String citationsJson, String traceId, int tokenCount) {
         return appendMessage(conversationId, role, content, intent, citationsJson, traceId, tokenCount, null, null);
