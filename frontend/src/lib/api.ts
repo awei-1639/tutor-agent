@@ -529,6 +529,8 @@ export interface InterviewRetestComparison {
   baselineAvgScore: number;
   scoreDelta: number;
   originalFocusAreas?: string[];
+  /** 上次面试的四维均分, 用于雷达图叠加对比 */
+  baselineDimensions?: Record<string, number> | null;
 }
 
 export interface InterviewReport {
@@ -539,6 +541,10 @@ export interface InterviewReport {
   improvements?: string[];
   resources?: string[];
   retestComparison?: InterviewRetestComparison | null;
+  /** 四维均分: technical_depth / structure / boundary_awareness / role_fit */
+  dimensions?: Record<string, number> | null;
+  /** 每维度一句点评 */
+  dimensionNotes?: Record<string, string> | null;
 }
 
 export interface InterviewCompletionStatus {

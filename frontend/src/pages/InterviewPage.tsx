@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import RadarChart, { DIMENSION_LABELS } from '../components/RadarChart';
 import { api, toUserMessage, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask } from '../lib/api';
 
 interface Transcript { speaker: 'ai' | 'me'; content: string; }
@@ -464,6 +465,29 @@ export default function InterviewPage() {
                 <div><div className="text-[11px] tracking-[.04em] text-ink-500">平均分</div><div className="font-serif text-[30px] font-bold leading-tight tracking-[-.02em] text-accent-600">{report.avgScore?.toFixed(1)}<span className="text-[15px] font-normal text-ink-400">/10</span></div></div>
                 <div><div className="text-[11px] tracking-[.04em] text-ink-500">评分置信度</div><div className="font-serif text-[30px] font-bold leading-tight tracking-[-.02em] text-ink-900">{Math.round((report.scoreConfidence ?? 0) * 100)}<span className="text-[15px] font-normal text-ink-400">%</span></div></div>
               </div>
+              {report.dimensions && Object.keys(report.dimensions).length > 0 && (
+                <div className="rounded-md border border-ink-100 bg-[#faf9f5] px-4 py-4">
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <div className="text-sm font-medium text-ink-900">四维能力雷达</div>
+                    {report.retestComparison?.baselineDimensions && Object.keys(report.retestComparison.baselineDimensions).length > 0 && (
+                      <div className="text-[11px] text-ink-500">实线 = 本次，虚线 = 上次同配置</div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+                    <RadarChart dimensions={report.dimensions} baseline={report.retestComparison?.baselineDimensions ?? null} />
+                    <ul className="w-full space-y-2.5 text-xs leading-[1.6] text-ink-700 sm:flex-1">
+                      {Object.entries(report.dimensions).map(([key, value]) => (
+                        <li key={key}>
+                          <span className="font-medium text-ink-900">{DIMENSION_LABELS[key] ?? key} {value.toFixed(1)}/10</span>
+                          {report.dimensionNotes?.[key] && (
+                            <span className="block text-ink-500">{report.dimensionNotes[key]}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               {report.retestComparison && <div className="rounded-md bg-ink-50 px-4 py-3 text-sm text-ink-700 space-y-1">
                 <div className="font-medium text-ink-900">复测变化</div>
                 <div>同配置复测：原测 {report.retestComparison.baselineAvgScore.toFixed(1)}/10，

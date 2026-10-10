@@ -152,7 +152,7 @@ public final class StructuredSchemaRegistry {
                         "missing_points":{"type":"array","maxItems":20,"items":{"type":"string","maxLength":500}},
                         "confidence":{"type":"number","minimum":0,"maximum":1},
                         "evidence_quotes":{"type":"array","minItems":1,"maxItems":20,"items":{"type":"string","minLength":1,"maxLength":500}},
-                        "dimensions":{"type":["object","null"],"additionalProperties":false,
+                        "dimensions":{"type":["object","null"],
                           "properties":{
                             "technical_depth":{"type":"integer","minimum":0,"maximum":10},
                             "structure":{"type":"integer","minimum":0,"maximum":10},

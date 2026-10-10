@@ -182,12 +182,28 @@ public class InterviewLlmService {
         } catch (Exception e) { return new InterviewSession.Scorecard(5, List.of(), List.of(), 0.5, "legacy", null, null); }
     }
 
+    /** 模型偶尔用中文键输出; 映射回规范键, 避免整份维度被丢弃。 */
+    private static final Map<String, String> DIMENSION_ALIASES = Map.of(
+            "技术深度", "technical_depth",
+            "结构与表达", "structure",
+            "结构表达", "structure",
+            "表达能力", "structure",
+            "边界意识", "boundary_awareness",
+            "岗位匹配", "role_fit",
+            "岗位匹配度", "role_fit");
+
     /** 只保留已知四维并夹紧到 0-10; 缺维或非法值不补齐, 由报告侧按缺失处理。 */
     private static java.util.LinkedHashMap<String, Integer> normalizeDimensions(Map<String, Integer> raw) {
         if (raw == null || raw.isEmpty()) return null;
         java.util.LinkedHashMap<String, Integer> result = new java.util.LinkedHashMap<>();
         for (String key : DIMENSION_KEYS) {
             Integer value = raw.get(key);
+            if (value == null) {
+                String alias = DIMENSION_ALIASES.entrySet().stream()
+                        .filter(entry -> entry.getValue().equals(key))
+                        .map(Map.Entry::getKey).filter(raw::containsKey).findFirst().orElse(null);
+                if (alias != null) value = raw.get(alias);
+            }
             if (value == null) continue;
             result.put(key, Math.max(0, Math.min(10, value)));
         }
