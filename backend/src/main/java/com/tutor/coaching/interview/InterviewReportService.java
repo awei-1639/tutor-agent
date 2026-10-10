@@ -66,7 +66,8 @@ class InterviewReportService {
         double confidence = scores.stream().mapToDouble(item -> interviewer.scorecard(item.scorecard()).confidence()).average().orElse(0);
         Map<String, Double> dimensions = averageDimensions(scores);
         return new InterviewSession.Report(scores.size(), average, confidence, strengths, improvements, List.of("skill:" + session.topic()),
-                retestComparison(userId, session, average), dimensions, dimensionNotes(dimensions));
+                retestComparison(userId, session, average), dimensions, dimensionNotes(dimensions),
+                sessions.candidateAsks(sessionId));
     }
 
     /** 四维平均分; 某维完全缺失时不出现在结果里, 前端雷达图按实际维度渲染。 */

@@ -508,6 +508,8 @@ export interface InterviewSessionView {
   mainQuestionsAsked: number;
   deadlineAt: string;
   transcript: Array<{ speaker: 'ai' | 'me'; content: string }>;
+  /** INTERVIEWING = 正常问答, CANDIDATE_ASK = 反问环节, ENDED = 已结束 */
+  phase?: 'INTERVIEWING' | 'CANDIDATE_ASK' | 'ENDED';
 }
 
 export interface InterviewHistoryItem {
@@ -545,6 +547,15 @@ export interface InterviewReport {
   dimensions?: Record<string, number> | null;
   /** 每维度一句点评 */
   dimensionNotes?: Record<string, string> | null;
+  /** 反问环节：候选人的提问、面试官回答与提问质量点评 */
+  candidateAsks?: InterviewCandidateAsk[];
+}
+
+/** 反问环节的一次来回 (不计入评分)。 */
+export interface InterviewCandidateAsk {
+  question: string;
+  reply: string;
+  tip: string;
 }
 
 export interface InterviewCompletionStatus {

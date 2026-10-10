@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import RadarChart, { DIMENSION_LABELS } from '../components/RadarChart';
 import { useSpeechRecognition, useSpeechSynthesis } from '../lib/useSpeech';
-import { api, toUserMessage, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask } from '../lib/api';
+import { api, toUserMessage, type InterviewCandidateAsk, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask } from '../lib/api';
 
 interface Transcript { speaker: 'ai' | 'me'; content: string; }
 const STORAGE_KEY = 'tutor_active_interview_session';
@@ -50,6 +50,9 @@ export default function InterviewPage() {
     catch { return null; }
   });
   const [history, setHistory] = useState<InterviewHistoryItem[]>([]);
+  /** INTERVIEWING: 正常问答; CANDIDATE_ASK: 反问环节 —— 换候选人向面试官提问 */
+  const [phase, setPhase] = useState<'INTERVIEWING' | 'CANDIDATE_ASK' | 'ENDED'>('INTERVIEWING');
+  const candidateRound = phase === 'CANDIDATE_ASK';
   const [deadlineAt, setDeadlineAt] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [feedbackReason, setFeedbackReason] = useState('');
@@ -120,6 +123,7 @@ export default function InterviewPage() {
       if (!active) return;
       setRole(current => session.targetRole || current);
       setTranscript(session.transcript);
+      setPhase(session.phase ?? 'INTERVIEWING');
       setDeadlineAt(session.deadlineAt);
       if (session.status !== 'IN_PROGRESS') {
         setFinished(true);
@@ -185,10 +189,16 @@ export default function InterviewPage() {
           setRetry(null);
           setTurn(null);
           if (next.responseStatus === 'COMPLETED') {
+            setPhase('ENDED');
             setFinished(true);
             sessionStorage.removeItem(STORAGE_KEY);
             loadHistory();
             void loadReport(sessionId);
+          } else {
+            // 轮次之间重新拉取会话: 反问环节的进入/退出由服务端状态机决定。
+            void api.getInterviewSession(sessionId)
+              .then(view => setPhase(view.phase ?? 'INTERVIEWING'))
+              .catch(() => { /* 沿用上一阶段 */ });
           }
         } else if (next.status === 'FAILED') {
           setRetry(current => current ? { ...current, jobId: next.id } : current);
@@ -223,6 +233,7 @@ export default function InterviewPage() {
       setCompletion(null);
       setRetry(null);
       setHistoryReport(null);
+      setPhase('INTERVIEWING');
       setFeedbackSent(null);
       setFeedbackReason('');
       setDeadlineAt(new Date(Date.now() + durationMinutes * 60_000).toISOString());
@@ -248,6 +259,7 @@ export default function InterviewPage() {
       setCompletion(null);
       setRetry(null);
       setHistoryReport(null);
+      setPhase('INTERVIEWING');
       setFeedbackSent(null);
       setFeedbackReason('');
       void api.getInterviewSession(r.sessionId).then(session => setDeadlineAt(session.deadlineAt)).catch(() => { /* The server still enforces its deadline. */ });
@@ -320,6 +332,7 @@ export default function InterviewPage() {
     setFeedbackSent(null);
     setFeedbackReason('');
     setHistoryReport(null);
+    setPhase('INTERVIEWING');
   }
 
   async function submitFeedback(rating: 'accurate' | 'inaccurate') {
@@ -438,6 +451,15 @@ export default function InterviewPage() {
 
         {transcript.length > 0 && (
           <div className="space-y-3">
+            {candidateRound && !finished && (
+              <div className="rounded-md border border-accent-200 bg-accent-50/50 px-4 py-3 text-sm text-ink-800">
+                <div className="mb-1 font-medium text-ink-900">反问环节 · 现在换你提问</div>
+                <div className="text-xs leading-[1.7] text-ink-600">
+                  技术问题已结束。可以问团队技术栈与分工、当前最棘手的技术挑战、新人成长路径或评估标准；
+                  这是了解岗位真实情况、也体现你对岗位关注度的机会。没有问题就输入「没有问题」结束面试。
+                </div>
+              </div>
+            )}
             {remainingSeconds != null && <div className={`font-mono text-sm font-medium ${remainingSeconds === 0 ? 'text-red-600' : 'text-ink-600'}`}>
               剩余时间：{formatRemaining(remainingSeconds)}{remainingSeconds === 0 ? '，请结束面试查看复盘。' : ''}
             </div>}
@@ -529,6 +551,7 @@ export default function InterviewPage() {
               <ReportList title="亮点" items={report.strengths} marker="✓" />
               <ReportList title="改进点" items={report.improvements} marker="→" />
               <ReportList title="推荐学习" items={report.resources} marker="📚" />
+              <CandidateAskList asks={report.candidateAsks} />
               <div className="rounded-md border border-accent-100 bg-accent-50/40 px-4 py-3 space-y-2">
                 <div className="text-sm font-medium text-ink-900">把这场面试的弱项变成学习计划</div>
                 <div className="text-xs text-ink-500">按低分题目对应的技能生成针对性学习任务，直接进入「学习计划」推进。</div>
@@ -574,9 +597,9 @@ export default function InterviewPage() {
               {speechError && <span className="text-red-600">{speechError}</span>}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <label htmlFor="interview-answer" className="sr-only">你的回答</label>
+              <label htmlFor="interview-answer" className="sr-only">{candidateRound ? '你想问面试官的问题' : '你的回答'}</label>
               <input id="interview-answer" value={input} onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') void send(); }} placeholder="输入或说出你的回答"
+                onKeyDown={e => { if (e.key === 'Enter') void send(); }} placeholder={candidateRound ? '向面试官提问，或输入「没有问题」结束' : '输入或说出你的回答'}
                 className="min-w-0 flex-1 px-4 py-2 text-base sm:text-sm border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500" />
               {micSupported && (
                 <button onClick={() => (listening ? stopListening() : startListening())} disabled={loading || !!turn}
@@ -624,7 +647,25 @@ function ReportSummary({ report }: { report: InterviewReport }) {
     <ReportList title="亮点" items={report.strengths} marker="✓" />
     <ReportList title="改进点" items={report.improvements} marker="→" />
     <ReportList title="推荐学习" items={report.resources} marker="📚" />
+    <CandidateAskList asks={report.candidateAsks} />
   </>;
+}
+
+/** 复盘里的反问环节: 不计分, 但保留提问、面试官回答与提问质量点评。 */
+function CandidateAskList({ asks }: { asks?: InterviewCandidateAsk[] }) {
+  if (!Array.isArray(asks) || asks.length === 0) return null;
+  return <div>
+    <div className="text-[11px] font-bold uppercase tracking-[.12em] text-ink-500 mb-2">反问环节（不计分）</div>
+    <ul className="space-y-2.5">
+      {asks.map((ask, index) => (
+        <li key={index} className="rounded-md border border-ink-100 bg-[#faf9f5] px-4 py-3 text-sm leading-[1.7]">
+          <div className="font-medium text-ink-900">你问：{ask.question}</div>
+          {ask.reply && <div className="mt-1 text-ink-800">面试官：{ask.reply}</div>}
+          {ask.tip && <div className="mt-1 text-xs text-ink-500">点评：{ask.tip}</div>}
+        </li>
+      ))}
+    </ul>
+  </div>;
 }
 
 function typeLabel(type: string) {

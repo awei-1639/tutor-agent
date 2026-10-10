@@ -60,8 +60,16 @@ public class InterviewSession {
 
     public record InterviewMessage(String sessionId, String status, String message) {}
     public record TranscriptTurn(String speaker, String content) {}
+    public record CandidateAsk(String question, String reply, String tip) {}
     public record SessionView(String sessionId, String status, String targetRole, String topic,
-                              int mainQuestionsAsked, Instant deadlineAt, List<TranscriptTurn> transcript) {}
+                              int mainQuestionsAsked, Instant deadlineAt, List<TranscriptTurn> transcript,
+                              /** INTERVIEWING | CANDIDATE_ASK | ENDED —— 前端据此切换输入区文案。 */
+                              String phase) {
+        SessionView(String sessionId, String status, String targetRole, String topic,
+                    int mainQuestionsAsked, Instant deadlineAt, List<TranscriptTurn> transcript) {
+            this(sessionId, status, targetRole, topic, mainQuestionsAsked, deadlineAt, transcript, "INTERVIEWING");
+        }
+    }
     public record HistoryItem(String sessionId, String targetRole, String interviewType, String difficulty,
                               String status, int totalQuestions, double avgScore, Instant createdAt, Instant completedAt,
                               String retestOf, Double scoreDelta) {}
@@ -76,11 +84,13 @@ public class InterviewSession {
                          /** 四维平均分 (缺失维度不出现), 供前端雷达图渲染。 */
                          Map<String, Double> dimensions,
                          /** 每维度一句点评。 */
-                         Map<String, String> dimensionNotes) {
+                         Map<String, String> dimensionNotes,
+                         /** 反问环节的提问与面试官回答, 让复盘覆盖"最后五分钟"。 */
+                         List<CandidateAsk> candidateAsks) {
         Report(int totalQuestions, double avgScore, double scoreConfidence, List<String> strengths,
                List<String> improvements, List<String> resources, RetestComparison retestComparison) {
             this(totalQuestions, avgScore, scoreConfidence, strengths, improvements, resources, retestComparison,
-                    Map.of(), Map.of());
+                    Map.of(), Map.of(), List.of());
         }
     }
 
@@ -128,6 +138,8 @@ public class InterviewSession {
         if (!Instant.now().isBefore(session.deadlineAt())) throw new ResponseStatusException(HttpStatus.CONFLICT, "面试时间已到，请结束面试查看复盘");
         QuestionRow question = sessions.findCurrentQuestion(sessionId, session.currentSequence());
         if (question.answer() != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "当前问题已经提交过回答");
+        if ("CANDIDATE_ASK".equals(question.kind())) return evaluateCandidateTurn(session, userAnswer, traceId);
+
         Scorecard scorecard = scoreAnswer(question.prompt(), question.assessmentContract(), userAnswer, traceId);
         // 当前问题所处的追问层: 主线 0, 追问 1..2。第二层是知识边界探测。
         int currentDepth = sessions.followUpDepthAt(sessionId, question.sequence());
@@ -144,6 +156,21 @@ public class InterviewSession {
                     priorPrompts(session.id(), session.retestOf()), gapContextFor(userId));
         }
         return new TurnEvaluation(scorecard, decision, followUp, nextSpec);
+    }
+
+    /**
+     * 反问环节: 候选人的输入是他向面试官提的问题, 不参与评分。
+     * 明确表示没有问题时不调用 LLM, 直接结束; 否则由面试官身份作答并附一句提问质量点评。
+     */
+    private TurnEvaluation evaluateCandidateTurn(SessionRow session, String userAnswer, String traceId) {
+        boolean hasQuestion = InterviewPolicy.hasQuestion(userAnswer);
+        int asked = sessions.countCandidateAsks(session.id());
+        InterviewPolicy.Decision decision = policy.decideCandidatePhase(hasQuestion, asked);
+        InterviewLlmService.CandidateAnswer candidate = hasQuestion
+                ? interviewer.answerCandidateQuestion(session.targetRole(), session.jobDescription(),
+                        session.topic(), userAnswer, traceId)
+                : null;
+        return new TurnEvaluation(null, decision, null, null, candidate);
     }
 
     /** Short, locked commit: it never calls an LLM and therefore remains safe under provider latency. */
@@ -164,6 +191,11 @@ public class InterviewSession {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "当前问题已经提交过回答");
         }
 
+        // 反问环节不走评分链路: 它是候选人的提问, 单独提交。
+        if ("CANDIDATE_ASK".equals(question.kind())) {
+            return commitCandidateTurn(userId, session, question, userAnswer, requestId, evaluation);
+        }
+
         Scorecard scorecard = evaluation.scorecard();
         int score = scorecard.score();
         String response;
@@ -181,6 +213,12 @@ public class InterviewSession {
         } else if (decision.action() == InterviewPolicy.Action.COMPLETE) {
             response = "评分: " + score + "/10\n\n面试结束，复盘报告已准备好。";
             advanceSession(sessionId, session.currentSequence(), session.mainQuestionCount(), "COMPLETED");
+        } else if (decision.action() == InterviewPolicy.Action.ASK_CANDIDATE) {
+            // 主线问完 -> 进入反问环节: 换候选人向面试官提问。
+            String invitation = candidateInvitation(true);
+            insertQuestion(sessionId, nextSequence, "CANDIDATE_ASK", invitation, question.skillId(), "{}");
+            response = "评分: " + score + "/10\n\n" + invitation;
+            advanceSession(sessionId, nextSequence, session.mainQuestionCount(), "IN_PROGRESS");
         } else {
             int nextMainCount = decision.nextMainQuestionCount();
             QuestionSpec nextSpec = evaluation.nextSpec();
@@ -195,11 +233,65 @@ public class InterviewSession {
         return new InterviewMessage(sessionId, status, response);
     }
 
+    /**
+     * 反问环节的提交: 无评分、不写进分维度统计, 但保留完整问答到复盘报告。
+     * session 仍为 IN_PROGRESS 时插入下一道邀请题; 否则直接结束并排队闭环任务。
+     */
+    private InterviewMessage commitCandidateTurn(long userId, SessionRow session, QuestionRow question, String userAnswer,
+                                                 String requestId, TurnEvaluation evaluation) {
+        InterviewLlmService.CandidateAnswer candidate = evaluation.candidate();
+        StringBuilder response = new StringBuilder();
+        if (candidate != null) {
+            response.append(candidate.reply());
+            if (candidate.tip() != null && !candidate.tip().isBlank()) {
+                response.append("\n\n💡 反问点评: ").append(candidate.tip());
+            }
+        } else {
+            response.append("没问题，那我们今天的面试就到这里。");
+        }
+        boolean complete = evaluation.decision().action() == InterviewPolicy.Action.COMPLETE;
+        if (complete) {
+            response.append("\n\n面试结束，复盘报告已准备好。");
+        } else {
+            response.append("\n\n").append(candidateInvitation(false));
+        }
+        String text = response.toString();
+        sessions.recordAnswer(question.id(), userAnswer, null, candidateJson(candidate), requestId, text);
+        if (complete) {
+            advanceSession(session.id(), question.sequence(), session.mainQuestionCount(), "COMPLETED");
+        } else {
+            insertQuestion(session.id(), question.sequence() + 1, "CANDIDATE_ASK", candidateInvitation(false),
+                    question.skillId(), "{}");
+            advanceSession(session.id(), question.sequence() + 1, session.mainQuestionCount(), "IN_PROGRESS");
+        }
+        String status = complete ? "COMPLETED" : "IN_PROGRESS";
+        if (complete) reports.enqueueCompletion(userId, session.id());
+        return new InterviewMessage(session.id(), status, text);
+    }
+
+    /** first=true 为刚从主线进入反问环节的邀请, 之后是"还有要问的吗"的续问。 */
+    private String candidateInvitation(boolean first) {
+        return first
+                ? "反问环节：技术问题到这里，现在换你问我。可以问团队的技术栈与分工、当前最棘手的技术挑战、"
+                        + "新人成长路径或这条线的评估标准；没有问题也可以直接输入「没有问题」结束面试。"
+                : "还有其他想了解的吗？继续提问，或输入「没有问题」结束面试。";
+    }
+
+    private String candidateJson(InterviewLlmService.CandidateAnswer candidate) {
+        if (candidate == null) return "{}";
+        try {
+            return mapper.writeValueAsString(Map.of("reply", candidate.reply() == null ? "" : candidate.reply(),
+                    "tip", candidate.tip() == null ? "" : candidate.tip()));
+        } catch (Exception e) { return "{}"; }
+    }
+
     public SessionView session(long userId, String sessionId) {
         SessionRow session = findSession(userId, sessionId);
         List<TranscriptTurn> transcript = sessions.transcript(sessionId);
+        String phase = !"IN_PROGRESS".equals(session.status()) ? "ENDED"
+                : "CANDIDATE_ASK".equals(sessions.latestQuestionKind(sessionId)) ? "CANDIDATE_ASK" : "INTERVIEWING";
         return new SessionView(session.id(), session.status(), session.targetRole(), session.topic(),
-                session.mainQuestionCount(), session.deadlineAt(), transcript);
+                session.mainQuestionCount(), session.deadlineAt(), transcript, phase);
     }
 
     /** Creates a comparable new session from a completed source session. */
@@ -397,7 +489,12 @@ public class InterviewSession {
             this(score, strengths, missingPoints, confidence, rubricVersion, null, null);
         }
     }
-    record TurnEvaluation(Scorecard scorecard, InterviewPolicy.Decision decision, String followUp, QuestionSpec nextSpec) {}
+    record TurnEvaluation(Scorecard scorecard, InterviewPolicy.Decision decision, String followUp, QuestionSpec nextSpec,
+                          InterviewLlmService.CandidateAnswer candidate) {
+        TurnEvaluation(Scorecard scorecard, InterviewPolicy.Decision decision, String followUp, QuestionSpec nextSpec) {
+            this(scorecard, decision, followUp, nextSpec, null);
+        }
+    }
     private record TopicPlan(String topic, List<String> skillIds, String primarySkill) {}
     record QuestionSpec(String question, String dimension, List<String> requiredPoints,
                         List<String> bonusPoints, List<String> criticalErrors) {}

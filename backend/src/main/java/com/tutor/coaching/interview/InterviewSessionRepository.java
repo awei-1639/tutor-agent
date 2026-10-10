@@ -50,12 +50,22 @@ class InterviewSessionRepository {
     List<InterviewSession.TranscriptTurn> transcript(String sessionId) {
         List<InterviewSession.TranscriptTurn> transcript = new ArrayList<>();
         jdbc.query("""
-                SELECT prompt, answer FROM interview_questions
+                SELECT prompt, answer, kind, COALESCE(scorecard->>'reply', ''), COALESCE(scorecard->>'tip', '')
+                FROM interview_questions
                 WHERE session_id=? ORDER BY sequence
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
             transcript.add(new InterviewSession.TranscriptTurn("ai", rs.getString(1)));
             String answer = rs.getString(2);
             if (answer != null) transcript.add(new InterviewSession.TranscriptTurn("me", answer));
+            // 反问环节: 面试官的回答不在下一题的 prompt 里, 单独补回时间线, 避免刷新后只剩提问。
+            if ("CANDIDATE_ASK".equals(rs.getString(3)) && answer != null) {
+                String reply = rs.getString(4);
+                if (!reply.isBlank()) {
+                    String tip = rs.getString(5);
+                    transcript.add(new InterviewSession.TranscriptTurn("ai",
+                            tip.isBlank() ? reply : reply + "\n\n💡 反问点评: " + tip));
+                }
+            }
         }, sessionId);
         return transcript;
     }
@@ -143,6 +153,33 @@ class InterviewSessionRepository {
         return count != null && count == 1;
     }
 
+    /** 反问环节已提交并被回答的提问数 (当前未作答的邀请题不计数)。 */
+    int countCandidateAsks(String sessionId) {
+        Integer count = jdbc.queryForObject("""
+                SELECT count(*) FROM interview_questions
+                WHERE session_id=? AND kind='CANDIDATE_ASK' AND answer IS NOT NULL
+                """, Integer.class, sessionId);
+        return count == null ? 0 : count;
+    }
+
+    /** 最后一道题的类型, 用于判断会话当前处于哪个阶段。 */
+    String latestQuestionKind(String sessionId) {
+        return jdbc.query("""
+                SELECT kind FROM interview_questions WHERE session_id=? ORDER BY sequence DESC LIMIT 1
+                """, rs -> rs.next() ? rs.getString(1) : null, sessionId);
+    }
+
+    /** 反问环节的问答记录 (question = 候选人的提问, reply = 面试官回答, tip = 提问质量点评)。 */
+    List<InterviewSession.CandidateAsk> candidateAsks(String sessionId) {
+        return jdbc.query("""
+                SELECT answer, COALESCE(scorecard->>'reply', ''), COALESCE(scorecard->>'tip', '')
+                FROM interview_questions
+                WHERE session_id=? AND kind='CANDIDATE_ASK' AND answer IS NOT NULL
+                  AND COALESCE(scorecard->>'reply', '') <> ''
+                ORDER BY sequence
+                """, (rs, i) -> new InterviewSession.CandidateAsk(rs.getString(1), rs.getString(2), rs.getString(3)), sessionId);
+    }
+
     void advanceSession(String sessionId, int sequence, int mainQuestionCount, String status) {
         jdbc.update("""
                 UPDATE interview_sessions
@@ -152,12 +189,14 @@ class InterviewSessionRepository {
                 """, sequence, mainQuestionCount, status, status, sessionId);
     }
 
-    void recordAnswer(long questionId, String answer, int score, String scorecardJson, String requestId, String response) {
+    void recordAnswer(long questionId, String answer, Integer score, String scorecardJson, String requestId, String response) {
         jdbc.update("""
                 UPDATE interview_questions
                 SET answer=?, score=?, scorecard=?::jsonb, answer_request_id=?, response_message=?, answered_at=now()
                 WHERE id=? AND answer IS NULL
-                """, answer, score, scorecardJson, requestId, response, questionId);
+                """, new Object[]{answer, score, scorecardJson, requestId, response, questionId},
+                new int[]{java.sql.Types.VARCHAR, java.sql.Types.INTEGER, java.sql.Types.VARCHAR,
+                        java.sql.Types.VARCHAR, java.sql.Types.VARCHAR, java.sql.Types.BIGINT});
     }
 
     InterviewSession.SessionRow findSession(long userId, String sessionId, boolean forUpdate) {

@@ -55,6 +55,35 @@ class InterviewLlmServiceTest {
         org.assertj.core.api.Assertions.assertThat(scorecard.confidence()).isEqualTo(0.85D);
     }
 
+    @Test
+    void answersCandidateQuestionAsTheInterviewer() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.CHAT), any(List.class), eq("trace"), isNull(), eq(1)))
+                .thenReturn("""
+                        {"reply":"团队现在在做缓存一致性治理，新人会先跟一位 Owner 熟悉链路。",
+                         "tip":"问到了团队当前的技术挑战，信息量高。"}
+                        """);
+
+        InterviewLlmService.CandidateAnswer answer = new InterviewLlmService(gateway)
+                .answerCandidateQuestion("后端开发", "要求 Redis 经验", "Redis", "团队现在最棘手的问题是什么？", "trace");
+
+        org.assertj.core.api.Assertions.assertThat(answer.reply()).contains("缓存一致性");
+        org.assertj.core.api.Assertions.assertThat(answer.tip()).contains("信息量高");
+    }
+
+    @Test
+    void fallsBackWhenTheCandidateAnswerIsUnusable() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.CHAT), any(List.class), eq("trace"), isNull(), eq(1)))
+                .thenReturn("这不是 JSON");
+
+        InterviewLlmService.CandidateAnswer answer = new InterviewLlmService(gateway)
+                .answerCandidateQuestion("后端开发", "", "Redis", "团队技术栈是什么？", "trace");
+
+        org.assertj.core.api.Assertions.assertThat(answer.reply()).isNotBlank();
+        org.assertj.core.api.Assertions.assertThat(answer.tip()).isNotBlank();
+    }
+
     private static LlmGateway questionGateway() {
         LlmGateway gateway = mock(LlmGateway.class);
         when(gateway.chatJson(eq(Purpose.PLAN), any(List.class), eq("trace"), isNull(), eq(1)))
