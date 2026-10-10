@@ -38,22 +38,19 @@ public class ChatController {
     private final ChatRateLimiter rateLimiter;
     private final ChatTurnService turns;
     private final LlmProperties llmProperties;
-    private final com.tutor.conversation.memory.local.ConversationStore conversations;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ChatController(ChatService chatService, ChatRateLimiter rateLimiter) {
-        this(chatService, rateLimiter, null, null, null);
+        this(chatService, rateLimiter, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public ChatController(ChatService chatService, ChatRateLimiter rateLimiter, ChatTurnService turns,
-                          LlmProperties llmProperties,
-                          com.tutor.conversation.memory.local.ConversationStore conversations) {
+                          LlmProperties llmProperties) {
         this.chatService = chatService;
         this.rateLimiter = rateLimiter;
         this.turns = turns;
         this.llmProperties = llmProperties;
-        this.conversations = conversations;
     }
 
     public record ChatRequest(Long conversationId,
@@ -225,12 +222,7 @@ public class ChatController {
     @org.springframework.web.bind.annotation.GetMapping("/chat/messages/{messageId}/citation")
     public java.util.Map<String, Object> citationStatus(
             @org.springframework.web.bind.annotation.PathVariable long messageId) {
-        if (conversations == null) throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED);
-        try {
-            return conversations.citationForUser(messageId, AuthContext.requireUserId());
-        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
+        return chatService.citationStatus(messageId, AuthContext.requireUserId());
     }
 
     @org.springframework.web.bind.annotation.GetMapping("/chat/turns/{turnId}")
