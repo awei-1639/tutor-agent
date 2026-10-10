@@ -28,4 +28,24 @@ class InterviewPolicyTest {
         assertThat(decision.action()).isEqualTo(InterviewPolicy.Action.ASK_MAIN);
         assertThat(decision.nextMainQuestionCount()).isEqualTo(3);
     }
+
+    @Test
+    void followUpChainProbesOneLayerDeeperBeforeReturningToTheMainLine() {
+        // 第一层追问仍没答清 -> 进入第二层边界探测
+        InterviewPolicy.Decision probe = policy.decide("FOLLOW_UP", 5, 2, 3, 1);
+        assertThat(probe.action()).isEqualTo(InterviewPolicy.Action.ASK_FOLLOW_UP);
+        assertThat(probe.followUpDepth()).isEqualTo(2);
+
+        // 第二层之后再不追问, 无论得分如何都回到主线
+        InterviewPolicy.Decision back = policy.decide("FOLLOW_UP", 4, 2, 3, 2);
+        assertThat(back.action()).isEqualTo(InterviewPolicy.Action.ASK_MAIN);
+        assertThat(back.nextMainQuestionCount()).isEqualTo(3);
+    }
+
+    @Test
+    void aGoodFollowUpAnswerEndsTheProbeImmediately() {
+        InterviewPolicy.Decision decision = policy.decide("FOLLOW_UP", 8, 2, 3, 1);
+
+        assertThat(decision.action()).isEqualTo(InterviewPolicy.Action.ASK_MAIN);
+    }
 }

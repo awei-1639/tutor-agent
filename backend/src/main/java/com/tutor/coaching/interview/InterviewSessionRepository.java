@@ -121,6 +121,20 @@ class InterviewSessionRepository {
                 """, (rs, i) -> rs.getString(1), sessionId, threshold);
     }
 
+    /**
+     * 当前问题所处的追问层: 主线题为 0, 同一主线内的第 n 个追问为 n。
+     * 用 sequence 区间推算, 无需新增列 —— 上一个 MAIN 之后到当前为止的 FOLLOW_UP 计数。
+     */
+    int followUpDepthAt(String sessionId, int sequence) {
+        Integer depth = jdbc.queryForObject("""
+                SELECT count(*) FROM interview_questions q
+                WHERE q.session_id=? AND q.sequence <= ? AND q.kind='FOLLOW_UP'
+                  AND q.sequence > COALESCE((SELECT max(m.sequence) FROM interview_questions m
+                                             WHERE m.session_id=? AND m.sequence < ? AND m.kind='MAIN'), 0)
+                """, Integer.class, sessionId, sequence, sessionId, sequence);
+        return depth == null ? 0 : depth;
+    }
+
     boolean hasExactlyOneUnansweredQuestion(String sessionId, int sequence) {
         Integer count = jdbc.queryForObject("""
                 SELECT count(*) FROM interview_questions

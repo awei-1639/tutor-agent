@@ -93,4 +93,28 @@ class InterviewLlmServiceTest {
         org.mockito.Mockito.verify(gateway).chatJson(eq(Purpose.PLAN), captor.capture(), eq("trace"), isNull(), eq(1));
         org.assertj.core.api.Assertions.assertThat(captor.getValue().toString()).doesNotContain("候选人画像差距");
     }
+
+    @Test
+    void scorecardParsesDimensionSubscoresFromStoredJson() {
+        String json = "{\"score\":8,\"strengths\":[\"讲清了原理\"],\"missing_points\":[\"未提边界\"],\"confidence\":0.8,"
+                + "\"rubricVersion\":\"interview-scorecard-v2\","
+                + "\"dimensions\":{\"technical_depth\":9,\"structure\":7,\"boundary_awareness\":4,\"role_fit\":8,\"unknown_dim\":10}}";
+
+        InterviewSession.Scorecard card = new InterviewLlmService(mock(LlmGateway.class)).scorecard(json);
+
+        org.assertj.core.api.Assertions.assertThat(card.dimensions())
+                .containsExactly(org.assertj.core.data.MapEntry.entry("technical_depth", 9),
+                        org.assertj.core.data.MapEntry.entry("structure", 7),
+                        org.assertj.core.data.MapEntry.entry("boundary_awareness", 4),
+                        org.assertj.core.data.MapEntry.entry("role_fit", 8));
+    }
+
+    @Test
+    void scorecardWithoutDimensionsStaysUsable() {
+        InterviewSession.Scorecard card = new InterviewLlmService(mock(LlmGateway.class))
+                .scorecard("{\"score\":5,\"strengths\":[],\"missing_points\":[],\"confidence\":0.5}");
+
+        org.assertj.core.api.Assertions.assertThat(card.score()).isEqualTo(5);
+        org.assertj.core.api.Assertions.assertThat(card.dimensions()).isNull();
+    }
 }

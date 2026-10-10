@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.time.Instant;
 
 /** Builds durable learning evidence and comparable retest signals after an interview. */
@@ -63,8 +64,53 @@ class InterviewReportService {
         if (strengths.isEmpty()) strengths.add("已完成面试，可从基础概念和项目实践开始巩固");
         if (improvements.isEmpty()) improvements.add("建议通过不同场景的复测验证知识迁移能力");
         double confidence = scores.stream().mapToDouble(item -> interviewer.scorecard(item.scorecard()).confidence()).average().orElse(0);
+        Map<String, Double> dimensions = averageDimensions(scores);
         return new InterviewSession.Report(scores.size(), average, confidence, strengths, improvements, List.of("skill:" + session.topic()),
-                retestComparison(userId, session, average));
+                retestComparison(userId, session, average), dimensions, dimensionNotes(dimensions));
+    }
+
+    /** 四维平均分; 某维完全缺失时不出现在结果里, 前端雷达图按实际维度渲染。 */
+    private Map<String, Double> averageDimensions(List<InterviewSession.QuestionScore> scores) {
+        Map<String, java.util.List<Integer>> collected = new java.util.LinkedHashMap<>();
+        for (InterviewSession.QuestionScore item : scores) {
+            Map<String, Integer> dims = interviewer.scorecard(item.scorecard()).dimensions();
+            if (dims == null) continue;
+            dims.forEach((key, value) -> collected.computeIfAbsent(key, k -> new ArrayList<>()).add(value));
+        }
+        Map<String, Double> result = new java.util.LinkedHashMap<>();
+        for (String key : InterviewLlmService.DIMENSION_KEYS) {
+            java.util.List<Integer> values = collected.get(key);
+            if (values == null || values.isEmpty()) continue;
+            double avg = values.stream().mapToInt(Integer::intValue).average().orElse(0);
+            result.put(key, Math.round(avg * 10.0) / 10.0);
+        }
+        return result;
+    }
+
+    /** 规则化维度点评: 不额外消耗 LLM, 分档给一句可执行建议。 */
+    private Map<String, String> dimensionNotes(Map<String, Double> dimensions) {
+        if (dimensions.isEmpty()) return Map.of();
+        Map<String, String> labels = Map.of(
+                "technical_depth", "技术深度",
+                "structure", "结构与表达",
+                "boundary_awareness", "边界意识",
+                "role_fit", "岗位匹配");
+        Map<String, String> result = new java.util.LinkedHashMap<>();
+        String weakest = null;
+        double weakestValue = Double.MAX_VALUE;
+        for (String key : InterviewLlmService.DIMENSION_KEYS) {
+            Double value = dimensions.get(key);
+            if (value == null) continue;
+            if (value < weakestValue) { weakestValue = value; weakest = key; }
+            if (value >= 8) result.put(key, "表现扎实，能把原理讲透并结合场景给出权衡。");
+            else if (value >= 6) result.put(key, "基本达标，补上边界条件与失败场景会更稳。");
+            else result.put(key, "偏薄弱，建议按下方补强计划针对性练习。");
+        }
+        if (weakest != null) {
+            result.merge(weakest, "本场最薄弱维度：" + labels.getOrDefault(weakest, weakest) + "，提升它性价比最高。",
+                    (existing, added) -> existing + " " + added);
+        }
+        return result;
     }
 
     /** Enqueues once after the interview transaction reaches a terminal state. */
@@ -92,7 +138,8 @@ class InterviewReportService {
         double baseline = sourceScores.stream().mapToInt(InterviewSession.QuestionScore::score).average().orElse(0);
         List<String> focusAreas = sourceScores.stream().filter(item -> item.score() < 7)
                 .flatMap(item -> interviewer.scorecard(item.scorecard()).missingPoints().stream()).distinct().limit(5).toList();
-        return new InterviewSession.RetestComparison(session.retestOf(), baseline, currentAverage - baseline, focusAreas);
+        return new InterviewSession.RetestComparison(session.retestOf(), baseline, currentAverage - baseline, focusAreas,
+                averageDimensions(sourceScores));
     }
 
     private String shorten(String value) {

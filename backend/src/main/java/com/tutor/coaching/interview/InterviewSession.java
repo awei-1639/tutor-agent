@@ -66,9 +66,23 @@ public class InterviewSession {
                               String status, int totalQuestions, double avgScore, Instant createdAt, Instant completedAt,
                               String retestOf, Double scoreDelta) {}
     public record RetestComparison(String sourceSessionId, double baselineAvgScore, double scoreDelta,
-                                   List<String> originalFocusAreas) {}
+                                   List<String> originalFocusAreas, Map<String, Double> baselineDimensions) {
+        RetestComparison(String sourceSessionId, double baselineAvgScore, double scoreDelta, List<String> originalFocusAreas) {
+            this(sourceSessionId, baselineAvgScore, scoreDelta, originalFocusAreas, null);
+        }
+    }
     public record Report(int totalQuestions, double avgScore, double scoreConfidence, List<String> strengths,
-                         List<String> improvements, List<String> resources, RetestComparison retestComparison) {}
+                         List<String> improvements, List<String> resources, RetestComparison retestComparison,
+                         /** 四维平均分 (缺失维度不出现), 供前端雷达图渲染。 */
+                         Map<String, Double> dimensions,
+                         /** 每维度一句点评。 */
+                         Map<String, String> dimensionNotes) {
+        Report(int totalQuestions, double avgScore, double scoreConfidence, List<String> strengths,
+               List<String> improvements, List<String> resources, RetestComparison retestComparison) {
+            this(totalQuestions, avgScore, scoreConfidence, strengths, improvements, resources, retestComparison,
+                    Map.of(), Map.of());
+        }
+    }
 
     /** Creates a user-scoped session and its first question. */
     public InterviewMessage open(long userId, String targetRole, String jobDescription, String interviewType,
@@ -115,12 +129,15 @@ public class InterviewSession {
         QuestionRow question = sessions.findCurrentQuestion(sessionId, session.currentSequence());
         if (question.answer() != null) throw new ResponseStatusException(HttpStatus.CONFLICT, "当前问题已经提交过回答");
         Scorecard scorecard = scoreAnswer(question.prompt(), question.assessmentContract(), userAnswer, traceId);
+        // 当前问题所处的追问层: 主线 0, 追问 1..2。第二层是知识边界探测。
+        int currentDepth = sessions.followUpDepthAt(sessionId, question.sequence());
         InterviewPolicy.Decision decision = policy.decide(question.kind(), scorecard.score(), session.mainQuestionCount(),
-                mainQuestionLimit(session.durationMinutes()));
+                mainQuestionLimit(session.durationMinutes()), currentDepth);
         String followUp = null;
         QuestionSpec nextSpec = null;
         if (decision.action() == InterviewPolicy.Action.ASK_FOLLOW_UP) {
-            followUp = generateFollowUp(question.prompt(), userAnswer, scorecard.missingPoints(), traceId);
+            followUp = generateFollowUp(question.prompt(), userAnswer, scorecard.missingPoints(), traceId,
+                    Math.max(1, decision.followUpDepth()));
         } else if (decision.action() == InterviewPolicy.Action.ASK_MAIN) {
             nextSpec = generateQuestion(session.topic(), session.targetRole(), session.jobDescription(),
                     session.interviewType(), session.difficulty(), decision.nextMainQuestionCount(), traceId,
@@ -156,7 +173,10 @@ public class InterviewSession {
             String followUp = evaluation.followUp();
             if (followUp == null || followUp.isBlank()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "追问生成无效，请重试");
             insertQuestion(sessionId, nextSequence, "FOLLOW_UP", followUp, question.skillId(), question.assessmentContract());
-            response = "评分: " + score + "/10\n\n追问: " + followUp;
+            // 第二层追问显式标注为边界探测: 答不上来也是有效信号, 避免用户误以为自己表现差。
+            String label = evaluation.decision().followUpDepth() >= InterviewPolicy.MAX_FOLLOW_UP_DEPTH
+                    ? "追问（边界探测）" : "追问";
+            response = "评分: " + score + "/10\n\n" + label + ": " + followUp;
             advanceSession(sessionId, nextSequence, session.mainQuestionCount(), "IN_PROGRESS");
         } else if (decision.action() == InterviewPolicy.Action.COMPLETE) {
             response = "评分: " + score + "/10\n\n面试结束，复盘报告已准备好。";
@@ -308,8 +328,8 @@ public class InterviewSession {
                 traceId, priorQuestions, gapContext);
     }
 
-    private String generateFollowUp(String question, String answer, List<String> missingPoints, String traceId) {
-        return interviewer.generateFollowUp(question, answer, missingPoints, traceId);
+    private String generateFollowUp(String question, String answer, List<String> missingPoints, String traceId, int depth) {
+        return interviewer.generateFollowUp(question, answer, missingPoints, traceId, depth);
     }
 
     private Scorecard scoreAnswer(String question, String assessmentContract, String answer, String traceId) {
@@ -372,7 +392,11 @@ public class InterviewSession {
                        String answerRequestId, String responseMessage, String skillId, String assessmentContract) {}
     record QuestionScore(String prompt, int score, String scorecard) {}
     record Scorecard(int score, List<String> strengths, List<String> missingPoints, double confidence,
-                     String rubricVersion) {}
+                     String rubricVersion, Map<String, Integer> dimensions, String boundaryNote) {
+        Scorecard(int score, List<String> strengths, List<String> missingPoints, double confidence, String rubricVersion) {
+            this(score, strengths, missingPoints, confidence, rubricVersion, null, null);
+        }
+    }
     record TurnEvaluation(Scorecard scorecard, InterviewPolicy.Decision decision, String followUp, QuestionSpec nextSpec) {}
     private record TopicPlan(String topic, List<String> skillIds, String primarySkill) {}
     record QuestionSpec(String question, String dimension, List<String> requiredPoints,
