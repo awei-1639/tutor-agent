@@ -110,6 +110,45 @@ class InterviewLlmServiceTest {
     }
 
     @Test
+    void scoreAnswerCarriesDimensionSubscores() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.JUDGE), any(List.class), eq("trace"), isNull(), eq(1)))
+                .thenReturn("""
+                        {"score":8,"strengths":["讲清了 HNSW 的构建过程"],"missing_points":["未提删除场景"],
+                         "confidence":0.8,"evidence_quotes":["HNSW 的构建过程"],
+                         "dimensions":{"technical_depth":9,"structure":7,"boundary_awareness":4,"role_fit":8},
+                         "boundary_note":"主动说明未在生产验证过删除场景"}
+                        """);
+
+        InterviewSession.Scorecard card = new InterviewLlmService(gateway)
+                .scoreAnswer("向量索引怎么选?", "{}", "HNSW 的构建过程是这样的…", "trace");
+
+        org.assertj.core.api.Assertions.assertThat(card.dimensions()).containsEntry("technical_depth", 9)
+                .containsEntry("boundary_awareness", 4);
+        org.assertj.core.api.Assertions.assertThat(card.rubricVersion()).isEqualTo("interview-scorecard-v2");
+    }
+
+    @Test
+    void chineseDimensionKeysAreMappedBackToCanonicalNames() {
+        LlmGateway gateway = mock(LlmGateway.class);
+        when(gateway.chatJson(eq(Purpose.JUDGE), any(List.class), eq("trace"), isNull(), eq(1)))
+                .thenReturn("""
+                        {"score":6,"strengths":["讲了流程"],"missing_points":["缺边界"],"confidence":0.6,
+                         "evidence_quotes":["讲了流程"],
+                         "dimensions":{"技术深度":7,"结构与表达":6,"边界意识":3,"岗位匹配度":6}}
+                        """);
+
+        InterviewSession.Scorecard card = new InterviewLlmService(gateway)
+                .scoreAnswer("问题?", "{}", "讲了流程", "trace");
+
+        org.assertj.core.api.Assertions.assertThat(card.dimensions())
+                .containsExactly(org.assertj.core.data.MapEntry.entry("technical_depth", 7),
+                        org.assertj.core.data.MapEntry.entry("structure", 6),
+                        org.assertj.core.data.MapEntry.entry("boundary_awareness", 3),
+                        org.assertj.core.data.MapEntry.entry("role_fit", 6));
+    }
+
+    @Test
     void scorecardWithoutDimensionsStaysUsable() {
         InterviewSession.Scorecard card = new InterviewLlmService(mock(LlmGateway.class))
                 .scorecard("{\"score\":5,\"strengths\":[],\"missing_points\":[],\"confidence\":0.5}");
