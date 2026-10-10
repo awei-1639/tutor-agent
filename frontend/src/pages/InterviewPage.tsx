@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import RadarChart, { DIMENSION_LABELS } from '../components/RadarChart';
+import { useSpeechRecognition, useSpeechSynthesis } from '../lib/useSpeech';
 import { api, toUserMessage, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask } from '../lib/api';
 
 interface Transcript { speaker: 'ai' | 'me'; content: string; }
@@ -8,6 +9,17 @@ const TURN_STORAGE_KEY = 'tutor_active_interview_turn';
 const RETRY_STORAGE_KEY = 'tutor_active_interview_retry';
 const MIN_DURATION_MINUTES = 15;
 const MAX_DURATION_MINUTES = 120;
+
+/** 朗读前清洗: 去掉评分行与 Markdown 记号, 只留下值得念出来的题目本身。 */
+function cleanForSpeech(text: string): string {
+  return text
+    .replace(/评分[:：]\s*[\d.]+\s*\/\s*10/g, '')
+    .replace(/\*\*|__/g, '')
+    .replace(/[#>*_`~\-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 400);
+}
 
 function requestId(): string {
   return typeof crypto?.randomUUID === 'function'
@@ -46,6 +58,11 @@ export default function InterviewPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [learningPlanState, setLearningPlanState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [learningTasks, setLearningTasks] = useState<LearningTask[]>([]);
+  // 语音双模: 读题开关持久化, 语音作答把识别结果增量追加进输入框
+  const [voiceOn, setVoiceOn] = useState<boolean>(() => localStorage.getItem('tutor_interview_voice') !== 'off');
+  const { listening, interim, error: speechError, start: startListening, stop: stopListening, supported: micSupported }
+    = useSpeechRecognition((delta) => setInput((prev) => prev + delta));
+  const { speak, cancel: cancelSpeech } = useSpeechSynthesis();
   const [reportError, setReportError] = useState('');
   const reportRequestRef = useRef(0);
 
@@ -80,6 +97,20 @@ export default function InterviewPage() {
   }
 
   useEffect(() => { loadHistory(); }, []);
+
+  // 语音模式: 面试官说出新题目/追问。finished 后不再朗读, 避免复盘区被读一遍。
+  const latestQuestion = transcript.length ? [...transcript].reverse().find(t => t.speaker === 'ai')?.content : undefined;
+  const spokenRef = useRef('');
+  useEffect(() => {
+    if (!voiceOn || !latestQuestion || finished) return;
+    if (latestQuestion === spokenRef.current) return;
+    spokenRef.current = latestQuestion;
+    speak(cleanForSpeech(latestQuestion));
+  }, [voiceOn, latestQuestion, finished, speak]);
+
+  useEffect(() => {
+    if (!voiceOn) cancelSpeech();
+  }, [voiceOn, cancelSpeech]);
 
   useEffect(() => {
     if (!sessionId || transcript.length > 0) return;
@@ -531,17 +562,40 @@ export default function InterviewPage() {
         )}
 
         {sessionId && transcript.length > 0 && !finished && (
-          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
-            <label htmlFor="interview-answer" className="sr-only">你的回答</label>
-            <input id="interview-answer" value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') void send(); }} placeholder="输入你的回答"
-              className="min-w-0 flex-1 px-4 py-2 text-base sm:text-sm border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500" />
-            <button onClick={() => void send()} disabled={loading || !!turn || !input.trim() || remainingSeconds === 0}
-              className="min-h-11 shrink-0 px-4 py-2 bg-ink-900 hover:bg-black disabled:bg-ink-200 text-[#f2f1ec] rounded-[10px] text-sm transition">
-              {loading || turn ? '…' : '发送'}
-            </button>
-            <button onClick={() => void cancel()} disabled={loading}
-              className="min-h-11 shrink-0 px-3 py-2 border border-ink-200 hover:bg-ink-50 disabled:bg-ink-100 text-ink-700 rounded-[10px] text-sm transition">结束面试</button>
+          <div className="space-y-2 pt-2">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-500">
+              <button onClick={() => setVoiceOn(v => { localStorage.setItem('tutor_interview_voice', v ? 'off' : 'on'); return !v; })}
+                aria-pressed={voiceOn}
+                className="min-h-9 rounded-full border border-ink-200 px-3 text-ink-700 hover:bg-ink-50 transition">
+                {voiceOn ? '🔊 读题：开' : '🔇 读题：关'}
+              </button>
+              {!micSupported && <span>当前浏览器不支持语音作答，请用文字回答（Chrome / Edge 可用）。</span>}
+              {listening && <span className="flex items-center gap-1.5 text-accent-600"><span className="inline-block h-2 w-2 rounded-full bg-accent-500 animate-pulse" />正在聆听，说完点“停”即可</span>}
+              {speechError && <span className="text-red-600">{speechError}</span>}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label htmlFor="interview-answer" className="sr-only">你的回答</label>
+              <input id="interview-answer" value={input} onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void send(); }} placeholder="输入或说出你的回答"
+                className="min-w-0 flex-1 px-4 py-2 text-base sm:text-sm border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500" />
+              {micSupported && (
+                <button onClick={() => (listening ? stopListening() : startListening())} disabled={loading || !!turn}
+                  aria-pressed={listening}
+                  title={listening ? '停止语音输入' : '语音输入'}
+                  className={`min-h-11 shrink-0 rounded-[10px] border px-3 text-sm transition disabled:opacity-50 ${
+                    listening ? 'border-red-300 bg-red-50 text-red-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'
+                  }`}>
+                  {listening ? '停' : '🎤 语音'}
+                </button>
+              )}
+              <button onClick={() => void send()} disabled={loading || !!turn || !input.trim() || remainingSeconds === 0}
+                className="min-h-11 shrink-0 px-4 py-2 bg-ink-900 hover:bg-black disabled:bg-ink-200 text-[#f2f1ec] rounded-[10px] text-sm transition">
+                {loading || turn ? '…' : '发送'}
+              </button>
+              <button onClick={() => void cancel()} disabled={loading}
+                className="min-h-11 shrink-0 px-3 py-2 border border-ink-200 hover:bg-ink-50 disabled:bg-ink-100 text-ink-700 rounded-[10px] text-sm transition">结束面试</button>
+            </div>
+            {interim && <div className="text-xs text-ink-400" aria-live="polite">识别中：{interim}</div>}
           </div>
         )}
       </div>
