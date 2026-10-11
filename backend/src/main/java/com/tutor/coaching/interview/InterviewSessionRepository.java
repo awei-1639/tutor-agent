@@ -50,7 +50,8 @@ class InterviewSessionRepository {
     List<InterviewSession.TranscriptTurn> transcript(String sessionId) {
         List<InterviewSession.TranscriptTurn> transcript = new ArrayList<>();
         jdbc.query("""
-                SELECT prompt, answer, kind, COALESCE(scorecard->>'reply', ''), COALESCE(scorecard->>'tip', '')
+                SELECT prompt, answer, kind, COALESCE(scorecard->>'reply', ''), COALESCE(scorecard->>'tip', ''),
+                       COALESCE(response_message, '')
                 FROM interview_questions
                 WHERE session_id=? ORDER BY sequence
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
@@ -64,6 +65,10 @@ class InterviewSessionRepository {
                     String tip = rs.getString(5);
                     transcript.add(new InterviewSession.TranscriptTurn("ai",
                             tip.isBlank() ? reply : reply + "\n\n💡 反问点评: " + tip));
+                } else {
+                    // 候选人表示没有问题: 该行就是终态, 补上收尾语。
+                    String closing = rs.getString(6);
+                    if (!closing.isBlank()) transcript.add(new InterviewSession.TranscriptTurn("ai", closing));
                 }
             }
         }, sessionId);
