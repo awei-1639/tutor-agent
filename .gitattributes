@@ -35,9 +35,11 @@
 *.jar binary
 *.class binary
 
-# 依赖锁文件：机器生成，评审时默认折叠，避免淹没真正的逻辑改动。
-frontend/package-lock.json linguist-generated=true -diff
-frontend/pnpm-lock.yaml linguist-generated=true -diff
+# 依赖锁文件：机器生成，GitHub 会自动折叠这些文件的 diff。
+# 这里刻意只用 linguist-generated 而不用 -diff —— 后者会让 git 把它当二进制
+# (显示 "Binary files differ")，依赖树到底变了什么就完全看不见了，评审反而不安全。
+frontend/package-lock.json linguist-generated=true
+frontend/pnpm-lock.yaml linguist-generated=true
 
 # 归档发布时不需要带上开发和 CI 的本地产物。
 .github/ export-ignore
