@@ -39,7 +39,8 @@ export function useSpeechRecognition(onFinal: (delta: string) => void) {
   const recognitionRef = useRef<Recognition | null>(null);
   const keepListening = useRef(false);
   const deliver = useRef(onFinal);
-  deliver.current = onFinal;
+  // 不能在渲染期间写 ref: 并发渲染下这次写入可能被丢弃, 回调会停在旧值上.
+  useEffect(() => { deliver.current = onFinal; }, [onFinal]);
 
   const stop = useCallback(() => {
     keepListening.current = false;

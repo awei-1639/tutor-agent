@@ -158,25 +158,29 @@ export default function ChatPage() {
   const tokenRafRef = useRef<number | null>(null);
 
   // 引用校验终态轮询: 校验在 SSE 关闭后异步完成, pending 期间每 2.5s 查一次, 最多 20 次 (~50s)。
-  const pollCitationStatus = useCallback((messageId: number, attempt = 0) => {
-    if (attempt >= 20) return; // 超时放弃, 界面保持"校验中"文案, 刷新页面会读到终态
-    window.setTimeout(async () => {
+  // 用 setInterval 而不是 setTimeout 递归 —— 递归会让回调闭包引用尚未声明完成的自身。
+  const pollCitationStatus = useCallback((messageId: number) => {
+    let attempts = 0;
+    const timer = window.setInterval(async () => {
+      attempts += 1;
+      if (attempts > 20) {
+        window.clearInterval(timer);
+        return; // 超时放弃: 界面保持"校验中"文案, 刷新页面会读到终态
+      }
       try {
         const data = await api.chatCitation(messageId);
         const status = data.citation_status;
-        if (status && status !== 'pending') {
-          let issues: string[] = [];
-          if (Array.isArray(data.citation_issues)) issues = data.citation_issues;
-          else if (typeof data.citation_issues === 'string' && data.citation_issues) {
-            try { issues = JSON.parse(data.citation_issues); } catch { issues = []; }
-          }
-          setMessages(list => list.map(m => (m.id === messageId
-            ? { ...m, citationStatus: status, citationIssues: issues } : m)));
-        } else {
-          pollCitationStatus(messageId, attempt + 1);
+        if (!status || status === 'pending') return; // 还在校验中, 等下一次
+        let issues: string[] = [];
+        if (Array.isArray(data.citation_issues)) issues = data.citation_issues;
+        else if (typeof data.citation_issues === 'string' && data.citation_issues) {
+          try { issues = JSON.parse(data.citation_issues); } catch { issues = []; }
         }
+        window.clearInterval(timer);
+        setMessages(list => list.map(m => (m.id === messageId
+          ? { ...m, citationStatus: status, citationIssues: issues } : m)));
       } catch {
-        pollCitationStatus(messageId, attempt + 1); // 网络抖动/404 时继续重试直到超限
+        // 网络抖动/404 由下一次 tick 继续重试, 直到 attempts 超限清理定时器
       }
     }, 2500);
   }, []);

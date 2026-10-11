@@ -15,7 +15,7 @@ function cleanForSpeech(text: string): string {
   return text
     .replace(/评分[:：]\s*[\d.]+\s*\/\s*10/g, '')
     .replace(/\*\*|__/g, '')
-    .replace(/[#>*_`~\-]/g, '')
+    .replace(/[#>*_`~-]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 400);
