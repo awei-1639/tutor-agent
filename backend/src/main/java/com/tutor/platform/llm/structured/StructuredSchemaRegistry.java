@@ -138,12 +138,12 @@ public final class StructuredSchemaRegistry {
                     """
             )),
             Map.entry(StructuredTask.INTERVIEW_SCORECARD, definition(
-                    "interview-scorecard-v1",
+                    "interview-scorecard-v2",
                     InterviewScorecardOutput.class,
                     """
                     {
                       "$schema":"https://json-schema.org/draft/2020-12/schema",
-                      "$id":"https://tutor.local/schema/interview-scorecard-v1",
+                      "$id":"https://tutor.local/schema/interview-scorecard-v2",
                       "type":"object","additionalProperties":false,
                       "required":["score","strengths","missing_points","confidence","evidence_quotes"],
                       "properties":{
@@ -151,7 +151,15 @@ public final class StructuredSchemaRegistry {
                         "strengths":{"type":"array","maxItems":20,"items":{"type":"string","maxLength":500}},
                         "missing_points":{"type":"array","maxItems":20,"items":{"type":"string","maxLength":500}},
                         "confidence":{"type":"number","minimum":0,"maximum":1},
-                        "evidence_quotes":{"type":"array","minItems":1,"maxItems":20,"items":{"type":"string","minLength":1,"maxLength":500}}
+                        "evidence_quotes":{"type":"array","minItems":1,"maxItems":20,"items":{"type":"string","minLength":1,"maxLength":500}},
+                        "dimensions":{"type":["object","null"],
+                          "properties":{
+                            "technical_depth":{"type":"integer","minimum":0,"maximum":10},
+                            "structure":{"type":"integer","minimum":0,"maximum":10},
+                            "boundary_awareness":{"type":"integer","minimum":0,"maximum":10},
+                            "role_fit":{"type":"integer","minimum":0,"maximum":10}
+                          }},
+                        "boundary_note":{"type":["string","null"],"maxLength":300}
                       }
                     }
                     """

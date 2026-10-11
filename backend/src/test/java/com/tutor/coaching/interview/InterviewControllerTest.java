@@ -87,6 +87,20 @@ class InterviewControllerTest {
     }
 
     @Test
+    void learningPlanRunsForTheAuthenticatedUserInsteadOfAnyCaller() {
+        InterviewSession service = mock(InterviewSession.class);
+        when(service.planFromWeakSkills(42L, "session-1")).thenReturn(java.util.List.of(
+                new com.tutor.coaching.plan.PlanModels.PlanTask(1L, 1L, java.time.LocalDate.now(),
+                        "复现 Faiss IVF-PQ 索引选型实验", "evidence", 30, "对照上轮面试缺失点")));
+        AuthContext.set(42L);
+
+        org.assertj.core.api.Assertions.assertThat(controller(service).learningPlan("session-1")).hasSize(1);
+        verify(service).planFromWeakSkills(42L, "session-1");
+        verify(service, org.mockito.Mockito.never())
+                .planFromWeakSkills(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
     void createsRetestForAuthenticatedUserOnly() throws Exception {
         InterviewSession service = mock(InterviewSession.class);
         when(service.retest(42L, "completed-1", "interview"))

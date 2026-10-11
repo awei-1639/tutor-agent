@@ -1,0 +1,48 @@
+# 行尾与 diff 策略。
+#
+# 本机 core.autocrlf=false / core.eol=lf，仓库现状已是全 LF。这里把约定写成规则，
+# 是为了防止换机器（core.autocrlf=true 的 Windows 默认配置）后被反向污染：
+# *.sh 一旦变成 CRLF，WSL/bash 会把 \r 当成参数的一部分，脚本会以莫名其妙的
+# "syntax error near unexpected token" 失败，而不是报行尾问题。
+
+# 默认：文本，归档与检出统一 LF。
+* text=auto eol=lf
+
+# Windows 专用脚本保留 CRLF：cmd.exe 对纯 LF 的括号块/多行 set 解析不稳。
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# shell / Python 必须 LF（见开头的 \r 说明）。
+*.sh text eol=lf
+*.bash text eol=lf
+*.py text eol=lf
+
+# 二进制：禁止任何换行转换，也不做文本 diff。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.zip binary
+*.gz binary
+*.jar binary
+*.class binary
+
+# 依赖锁文件：机器生成，GitHub 会自动折叠这些文件的 diff。
+# 这里刻意只用 linguist-generated 而不用 -diff —— 后者会让 git 把它当二进制
+# (显示 "Binary files differ")，依赖树到底变了什么就完全看不见了，评审反而不安全。
+frontend/package-lock.json linguist-generated=true
+frontend/pnpm-lock.yaml linguist-generated=true
+
+# 归档发布时不需要带上开发和 CI 的本地产物。
+.github/ export-ignore
+.idea/ export-ignore
+.vscode/ export-ignore
+scripts/ export-ignore

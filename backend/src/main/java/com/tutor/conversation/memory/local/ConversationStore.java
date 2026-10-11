@@ -53,6 +53,10 @@ public class ConversationStore {
         messages.updateCitationVerification(messageId, status, issuesJson);
     }
 
+    public java.util.Map<String, Object> citationForUser(long messageId, long userId) {
+        return messages.citationForUser(messageId, userId);
+    }
+
     public long appendMessage(long conversationId, String role, String content,
                               String intent, String citationsJson, String traceId, int tokenCount) {
         return messages.appendMessage(conversationId, role, content, intent, citationsJson, traceId, tokenCount);

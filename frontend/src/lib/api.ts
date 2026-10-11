@@ -152,6 +152,10 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 export const api = {
   cancelChatTurn: (turnId: string) =>
     request<{ id: string; status: string }>(`/chat/turns/${encodeURIComponent(turnId)}/cancel`, { method: 'POST' }),
+  // 引用校验终态轮询 (SSE 已关, pending 的最终结果只能轮询拿)
+  chatCitation: (messageId: number) =>
+    request<{ message_id: number; citation_status: string; citation_issues: string | string[] | null }>(
+      `/chat/messages/${messageId}/citation`),
   // 认证
   login: (email: string, password: string) =>
     request<{ user_id: number; name: string; role: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
@@ -237,6 +241,8 @@ export const api = {
   getInterviewCompletion: (sessionId: string) => request<InterviewCompletionStatus>(`/interview/${encodeURIComponent(sessionId)}/completion`),
   submitInterviewFeedback: (sessionId: string, rating: 'accurate' | 'inaccurate', reason = '') =>
     request<void>(`/interview/${encodeURIComponent(sessionId)}/feedback`, { method: 'POST', body: JSON.stringify({ rating, reason }) }),
+  createLearningPlan: (sessionId: string) =>
+    request<LearningTask[]>(`/interview/${encodeURIComponent(sessionId)}/learning-plan`, { method: 'POST' }),
   // RAG 评测（开发/内部工作台）
   listEvalRuns: () => request<EvalRunSummary[]>('/internal/evals'),
   getEvalRun: (id: number) => request<EvalRunDetail>(`/internal/evals/${id}`),
@@ -502,6 +508,8 @@ export interface InterviewSessionView {
   mainQuestionsAsked: number;
   deadlineAt: string;
   transcript: Array<{ speaker: 'ai' | 'me'; content: string }>;
+  /** INTERVIEWING = 正常问答, CANDIDATE_ASK = 反问环节, ENDED = 已结束 */
+  phase?: 'INTERVIEWING' | 'CANDIDATE_ASK' | 'ENDED';
 }
 
 export interface InterviewHistoryItem {
@@ -523,6 +531,8 @@ export interface InterviewRetestComparison {
   baselineAvgScore: number;
   scoreDelta: number;
   originalFocusAreas?: string[];
+  /** 上次面试的四维均分, 用于雷达图叠加对比 */
+  baselineDimensions?: Record<string, number> | null;
 }
 
 export interface InterviewReport {
@@ -533,6 +543,19 @@ export interface InterviewReport {
   improvements?: string[];
   resources?: string[];
   retestComparison?: InterviewRetestComparison | null;
+  /** 四维均分: technical_depth / structure / boundary_awareness / role_fit */
+  dimensions?: Record<string, number> | null;
+  /** 每维度一句点评 */
+  dimensionNotes?: Record<string, string> | null;
+  /** 反问环节：候选人的提问、面试官回答与提问质量点评 */
+  candidateAsks?: InterviewCandidateAsk[];
+}
+
+/** 反问环节的一次来回 (不计入评分)。 */
+export interface InterviewCandidateAsk {
+  question: string;
+  reply: string;
+  tip: string;
 }
 
 export interface InterviewCompletionStatus {
@@ -545,6 +568,17 @@ export interface InterviewCompletionStatus {
   finishedAt?: string | null;
   evidenceStatus?: 'queued' | 'completed' | string;
   learningPlanStatus?: 'queued' | 'completed' | 'failed' | string;
+}
+
+/** 面试复盘「把弱项变成学习计划」返回的学习任务。 */
+export interface LearningTask {
+  id: number;
+  planId: number;
+  day: string;
+  content: string;
+  kind: string;
+  minutes: number;
+  evidenceHint: string | null;
 }
 
 export interface InterviewTurnJob {

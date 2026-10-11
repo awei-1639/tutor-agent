@@ -44,6 +44,7 @@ import java.util.UUID;
 public class ChatService {
     private static final Logger log = LoggerFactory.getLogger(ChatService.class);
     private final com.tutor.agent.expert.RoutingPolicy routingPolicy;
+    private final ConversationStore conversations;
     private final ChatRoutingStage routingStage;
     private final ChatContextLoader contextLoader;
     private final ChatRetrievalStage retrievalStage;
@@ -91,6 +92,7 @@ public class ChatService {
                        ToolCallLoop toolCallLoop,
                        @Value("${tutor.chat.tool-loop-enabled:false}") boolean toolLoopEnabled) {
         this.routingPolicy = routingPolicy;
+        this.conversations = conversations;
         this.contextLoader = new ChatContextLoader(conversations, profileService, memoryConsent);
         this.retrievalStage = new ChatRetrievalStage(
                 agenticRetriever, longTermMemory, factRecall, trace);
@@ -105,6 +107,20 @@ public class ChatService {
                         ? new StructuredOutputService(null, null)
                         : structuredOutputService)),
                 router, routingPolicy, trace);
+    }
+
+    /**
+     * 引用校验终态查询。SSE 在 done 时即关闭, 而引用校验在此之后异步完成, 前端凭 message_id
+     * 轮询本方法直到非 pending。放在应用层, 避免 HTTP 边界直接依赖 store。
+     */
+    public java.util.Map<String, Object> citationStatus(long messageId, long userId) {
+        if (conversations == null) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_IMPLEMENTED);
+        try {
+            return conversations.citationForUser(messageId, userId);
+        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
+        }
     }
 
     @PreDestroy

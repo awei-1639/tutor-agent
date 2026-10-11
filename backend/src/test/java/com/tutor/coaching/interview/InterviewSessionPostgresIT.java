@@ -72,6 +72,11 @@ class InterviewSessionPostgresIT {
                 {"score":8,"strengths":["能说明互斥重建"],"missing_points":["补充监控指标"],
                 "confidence":0.85,"evidence_quotes":["缓存"]}
                 """);
+        // 反问环节: 面试官身份回答候选人的提问
+        when(gateway.chatJson(eq(Purpose.CHAT), anyList(), anyString(), isNull(), eq(1))).thenReturn("""
+                {"reply":"团队现在主要在做缓存一致性和热点治理，新人前三个月会跟着一个 Owner 熟悉链路。",
+                 "tip":"问到了团队当前的技术挑战，信息量高。"}
+                """);
         PlanService plans = mock(PlanService.class);
         ProfileService profiles = new ProfileService(gateway, new ProfileStore(jdbc));
         reports = new InterviewReportService(jdbc, new InterviewLlmService(gateway), plans, profiles);
@@ -102,8 +107,20 @@ class InterviewSessionPostgresIT {
         InterviewSession.InterviewMessage first = interviews.answer(alice, opened.sessionId(), "用互斥锁避免热点缓存 key 同时重建。",
                 "answer-1", "it-trace");
         assertThat(first.status()).isEqualTo("IN_PROGRESS");
-        InterviewSession.InterviewMessage completed = interviews.answer(alice, opened.sessionId(), "缓存还会设置合理过期并监控命中率。",
+        // 15 分钟面试只有 2 道主线题: 答完第二题不直接结束, 而是进入反问环节。
+        InterviewSession.InterviewMessage second = interviews.answer(alice, opened.sessionId(), "缓存还会设置合理过期并监控命中率。",
                 "answer-2", "it-trace");
+        assertThat(second.status()).isEqualTo("IN_PROGRESS");
+        assertThat(second.message()).contains("反问环节");
+        assertThat(interviews.session(alice, opened.sessionId()).phase()).isEqualTo("CANDIDATE_ASK");
+
+        // 反问一轮: 不计入题目数与平均分, 但保留到复盘报告
+        InterviewSession.InterviewMessage asked = interviews.answer(alice, opened.sessionId(),
+                "团队现在最棘手的技术挑战是什么？", "answer-3", "it-trace");
+        assertThat(asked.status()).isEqualTo("IN_PROGRESS");
+        assertThat(asked.message()).contains("还有其他想了解的吗");
+        InterviewSession.InterviewMessage completed = interviews.answer(alice, opened.sessionId(), "没有问题了，谢谢",
+                "answer-4", "it-trace");
         assertThat(completed.status()).isEqualTo("COMPLETED");
         assertThat(jdbc.queryForObject("SELECT status FROM interview_completion_jobs WHERE session_id=?", String.class, opened.sessionId()))
                 .isEqualTo("queued");
@@ -145,6 +162,11 @@ class InterviewSessionPostgresIT {
         assertThat(report.totalQuestions()).isEqualTo(2);
         assertThat(report.avgScore()).isEqualTo(8D);
         assertThat(report.scoreConfidence()).isEqualTo(0.85D);
+        // 反问环节不计分, 但问答保留在复盘里。
+        assertThat(report.candidateAsks()).hasSize(1);
+        assertThat(report.candidateAsks().getFirst().question()).isEqualTo("团队现在最棘手的技术挑战是什么？");
+        assertThat(report.candidateAsks().getFirst().reply()).contains("缓存一致性");
+        assertThat(report.candidateAsks().getFirst().tip()).contains("技术挑战");
 
         assertThat(jdbc.queryForObject("SELECT rating FROM interview_feedback WHERE session_id=?", String.class, opened.sessionId()))
                 .isEqualTo("inaccurate");

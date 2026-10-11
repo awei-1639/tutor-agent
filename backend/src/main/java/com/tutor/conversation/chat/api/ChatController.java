@@ -215,6 +215,16 @@ public class ChatController {
         return turns.cancel(AuthContext.requireUserId(), turnId);
     }
 
+    /**
+     * 引用校验终态轮询端点。SSE 在 done 时即关闭, 而引用校验是 done 之后异步完成的,
+     * "校验中"的最终结果无法从流里拿到——前端凭 message_id 轮询本端点直到非 pending。
+     */
+    @org.springframework.web.bind.annotation.GetMapping("/chat/messages/{messageId}/citation")
+    public java.util.Map<String, Object> citationStatus(
+            @org.springframework.web.bind.annotation.PathVariable long messageId) {
+        return chatService.citationStatus(messageId, AuthContext.requireUserId());
+    }
+
     @org.springframework.web.bind.annotation.GetMapping("/chat/turns/{turnId}")
     public ChatTurnService.Turn turn(@org.springframework.web.bind.annotation.PathVariable String turnId) {
         if (turns == null) return throwUnsupportedCancellation();

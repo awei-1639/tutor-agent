@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, toUserMessage, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob } from '../lib/api';
+import RadarChart, { DIMENSION_LABELS } from '../components/RadarChart';
+import { useSpeechRecognition, useSpeechSynthesis } from '../lib/useSpeech';
+import { api, toUserMessage, type InterviewCandidateAsk, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask } from '../lib/api';
 
 interface Transcript { speaker: 'ai' | 'me'; content: string; }
 const STORAGE_KEY = 'tutor_active_interview_session';
@@ -7,6 +9,17 @@ const TURN_STORAGE_KEY = 'tutor_active_interview_turn';
 const RETRY_STORAGE_KEY = 'tutor_active_interview_retry';
 const MIN_DURATION_MINUTES = 15;
 const MAX_DURATION_MINUTES = 120;
+
+/** 朗读前清洗: 去掉评分行与 Markdown 记号, 只留下值得念出来的题目本身。 */
+function cleanForSpeech(text: string): string {
+  return text
+    .replace(/评分[:：]\s*[\d.]+\s*\/\s*10/g, '')
+    .replace(/\*\*|__/g, '')
+    .replace(/[#>*_`~-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 400);
+}
 
 function requestId(): string {
   return typeof crypto?.randomUUID === 'function'
@@ -37,14 +50,36 @@ export default function InterviewPage() {
     catch { return null; }
   });
   const [history, setHistory] = useState<InterviewHistoryItem[]>([]);
+  /** INTERVIEWING: 正常问答; CANDIDATE_ASK: 反问环节 —— 换候选人向面试官提问 */
+  const [phase, setPhase] = useState<'INTERVIEWING' | 'CANDIDATE_ASK' | 'ENDED'>('INTERVIEWING');
+  const candidateRound = phase === 'CANDIDATE_ASK';
   const [deadlineAt, setDeadlineAt] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [feedbackReason, setFeedbackReason] = useState('');
   const [feedbackSent, setFeedbackSent] = useState<'accurate' | 'inaccurate' | null>(null);
   const [historyReport, setHistoryReport] = useState<{ item: InterviewHistoryItem; report: InterviewReport } | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [learningPlanState, setLearningPlanState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [learningTasks, setLearningTasks] = useState<LearningTask[]>([]);
+  // 语音双模: 读题开关持久化, 语音作答把识别结果增量追加进输入框
+  const [voiceOn, setVoiceOn] = useState<boolean>(() => localStorage.getItem('tutor_interview_voice') !== 'off');
+  const { listening, interim, error: speechError, start: startListening, stop: stopListening, supported: micSupported }
+    = useSpeechRecognition((delta) => setInput((prev) => prev + delta));
+  const { speak, cancel: cancelSpeech } = useSpeechSynthesis();
   const [reportError, setReportError] = useState('');
   const reportRequestRef = useRef(0);
+
+  async function buildLearningPlan(id: string) {
+    setLearningPlanState('loading');
+    try {
+      const tasks = await api.createLearningPlan(id);
+      setLearningTasks(tasks);
+      setLearningPlanState('done');
+    } catch (err) {
+      setLearningPlanState('error');
+      setError(toUserMessage(err, '学习计划暂时无法生成，请稍后重试。'));
+    }
+  }
 
   function loadHistory() {
     api.getInterviewHistory().then(setHistory).catch(() => { /* History is supplementary to the active interview. */ });
@@ -66,6 +101,20 @@ export default function InterviewPage() {
 
   useEffect(() => { loadHistory(); }, []);
 
+  // 语音模式: 面试官说出新题目/追问。finished 后不再朗读, 避免复盘区被读一遍。
+  const latestQuestion = transcript.length ? [...transcript].reverse().find(t => t.speaker === 'ai')?.content : undefined;
+  const spokenRef = useRef('');
+  useEffect(() => {
+    if (!voiceOn || !latestQuestion || finished) return;
+    if (latestQuestion === spokenRef.current) return;
+    spokenRef.current = latestQuestion;
+    speak(cleanForSpeech(latestQuestion));
+  }, [voiceOn, latestQuestion, finished, speak]);
+
+  useEffect(() => {
+    if (!voiceOn) cancelSpeech();
+  }, [voiceOn, cancelSpeech]);
+
   useEffect(() => {
     if (!sessionId || transcript.length > 0) return;
     let active = true;
@@ -74,6 +123,7 @@ export default function InterviewPage() {
       if (!active) return;
       setRole(current => session.targetRole || current);
       setTranscript(session.transcript);
+      setPhase(session.phase ?? 'INTERVIEWING');
       setDeadlineAt(session.deadlineAt);
       if (session.status !== 'IN_PROGRESS') {
         setFinished(true);
@@ -139,10 +189,16 @@ export default function InterviewPage() {
           setRetry(null);
           setTurn(null);
           if (next.responseStatus === 'COMPLETED') {
+            setPhase('ENDED');
             setFinished(true);
             sessionStorage.removeItem(STORAGE_KEY);
             loadHistory();
             void loadReport(sessionId);
+          } else {
+            // 轮次之间重新拉取会话: 反问环节的进入/退出由服务端状态机决定。
+            void api.getInterviewSession(sessionId)
+              .then(view => setPhase(view.phase ?? 'INTERVIEWING'))
+              .catch(() => { /* 沿用上一阶段 */ });
           }
         } else if (next.status === 'FAILED') {
           setRetry(current => current ? { ...current, jobId: next.id } : current);
@@ -177,6 +233,7 @@ export default function InterviewPage() {
       setCompletion(null);
       setRetry(null);
       setHistoryReport(null);
+      setPhase('INTERVIEWING');
       setFeedbackSent(null);
       setFeedbackReason('');
       setDeadlineAt(new Date(Date.now() + durationMinutes * 60_000).toISOString());
@@ -202,6 +259,7 @@ export default function InterviewPage() {
       setCompletion(null);
       setRetry(null);
       setHistoryReport(null);
+      setPhase('INTERVIEWING');
       setFeedbackSent(null);
       setFeedbackReason('');
       void api.getInterviewSession(r.sessionId).then(session => setDeadlineAt(session.deadlineAt)).catch(() => { /* The server still enforces its deadline. */ });
@@ -274,6 +332,7 @@ export default function InterviewPage() {
     setFeedbackSent(null);
     setFeedbackReason('');
     setHistoryReport(null);
+    setPhase('INTERVIEWING');
   }
 
   async function submitFeedback(rating: 'accurate' | 'inaccurate') {
@@ -392,6 +451,15 @@ export default function InterviewPage() {
 
         {transcript.length > 0 && (
           <div className="space-y-3">
+            {candidateRound && !finished && (
+              <div className="rounded-md border border-accent-200 bg-accent-50/50 px-4 py-3 text-sm text-ink-800">
+                <div className="mb-1 font-medium text-ink-900">反问环节 · 现在换你提问</div>
+                <div className="text-xs leading-[1.7] text-ink-600">
+                  技术问题已结束。可以问团队技术栈与分工、当前最棘手的技术挑战、新人成长路径或评估标准；
+                  这是了解岗位真实情况、也体现你对岗位关注度的机会。没有问题就输入「没有问题」结束面试。
+                </div>
+              </div>
+            )}
             {remainingSeconds != null && <div className={`font-mono text-sm font-medium ${remainingSeconds === 0 ? 'text-red-600' : 'text-ink-600'}`}>
               剩余时间：{formatRemaining(remainingSeconds)}{remainingSeconds === 0 ? '，请结束面试查看复盘。' : ''}
             </div>}
@@ -450,6 +518,29 @@ export default function InterviewPage() {
                 <div><div className="text-[11px] tracking-[.04em] text-ink-500">平均分</div><div className="font-serif text-[30px] font-bold leading-tight tracking-[-.02em] text-accent-600">{report.avgScore?.toFixed(1)}<span className="text-[15px] font-normal text-ink-400">/10</span></div></div>
                 <div><div className="text-[11px] tracking-[.04em] text-ink-500">评分置信度</div><div className="font-serif text-[30px] font-bold leading-tight tracking-[-.02em] text-ink-900">{Math.round((report.scoreConfidence ?? 0) * 100)}<span className="text-[15px] font-normal text-ink-400">%</span></div></div>
               </div>
+              {report.dimensions && Object.keys(report.dimensions).length > 0 && (
+                <div className="rounded-md border border-ink-100 bg-[#faf9f5] px-4 py-4">
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <div className="text-sm font-medium text-ink-900">四维能力雷达</div>
+                    {report.retestComparison?.baselineDimensions && Object.keys(report.retestComparison.baselineDimensions).length > 0 && (
+                      <div className="text-[11px] text-ink-500">实线 = 本次，虚线 = 上次同配置</div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+                    <RadarChart dimensions={report.dimensions} baseline={report.retestComparison?.baselineDimensions ?? null} />
+                    <ul className="w-full space-y-2.5 text-xs leading-[1.6] text-ink-700 sm:flex-1">
+                      {Object.entries(report.dimensions).map(([key, value]) => (
+                        <li key={key}>
+                          <span className="font-medium text-ink-900">{DIMENSION_LABELS[key] ?? key} {value.toFixed(1)}/10</span>
+                          {report.dimensionNotes?.[key] && (
+                            <span className="block text-ink-500">{report.dimensionNotes[key]}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               {report.retestComparison && <div className="rounded-md bg-ink-50 px-4 py-3 text-sm text-ink-700 space-y-1">
                 <div className="font-medium text-ink-900">复测变化</div>
                 <div>同配置复测：原测 {report.retestComparison.baselineAvgScore.toFixed(1)}/10，
@@ -460,6 +551,19 @@ export default function InterviewPage() {
               <ReportList title="亮点" items={report.strengths} marker="✓" />
               <ReportList title="改进点" items={report.improvements} marker="→" />
               <ReportList title="推荐学习" items={report.resources} marker="📚" />
+              <CandidateAskList asks={report.candidateAsks} />
+              <div className="rounded-md border border-accent-100 bg-accent-50/40 px-4 py-3 space-y-2">
+                <div className="text-sm font-medium text-ink-900">把这场面试的弱项变成学习计划</div>
+                <div className="text-xs text-ink-500">按低分题目对应的技能生成针对性学习任务，直接进入「学习计划」推进。</div>
+                <button onClick={() => void buildLearningPlan(sessionId!)} disabled={learningPlanState === 'loading'}
+                  className="rounded-md border border-accent-200 px-3 py-1.5 text-xs font-medium hover:bg-accent-50 disabled:opacity-60">
+                  {learningPlanState === 'loading' ? '正在生成…' : '生成我的补强计划'}
+                </button>
+                {learningPlanState === 'done' && <ul className="space-y-1 pt-1">
+                  {learningTasks.map(task => <li key={task.id} className="flex gap-2 text-sm text-ink-800">
+                    <span className="text-accent-600">→</span><span>{task.day} · {task.content}</span></li>)}
+                </ul>}
+              </div>
               <div className="border-t border-ink-100 pt-3 text-sm">
                 <div className="text-xs text-ink-500 mb-2">这份评分是否符合你的实际表现？</div>
                 {feedbackSent ? <div className="text-emerald-700">感谢反馈，已记录用于后续评分校准。</div> : <div className="space-y-2">
@@ -481,17 +585,40 @@ export default function InterviewPage() {
         )}
 
         {sessionId && transcript.length > 0 && !finished && (
-          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
-            <label htmlFor="interview-answer" className="sr-only">你的回答</label>
-            <input id="interview-answer" value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') void send(); }} placeholder="输入你的回答"
-              className="min-w-0 flex-1 px-4 py-2 text-base sm:text-sm border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500" />
-            <button onClick={() => void send()} disabled={loading || !!turn || !input.trim() || remainingSeconds === 0}
-              className="min-h-11 shrink-0 px-4 py-2 bg-ink-900 hover:bg-black disabled:bg-ink-200 text-[#f2f1ec] rounded-[10px] text-sm transition">
-              {loading || turn ? '…' : '发送'}
-            </button>
-            <button onClick={() => void cancel()} disabled={loading}
-              className="min-h-11 shrink-0 px-3 py-2 border border-ink-200 hover:bg-ink-50 disabled:bg-ink-100 text-ink-700 rounded-[10px] text-sm transition">结束面试</button>
+          <div className="space-y-2 pt-2">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-500">
+              <button onClick={() => setVoiceOn(v => { localStorage.setItem('tutor_interview_voice', v ? 'off' : 'on'); return !v; })}
+                aria-pressed={voiceOn}
+                className="min-h-9 rounded-full border border-ink-200 px-3 text-ink-700 hover:bg-ink-50 transition">
+                {voiceOn ? '🔊 读题：开' : '🔇 读题：关'}
+              </button>
+              {!micSupported && <span>当前浏览器不支持语音作答，请用文字回答（Chrome / Edge 可用）。</span>}
+              {listening && <span className="flex items-center gap-1.5 text-accent-600"><span className="inline-block h-2 w-2 rounded-full bg-accent-500 animate-pulse" />正在聆听，说完点“停”即可</span>}
+              {speechError && <span className="text-red-600">{speechError}</span>}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label htmlFor="interview-answer" className="sr-only">{candidateRound ? '你想问面试官的问题' : '你的回答'}</label>
+              <input id="interview-answer" value={input} onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void send(); }} placeholder={candidateRound ? '向面试官提问，或输入「没有问题」结束' : '输入或说出你的回答'}
+                className="min-w-0 flex-1 px-4 py-2 text-base sm:text-sm border border-ink-200 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500" />
+              {micSupported && (
+                <button onClick={() => (listening ? stopListening() : startListening())} disabled={loading || !!turn}
+                  aria-pressed={listening}
+                  title={listening ? '停止语音输入' : '语音输入'}
+                  className={`min-h-11 shrink-0 rounded-[10px] border px-3 text-sm transition disabled:opacity-50 ${
+                    listening ? 'border-red-300 bg-red-50 text-red-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'
+                  }`}>
+                  {listening ? '停' : '🎤 语音'}
+                </button>
+              )}
+              <button onClick={() => void send()} disabled={loading || !!turn || !input.trim() || remainingSeconds === 0}
+                className="min-h-11 shrink-0 px-4 py-2 bg-ink-900 hover:bg-black disabled:bg-ink-200 text-[#f2f1ec] rounded-[10px] text-sm transition">
+                {loading || turn ? '…' : '发送'}
+              </button>
+              <button onClick={() => void cancel()} disabled={loading}
+                className="min-h-11 shrink-0 px-3 py-2 border border-ink-200 hover:bg-ink-50 disabled:bg-ink-100 text-ink-700 rounded-[10px] text-sm transition">结束面试</button>
+            </div>
+            {interim && <div className="text-xs text-ink-400" aria-live="polite">识别中：{interim}</div>}
           </div>
         )}
       </div>
@@ -520,7 +647,25 @@ function ReportSummary({ report }: { report: InterviewReport }) {
     <ReportList title="亮点" items={report.strengths} marker="✓" />
     <ReportList title="改进点" items={report.improvements} marker="→" />
     <ReportList title="推荐学习" items={report.resources} marker="📚" />
+    <CandidateAskList asks={report.candidateAsks} />
   </>;
+}
+
+/** 复盘里的反问环节: 不计分, 但保留提问、面试官回答与提问质量点评。 */
+function CandidateAskList({ asks }: { asks?: InterviewCandidateAsk[] }) {
+  if (!Array.isArray(asks) || asks.length === 0) return null;
+  return <div>
+    <div className="text-[11px] font-bold uppercase tracking-[.12em] text-ink-500 mb-2">反问环节（不计分）</div>
+    <ul className="space-y-2.5">
+      {asks.map((ask, index) => (
+        <li key={index} className="rounded-md border border-ink-100 bg-[#faf9f5] px-4 py-3 text-sm leading-[1.7]">
+          <div className="font-medium text-ink-900">你问：{ask.question}</div>
+          {ask.reply && <div className="mt-1 text-ink-800">面试官：{ask.reply}</div>}
+          {ask.tip && <div className="mt-1 text-xs text-ink-500">点评：{ask.tip}</div>}
+        </li>
+      ))}
+    </ul>
+  </div>;
 }
 
 function typeLabel(type: string) {

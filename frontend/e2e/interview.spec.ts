@@ -13,6 +13,11 @@ function interviewSession(status = 'IN_PROGRESS') {
   };
 }
 
+// 输入框按 id 定位而不是 placeholder：文案会随形态变化
+// （语音双模改成"输入或说出你的回答"、反问环节改成"向面试官提问…"），
+// 用展示文案做选择器的话，每次改 UI 文案都会连带挂掉这三个用例。
+const ANSWER_INPUT = '#interview-answer';
+
 test.beforeEach(async ({ context, page }) => {
   // /interview 是受保护路由，App 的守卫用 localStorage.tutor_user_id 判断会话。
   // 依赖 mock 登录写入该值存在时序竞态（CI 较慢时 goto 先执行，守卫会重定向回 /login，
@@ -71,7 +76,7 @@ test('completes the interview and exposes asynchronous learning status', async (
   await page.getByPlaceholder('例如: NLP 算法工程师 / 后端开发').fill('Agent 工程师');
   await page.getByRole('button', { name: '开始面试' }).click();
   await expect(page.getByText('问题 1：如何保证 Agent 工具调用安全？')).toBeVisible();
-  await page.getByPlaceholder('输入你的回答').fill('先校验 schema 和权限，再设置超时。');
+  await page.locator(ANSWER_INPUT).fill('先校验 schema 和权限，再设置超时。');
   await page.getByRole('button', { name: '发送' }).click();
 
   await expect(page.getByRole('heading', { name: '复盘报告' })).toBeVisible();
@@ -97,10 +102,10 @@ test('preserves an answer and retries after a transient submission failure', asy
   await loginAndOpen(page);
   await page.getByRole('button', { name: '开始面试' }).click();
   const answer = '先校验参数，再调用工具。';
-  await page.getByPlaceholder('输入你的回答').fill(answer);
+  await page.locator(ANSWER_INPUT).fill(answer);
   await page.getByRole('button', { name: '发送' }).click();
   await expect(page.getByRole('alert')).toContainText('服务暂时不可用');
-  await expect(page.getByPlaceholder('输入你的回答')).toHaveValue(answer);
+  await expect(page.locator(ANSWER_INPUT)).toHaveValue(answer);
   await page.getByRole('button', { name: '发送' }).click();
   await expect(page.getByText('追问：请说明如何处理工具超时。')).toBeVisible();
   expect(attempts).toBe(2);
@@ -127,7 +132,7 @@ test('keeps a completed interview when the first report load fails', async ({ pa
   await loginAndOpen(page);
   await page.getByRole('button', { name: '开始面试' }).click();
   const answer = '先校验参数，再调用工具。';
-  await page.getByPlaceholder('输入你的回答').fill(answer);
+  await page.locator(ANSWER_INPUT).fill(answer);
   await page.getByRole('button', { name: '发送' }).click();
 
   await expect(page.getByRole('heading', { name: '复盘报告' })).toBeVisible();
