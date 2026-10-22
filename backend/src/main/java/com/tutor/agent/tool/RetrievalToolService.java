@@ -2,6 +2,7 @@ package com.tutor.agent.tool;
 
 import com.tutor.contract.Evidence;
 import com.tutor.agent.expert.IntentRouter;
+import com.tutor.agent.expert.RetrievalFacetRules;
 import com.tutor.agent.expert.RoutingPolicy;
 import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.agentic.AgenticRetriever;
@@ -30,13 +31,22 @@ public class RetrievalToolService {
      */
     private final Map<String, IntentRouter.RouteDecision> routeCache;
 
+    /**
+     * 工具侧只需要检索 facet —— 意图、澄清、越界都由主流程路由决定过了。为每条子查询
+     * 再付一次完整路由调用是纯浪费 (一轮对话里工具检索可能触发多次)。默认走本地规则
+     * 判定 facet, 零 LLM 调用; 关掉即回到"每次检索先路由"的旧行为。
+     */
+    private final boolean facetRulesEnabled;
+
     public RetrievalToolService(FusedRetriever retriever, AgenticRetriever agenticRetriever,
                                 IntentRouter router, RoutingPolicy routingPolicy,
-                                @Value("${tutor.retrieval.route-cache-enabled:false}") boolean routeCacheEnabled) {
+                                @Value("${tutor.retrieval.route-cache-enabled:false}") boolean routeCacheEnabled,
+                                @Value("${tutor.retrieval.facet-rules-enabled:true}") boolean facetRulesEnabled) {
         this.retriever = retriever;
         this.agenticRetriever = agenticRetriever;
         this.router = router;
         this.routingPolicy = routingPolicy;
+        this.facetRulesEnabled = facetRulesEnabled;
         this.routeCache = routeCacheEnabled
                 ? new LinkedHashMap<>(64, 0.75f, true) {
                     @Override
@@ -51,10 +61,20 @@ public class RetrievalToolService {
         String mode = request.mode() == null ? "agentic" : request.mode();
         long started = System.currentTimeMillis();
         int topK = request.topK() == null ? 5 : request.topK();
-        IntentRouter.RouteDecision decision = routeDecision(request.query(), traceId);
-        RoutingPolicy.ExecutionPlan plan = routingPolicy.plan(decision, request.query());
-        GraphExpansionPolicy policy = GraphExpansionPolicy.forFacets(plan.retrievalFacets(),
-                "agentic".equals(mode) ? IntentRouter.RetrievalHint.MULTI_CANDIDATE : plan.retrievalHint());
+        List<RoutingPolicy.RetrievalFacet> facets;
+        IntentRouter.RetrievalHint hint;
+        if (facetRulesEnabled) {
+            facets = RetrievalFacetRules.classify(request.query());
+            // 规则不产出 hint; 单跳是保守默认, 且 forFacets 只在 hint==NONE 时才取消扩展。
+            hint = IntentRouter.RetrievalHint.SINGLE;
+        } else {
+            RoutingPolicy.ExecutionPlan plan = routingPolicy.plan(routeDecision(request.query(), traceId),
+                    request.query());
+            facets = plan.retrievalFacets();
+            hint = plan.retrievalHint();
+        }
+        GraphExpansionPolicy policy = GraphExpansionPolicy.forFacets(facets,
+                "agentic".equals(mode) ? IntentRouter.RetrievalHint.MULTI_CANDIDATE : hint);
         List<Evidence> results;
         if ("agentic".equals(mode)) {
             results = agenticRetriever.retrieveAdaptiveResult(request.query(), topK, traceId, true, policy,
