@@ -150,8 +150,13 @@ public class ProfileService {
 
     /** 用户可见的画像变更账本。只返回本人事件，不暴露原始对话内容。 */
     public List<ProfileEvent> recentEvents(long userId, int limit) {
+        return recentEvents(userId, limit, null);
+    }
+
+    /** 按来源调用（traceId）过滤的变更账本，用于"这场面试改变了什么"这类回溯。 */
+    public List<ProfileEvent> recentEvents(long userId, int limit, String traceId) {
         int safeLimit = Math.max(1, Math.min(limit, 50));
-        return store.recentEvents(userId, safeLimit).stream()
+        return store.recentEvents(userId, safeLimit, traceId).stream()
                 .map(row -> new ProfileEvent(row.id(), parseEventChanges(row.deltaJson()), row.trigger(),
                         row.createdAt(), row.traceId()))
                 .toList();
