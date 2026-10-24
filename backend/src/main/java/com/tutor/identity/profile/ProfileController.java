@@ -36,9 +36,11 @@ public class ProfileController {
         return profileService.confirmField(uid, req.field(), req.accept());
     }
 
+    /** traceId 用于回溯单次来源（如一场面试的 sessionId）造成了哪些画像变更。 */
     @GetMapping("/profile/events")
-    public List<ProfileService.ProfileEvent> events(@RequestParam(defaultValue = "12") int limit) {
+    public List<ProfileService.ProfileEvent> events(@RequestParam(defaultValue = "12") int limit,
+                                                   @RequestParam(required = false) String traceId) {
         long uid = AuthContext.requireUserId();
-        return profileService.recentEvents(uid, limit);
+        return profileService.recentEvents(uid, limit, traceId);
     }
 }
