@@ -173,7 +173,9 @@ export const api = {
     }),
   // 用户画像
   getProfile: () => request<ProfileData>('/profile'),
-  getProfileEvents: (limit = 12) => request<ProfileEvent[]>(`/profile/events?limit=${limit}`),
+  /** traceId 用于回溯单次来源造成的画像变更（面试场景下就是 sessionId）。 */
+  getProfileEvents: (limit = 12, traceId?: string) =>
+    request<ProfileEvent[]>(`/profile/events?limit=${limit}${traceId ? `&traceId=${encodeURIComponent(traceId)}` : ''}`),
   getCareerGaps: () => request<CareerGapCard[]>('/career/gaps'),
   addGapTasks: (jobId: number, skillIds: string[]) => request<PlanTask[]>('/career/gaps/tasks', {
     method: 'POST', body: JSON.stringify({ jobId, skillIds }),
