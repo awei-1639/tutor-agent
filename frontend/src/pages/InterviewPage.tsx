@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import RadarChart, { DIMENSION_LABELS } from '../components/RadarChart';
+import { ScoreTrend, type TrendPoint } from '../components/ScoreTrend';
 import { useSpeechRecognition, useSpeechSynthesis } from '../lib/useSpeech';
-import { api, toUserMessage, type InterviewCandidateAsk, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask } from '../lib/api';
+import { api, toUserMessage, type InterviewCandidateAsk, type InterviewCompletionStatus, type InterviewHistoryItem, type InterviewReport, type InterviewTurnJob, type LearningTask, type ProfileEvent } from '../lib/api';
 
 interface Transcript { speaker: 'ai' | 'me'; content: string; }
 const STORAGE_KEY = 'tutor_active_interview_session';
@@ -426,6 +427,7 @@ export default function InterviewPage() {
           <section className="card p-6 space-y-3" aria-label="最近面试记录">
             <div className="flex items-baseline justify-between"><h2 className="text-base font-semibold text-ink-900">最近面试</h2>
               <span className="text-xs text-ink-500">最近 {Math.min(history.length, 5)} 场</span></div>
+            <HistoryTrend items={history} />
             <div className="space-y-2">
               {history.slice(0, 5).map(item => <div key={item.sessionId} className="flex flex-col gap-3 rounded-md border border-ink-100 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0"><div className="break-words font-medium text-ink-800">{item.targetRole || '通用面试'} · {typeLabel(item.interviewType)}</div>
@@ -444,7 +446,7 @@ export default function InterviewPage() {
             {historyReport && <div className="rounded-md border border-ink-100 bg-ink-50 p-4 space-y-3">
               <div className="flex items-baseline justify-between"><h3 className="font-medium text-ink-900">{historyReport.item.targetRole || '通用面试'} · 复盘</h3>
                 <button onClick={() => setHistoryReport(null)} className="text-xs text-ink-500 hover:text-ink-800">收起</button></div>
-              <ReportSummary report={historyReport.report} />
+              <ReportSummary report={historyReport.report} sessionId={historyReport.item.sessionId} />
             </div>}
           </section>
         )}
@@ -552,6 +554,7 @@ export default function InterviewPage() {
               <ReportList title="改进点" items={report.improvements} marker="→" />
               <ReportList title="推荐学习" items={report.resources} marker="📚" />
               <CandidateAskList asks={report.candidateAsks} />
+              <ProfileImpact sessionId={sessionId ?? undefined} completion={completion} />
               <div className="rounded-md border border-accent-100 bg-accent-50/40 px-4 py-3 space-y-2">
                 <div className="text-sm font-medium text-ink-900">把这场面试的弱项变成学习计划</div>
                 <div className="text-xs text-ink-500">按低分题目对应的技能生成针对性学习任务，直接进入「学习计划」推进。</div>
@@ -639,7 +642,7 @@ function ReportList({ title, items, marker }: { title: string; items?: string[];
   </ul></div>;
 }
 
-function ReportSummary({ report }: { report: InterviewReport }) {
+function ReportSummary({ report, sessionId }: { report: InterviewReport; sessionId?: string }) {
   return <>
     <div className="flex gap-5 text-sm"><span>题目 {report.totalQuestions}</span><span>平均分 {report.avgScore?.toFixed(1)}/10</span><span>置信度 {Math.round((report.scoreConfidence ?? 0) * 100)}%</span></div>
     {report.retestComparison && <div className="text-sm text-ink-700">复测变化：原测 {report.retestComparison.baselineAvgScore.toFixed(1)}/10，
@@ -648,6 +651,7 @@ function ReportSummary({ report }: { report: InterviewReport }) {
     <ReportList title="改进点" items={report.improvements} marker="→" />
     <ReportList title="推荐学习" items={report.resources} marker="📚" />
     <CandidateAskList asks={report.candidateAsks} />
+    <ProfileImpact sessionId={sessionId} />
   </>;
 }
 
@@ -666,6 +670,73 @@ function CandidateAskList({ asks }: { asks?: InterviewCandidateAsk[] }) {
       ))}
     </ul>
   </div>;
+}
+
+/** 跨场次分数趋势。只有一场完成时折线没有意义，直接不出现。 */
+function HistoryTrend({ items }: { items: InterviewHistoryItem[] }) {
+  const points: TrendPoint[] = items
+    .filter(item => item.status === 'COMPLETED' && item.totalQuestions > 0)
+    .slice()
+    .reverse()
+    .map(item => ({ id: item.sessionId, score: item.avgScore, at: item.completedAt ?? item.createdAt }));
+  if (points.length < 2) return null;
+  return (
+    <div className="rounded-md border border-ink-100 bg-[#faf9f5] px-4 py-3">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <div className="text-sm font-medium text-ink-900">分数趋势</div>
+        <div className="text-[11px] text-ink-500">最近 {points.length} 场</div>
+      </div>
+      <ScoreTrend points={points} />
+    </div>
+  );
+}
+
+/**
+ * 复盘里的"这场面试改变了什么"。
+ *
+ * 画像由后台闭环任务异步写回，复盘报告可能比它先出来 —— 所以查不到事件时必须区分
+ * "还在分析"和"确实没变"，否则用户会看到一句莫名的"无变化"。
+ * 真没变时把 7 分门槛说出来：这是产品规则，讲清楚比留白有用。
+ */
+function ProfileImpact({ sessionId, completion }: { sessionId?: string; completion?: InterviewCompletionStatus | null }) {
+  const [events, setEvents] = useState<ProfileEvent[] | null>(null);
+  useEffect(() => {
+    if (!sessionId) return;
+    let alive = true;
+    setEvents(null);
+    api.getProfileEvents(20, sessionId)
+      .then(list => { if (alive) setEvents(list); })
+      .catch(() => { if (alive) setEvents([]); });
+    return () => { alive = false; };
+  }, [sessionId]);
+
+  if (!sessionId || events === null) return null;
+  const note = events.length > 0 ? null
+    : completion?.status === 'queued' || completion?.status === 'running'
+      ? '后台仍在生成能力证据，完成后会把达标的技能写回画像。'
+      : completion?.status === 'failed'
+        ? '能力证据生成失败，画像暂未更新，可稍后重看这场复盘。'
+        : '本场没有技能均分达到 7 分，画像暂未更新 —— 低于 7 分的技能只进学习计划，不计入已具备的能力。';
+
+  return (
+    <div className="rounded-md border border-ink-100 bg-[#faf9f5] px-4 py-3">
+      <div className="text-sm font-medium text-ink-900">这场面试对画像的影响</div>
+      {note ? (
+        <div className="mt-1 text-xs leading-[1.7] text-ink-500">{note}</div>
+      ) : (
+        <>
+          <ul className="mt-2 space-y-1.5">
+            {events.flatMap(event => event.changes).map((change, index) => (
+              <li key={index} className="text-xs leading-[1.7] text-ink-700">· {change}</li>
+            ))}
+          </ul>
+          <div className="mt-2 text-[11px] leading-[1.6] text-ink-400">
+            这些变化会进入后续的出题范围、学习计划与岗位差距分析。
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function typeLabel(type: string) {
