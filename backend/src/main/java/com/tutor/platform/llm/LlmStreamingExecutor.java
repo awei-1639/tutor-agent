@@ -149,6 +149,20 @@ final class LlmStreamingExecutor {
             CompletableFuture<HttpResponse<InputStream>> requestFuture =
                     httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream());
             providerRequest.set(requestFuture);
+            // 取消竞态的兜底: onCancel 只有在 inputStream 已赋值时才能关掉 provider 连接,
+            // 而 "response 到达" 与 "inputStream.set(...)" 之间存在窄窗口。取消正好落在这个
+            // 窗口里时, future 已完成 (cancel 不再生效) 而 body 又没人 close, 连接会一直挂到
+            // provider 侧超时 —— 期间仍在计费并占用并发槽。这里补一条: 响应一旦到达且取消
+            // 已发生, 立刻关闭 body, 把连接的生命周期收回到取消路径上。
+            requestFuture.whenComplete((response, failure) -> {
+                if (cancellation.isCancelled() && response != null) {
+                    try {
+                        response.body().close();
+                    } catch (IOException ignored) {
+                        // 取消路径上的 best-effort close。
+                    }
+                }
+            });
             if (cancellation.isCancelled()) {
                 requestFuture.cancel(true);
                 return;
