@@ -84,13 +84,30 @@ public class ProfileStore {
     }
 
     List<ProfileEventRow> recentEvents(long userId, int limit) {
+        return recentEvents(userId, limit, null);
+    }
+
+    /**
+     * traceId 非空时只取该次调用产生的变更 —— 复盘页按面试场次查"这场改动了什么",
+     * 不能靠拉大 limit 再让前端过滤: 用户的画像事件会不断累积, 早先的场次迟早被挤出窗口。
+     * user_id 仍在 WHERE 里, 传别人的 traceId 只会得到空列表而非越权数据。
+     */
+    List<ProfileEventRow> recentEvents(long userId, int limit, String traceId) {
+        var mapper = (org.springframework.jdbc.core.RowMapper<ProfileEventRow>) (rs, i) -> new ProfileEventRow(
+                rs.getLong(1), rs.getString(2), rs.getString(3),
+                rs.getTimestamp(4).toInstant(), rs.getString(5));
+        if (traceId == null) {
+            return jdbc.query("""
+                    SELECT id, delta::text, trigger, created_at, trace_id
+                    FROM profile_events WHERE user_id=?
+                    ORDER BY id DESC LIMIT ?
+                    """, mapper, userId, limit);
+        }
         return jdbc.query("""
                 SELECT id, delta::text, trigger, created_at, trace_id
-                FROM profile_events WHERE user_id=?
+                FROM profile_events WHERE user_id=? AND trace_id=?
                 ORDER BY id DESC LIMIT ?
-                """, (rs, i) -> new ProfileEventRow(
-                rs.getLong(1), rs.getString(2), rs.getString(3),
-                rs.getTimestamp(4).toInstant(), rs.getString(5)), userId, limit);
+                """, mapper, userId, traceId, limit);
     }
 
     List<Long> userIds() {
