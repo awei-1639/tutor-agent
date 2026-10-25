@@ -6,11 +6,15 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /** 防止模块化单体在日常修改中重新形成反向耦合。 */
@@ -40,6 +44,7 @@ public class ArchitectureBoundaryTest {
         applicationServicesDoNotOwnJdbc.check(classes);
         controllersDoNotDependOnStores.check(classes);
         crossDomainStoreAccessIsFrozen.check(classes);
+        adminControllersAreGuardedByRequireAdmin.check(classes);
     }
 
     public static final ArchRule retrievalDoesNotDependOnChat = noClasses().that().resideInAnyPackage("com.tutor.knowledge.retrieval..").should().dependOnClassesThat().resideInAnyPackage("com.tutor.conversation.chat..");
@@ -126,4 +131,36 @@ public class ArchitectureBoundaryTest {
             })
             .should().dependOnClassesThat().resideInAnyPackage(
                     "com.tutor.conversation.memory.local..", "com.tutor.knowledge.retrieval.vector..");
+
+    /** /admin/** 的鉴权是结构约束 (诊断报告 2026-09-10 §4.3, 修复清单 #9):
+     *  映射在 /admin 下的 Controller 必须标注 @RequireAdmin, 新控制器漏注解立刻变红。 */
+    public static final ArchRule adminControllersAreGuardedByRequireAdmin = classes()
+            .that().areAnnotatedWith("org.springframework.web.bind.annotation.RestController")
+            .should(new ArchCondition<JavaClass>("be annotated with @RequireAdmin when mapped under /admin") {
+                @Override
+                public void check(JavaClass clazz, ConditionEvents events) {
+                    clazz.getAnnotations().stream()
+                            .filter(a -> a.getRawType().getName()
+                                    .equals("org.springframework.web.bind.annotation.RequestMapping"))
+                            .findFirst()
+                            .ifPresent(mapping -> {
+                                String[] paths = mappingPaths(mapping);
+                                boolean underAdmin = java.util.Arrays.stream(paths)
+                                        .anyMatch(p -> p != null && (p.equals("/admin") || p.startsWith("/admin/")));
+                                if (underAdmin && !clazz.isAnnotatedWith("com.tutor.identity.admin.RequireAdmin")) {
+                                    events.add(new SimpleConditionEvent(clazz, false,
+                                            clazz.getName() + " maps under /admin but is not guarded by @RequireAdmin"));
+                                }
+                            });
+                }
+
+                @SuppressWarnings("unchecked")
+                private String[] mappingPaths(com.tngtech.archunit.core.domain.JavaAnnotation<JavaClass> mapping) {
+                    Object value = mapping.tryGetExplicitlyDeclaredProperty("value").orElse(null);
+                    if (value == null) value = mapping.tryGetExplicitlyDeclaredProperty("path").orElse(null);
+                    if (value instanceof String[] arr) return arr;
+                    if (value instanceof String s) return new String[]{s};
+                    return new String[0];
+                }
+            });
 }

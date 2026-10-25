@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import com.tutor.identity.admin.RequireAdmin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,7 @@ import java.util.Map;
 
 /** Administrator workflow for collecting human labels used by replay evaluation. */
 @RestController
+@RequireAdmin
 @RequestMapping("/admin/interview-evals/annotations")
 public class InterviewScoreAnnotationController {
     private final InterviewScoreAnnotationService service;
