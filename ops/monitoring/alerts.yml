@@ -43,3 +43,14 @@ groups:
         annotations:
           summary: "LLM 调用错误率超过 10%"
           description: "最近 10 分钟 LLM 调用失败率 {{ $value | humanizePercentage }}, 检查 Provider 可用性与降级日志。"
+
+      # 嵌入失败是「静默空转」: healthz/readyz 全绿、检索 200 但结果为空, 答案失去全部引用
+      # (鲁棒性演练 2026-10-25)。上游 TutorLlmErrorRateHigh 的 10 分钟窗口太慢, 单列更严阈值。
+      - alert: TutorEmbedProviderDown
+        expr: increase(tutor_llm_calls_total{purpose="EMBED",status!="ok"}[5m]) > 3
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "嵌入 provider 失败——检索正在静默空转"
+          description: "5 分钟内嵌入调用失败 {{ $value }} 次。向量检索不可用, 检索接口仍返回 200 但结果为空, 回答失去引用支撑; 立即检查 SiliconFlow/嵌入端点连通性。"

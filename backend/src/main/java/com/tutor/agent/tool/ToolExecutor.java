@@ -80,6 +80,11 @@ public class ToolExecutor {
             Thread.currentThread().interrupt();
             throw new ToolExecutionException("CANCELLED", "工具执行被取消", e);
         } catch (ExecutionException e) {
+            // 预算耗尽是调用方可见的配额状态 (429), 不是工具失败; 包成 FAILED 会让它以 500
+            // 出网并丢掉稳定错误码 (鲁棒性演练 2026-10-25 S2 复验发现)。
+            if (e.getCause() instanceof com.tutor.platform.llm.budget.BudgetExhausted budget) {
+                throw budget;
+            }
             throw new ToolExecutionException("FAILED", "工具执行失败", e.getCause());
         } finally {
             if (claimed && !"success".equals(status)) {
