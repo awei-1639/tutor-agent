@@ -40,6 +40,8 @@ final class RrfFusionPolicy {
         for (int i = 0; i < sources.size(); i++) ranks.putIfAbsent(sources.get(i), i + 1);
         Map<String, Double> expanded = new LinkedHashMap<>();
         for (GraphStore.Neighbor neighbor : neighbors) {
+            // 自环 (dst==src): 图数据里偶尔出现的脏边, 会给已排位节点再叠一层扩展分, 排名失真 (诊断报告 #8)。
+            if (neighbor.dstId() != null && neighbor.dstId().equals(neighbor.srcId())) continue;
             GraphExpansionPolicy.Rule rule = policy == null ? null : policy.ruleFor(neighbor.rel(), neighbor.direction());
             if (rule == null || !"active".equalsIgnoreCase(neighbor.status())) continue;
             // 拒绝非有限置信度: NaN 会穿透 Math.max/min 污染得分。
