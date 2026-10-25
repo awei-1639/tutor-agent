@@ -47,6 +47,9 @@ spring:
     password: ${POSTGRES_PASSWORD:tutor_dev_only}
   flyway:
     enabled: true
+    # V66/V67 曾在 V68 之后落地 (并行分支), 历史上已乱序应用过;
+    # 开启后本地新库按文件序补齐时不再因乱序直接失败 (诊断报告 2026-09-10 修复清单 #13)。
+    out-of-order: true
 
 tutor:
   routing:
