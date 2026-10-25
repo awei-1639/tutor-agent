@@ -69,7 +69,15 @@ class RetrievalFacetRulesTest {
                 new Case("天眼科技招遥感图像CV工程师，需要掌握哪些技术？", CAREER_LEARNING),
                 new Case("商汤科技的大模型应用开发，需要啥技能？", CAREER_LEARNING),
                 new Case("移视科技的移动端优化CV岗，要会哪些技能？", CAREER_LEARNING),
-                new Case("百度的强化学习算法实习生，要掌握哪些东西？", CAREER_LEARNING)
+                new Case("百度的强化学习算法实习生，要掌握哪些东西？", CAREER_LEARNING),
+                // 开发者视角问法 (review 2026-10-25 对抗用例): 裸「开发」不是岗位信号,
+                // 「开发一个X需要学什么」是学习诉求; 「Java后端开发」等复合词才是岗位主体
+                new Case("我要自己开发一个RAG应用，需要学什么？", LEARNING),
+                new Case("开发一个聊天机器人要学什么？", LEARNING),
+                new Case("我想转开发，需要学什么？", LEARNING),
+                new Case("帮我开发个脚本，要求能批量重命名", NONE),
+                // 复合词「后端开发」仍应命中岗位判定
+                new Case("远程数据科技的Java后端开发，要会啥技能？", CAREER_LEARNING)
         );
     }
 
