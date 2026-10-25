@@ -62,7 +62,14 @@ class RetrievalFacetRulesTest {
                 new Case("今晚吃什么好，推荐几道家常菜", NONE),
                 new Case("帮我翻译一段英文合同", NONE),
                 new Case("明天北京天气怎么样", NONE),
-                new Case("给我讲个笑话放松一下", NONE)
+                new Case("给我讲个笑话放松一下", NONE),
+                // job_requirement 形态 (rag_testset 真实查询): 岗位主体 + 要求动词 → career
+                // (gold 挂在岗位出边上; 2026-10-25 A/B 评测发现缺这条时该分片 hit@5 从 0.800 塌到 0.133)
+                new Case("腾讯做对话系统的NLP算法工程师，得会啥技能啊？", CAREER_LEARNING),
+                new Case("天眼科技招遥感图像CV工程师，需要掌握哪些技术？", CAREER_LEARNING),
+                new Case("商汤科技的大模型应用开发，需要啥技能？", CAREER_LEARNING),
+                new Case("移视科技的移动端优化CV岗，要会哪些技能？", CAREER_LEARNING),
+                new Case("百度的强化学习算法实习生，要掌握哪些东西？", CAREER_LEARNING)
         );
     }
 

@@ -52,6 +52,21 @@ public final class RetrievalFacetRules {
                     + "市场行情|需求量|岗位多吗|好找吗|前景|转正|实习机会|面试机会",
             Pattern.CASE_INSENSITIVE);
 
+    /**
+     * 岗位主体 + 要求动词的联合判定。「XX工程师要会啥」这类真实提问不带上面任何 career 词,
+     * 但 gold 恰恰挂在岗位出边上 (REQUIRES/LEADS_TO)——只给 learning 会让图扩展走错边,
+     * job_requirement 分片 hit@5 因此从 0.800 塌到 0.133 (A/B 评测 2026-10-25)。
+     * 要求动词是必要条件: 「NLP算法工程师的笔试题」只有主体没有诉求, 仍是 learning。
+     */
+    private static final Pattern JOB_TITLE = Pattern.compile(
+            "工程师|分析师|架构师|实习生|科学家|研究员|经理|总监|岗|开发",
+            Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern JOB_REQUIREMENT = Pattern.compile(
+            "得会|要会|需要|都得|都要|会什么|什么技能|哪些技能|哪些技术|什么能力|哪些能力|什么技术|掌握哪些|掌握什么|要求|"
+                    + "得懂|要懂|懂哪些|需要啥|要啥|会啥|懂啥|掌握啥|学什么|要学啥",
+            Pattern.CASE_INSENSITIVE);
+
     /** 技能侧: 要的是知识点结构与先后依赖这类技能入边。 */
     private static final Pattern LEARNING = Pattern.compile(
             "学习|先学|怎么学|怎么入门|学习计划|学习路径|路线图|规划|课表|排期|节奏|前置|基础|入门|"
@@ -78,7 +93,8 @@ public final class RetrievalFacetRules {
             return List.of(RoutingPolicy.RetrievalFacet.RESOURCE);
         }
         Set<RoutingPolicy.RetrievalFacet> facets = EnumSet.noneOf(RoutingPolicy.RetrievalFacet.class);
-        boolean career = CAREER.matcher(text).find();
+        boolean career = CAREER.matcher(text).find()
+                || (JOB_TITLE.matcher(text).find() && JOB_REQUIREMENT.matcher(text).find());
         if (career) {
             facets.add(RoutingPolicy.RetrievalFacet.CAREER);
         }
