@@ -5,12 +5,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.method.HandlerMethod;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 
 class AdminGateInterceptorTest {
@@ -45,22 +45,24 @@ class AdminGateInterceptorTest {
     @Test
     void guardedHandlerRejectsAnonymousRequest() throws Exception {
         HandlerMethod handler = new HandlerMethod(new GuardedController(), GuardedController.class.getMethod("entry"));
-        HttpServletResponse response = response();
 
-        assertThat(interceptor.preHandle(request(), response, handler)).isFalse();
-        verify(response).setStatus(401);
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> interceptor.preHandle(request(), response(), handler))
+                .withMessageContaining("未登录")
+                .satisfies(e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
         verify(store, never()).isAdmin(anyLong());
     }
 
     @Test
     void guardedHandlerRejectsNonAdminUser() throws Exception {
         HandlerMethod handler = new HandlerMethod(new GuardedController(), GuardedController.class.getMethod("entry"));
-        HttpServletResponse response = response();
         AuthContext.set(7L);
         when(store.isAdmin(7L)).thenReturn(false);
 
-        assertThat(interceptor.preHandle(request(), response, handler)).isFalse();
-        verify(response).setStatus(403);
+        assertThatExceptionOfType(ResponseStatusException.class)
+                .isThrownBy(() -> interceptor.preHandle(request(), response(), handler))
+                .withMessageContaining("需要管理员权限")
+                .satisfies(e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 
     @Test
@@ -82,9 +84,7 @@ class AdminGateInterceptorTest {
         return mock(HttpServletRequest.class);
     }
 
-    private static HttpServletResponse response() throws Exception {
-        HttpServletResponse response = mock(HttpServletResponse.class);
-        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
-        return response;
+    private static HttpServletResponse response() {
+        return mock(HttpServletResponse.class);
     }
 }
