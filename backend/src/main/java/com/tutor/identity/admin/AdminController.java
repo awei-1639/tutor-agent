@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@RequireAdmin
+
 @RequestMapping("/admin")
 public class AdminController {
     private final AdminService service;
