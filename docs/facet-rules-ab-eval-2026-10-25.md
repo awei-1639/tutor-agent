@@ -1,0 +1,51 @@
+# Facet 规则化 A/B 评测（2026-10-25）
+
+关闭 #105 遗留的验证债：`tutor.retrieval.facet-rules-enabled` 开/关两种配置下，
+同一环境（同 VM、同数据库卷、同 seed）背靠背跑全量 RAG 评测（280 条 × 4 模式 + router 30 条），
+对比检索质量与 LLM 调用成本。
+
+## 环境
+
+- master @ 9270feb（#105 已合入），后端跑在 WSL 内与 Postgres/Neo4j 同 VM（避开 Windows→WSL 端口转发）。
+- Postgres 卷 `agent_pg_data`（495 条已嵌入 chunk）、Neo4j 617 节点，未重新导入 seed。
+- 查询嵌入 SiliconFlow `BAAI/bge-m3`（真实 API）；路由 LLM DeepSeek。
+- 两次运行仅差 `TUTOR_RETRIEVAL_FACET_RULES_ENABLED=true/false`，其余配置与环境完全一致。
+- 结果文件（本地，目录不入库）：`evals/results/eval_2026-10-25T04-28-15-357Z.json`（A=规则开）、
+  `eval_2026-10-25T04-39-19-462Z.json`（B=规则关，provider 限流中）、
+  `eval_2026-10-25T04-44-05-119Z.json`（B 重跑，provider 完全不可用，作废）。
+
+## 结果
+
+| 指标 | A（规则开） | B（规则关） | 改动前全量基线 10/05 |
+| --- | --- | --- | --- |
+| vector_only hit@5 / MRR | 0.636 / 0.451 | 0.636 / 0.451 | — |
+| fused hit@5 / MRR | **0.725 / 0.556** | 0.636 / 0.451 | 0.771 / 0.555 |
+| fused multi_hop hit@5 / MRR | **0.750 / 0.521** | 0.487 / 0.184 | 0.512 / 0.214 |
+| fused p50 | 236ms | 394ms | 282ms |
+| 检索路径路由 LLM 调用 | **0** | ~890/轮（920 次 ROUTER 失败告警） | 每次检索 1 次 |
+
+vector_only 两组逐位相等，作对照组证明环境确定性成立。
+
+## 结论
+
+1. **facet 关键分片（multi_hop_prereq）显著改善**：0.750/0.521 对比 B 的 0.487/0.184，
+   也超过改动前健康 provider 基线（10/05）的 0.512/0.214。图扩展在规则 facet 下工作得更好。
+2. **鲁棒性是更大的发现**：B 组每条检索付一次路由调用，~890 次/轮打满 DeepSeek 限流后
+   路由静默降级——B 的 fused 与其自身 vector_only 完全相等（0.636=0.636），multi_hop 同样
+   （0.487=0.487），即图扩展整体失效；重跑 B 时 provider 彻底不可用，全模式归零。
+   规则路径零路由调用，对 provider 故障免疫（A 轮检索阶段零 ROUTER 告警）。
+   这与 badcases.md Badcase 06「预算越界后路由静默降级」是同一类故障模式。
+3. **总体 hit@5 与 10/05 的差距（0.725 vs 0.771）与 facet 无关**：job_requirement 分片从
+   10/05 的 0.800 跌到本日 0.133（A/B 同跌，vector_only 同跌），属 gold/数据漂移，
+   应另立 badcase 追查，不影响本次 A/B 结论。
+4. **成本**：一轮全量评测（280×4）下规则路径省 ~890 次路由调用；这不是纸面推算而是
+   本次 A/B 实测的调用量差。
+
+## 局限
+
+- B 组未取得"provider 健康"当日的干净数据（限流窗口未恢复）；B 的数字是旧行为的下界。
+  若需补测，选 DeepSeek 限流恢复后的窗口重跑 `TUTOR_RETRIEVAL_FACET_RULES_ENABLED=false` 一轮即可，
+  预期介于 B 与 10/05 基线之间。
+- A 组 agentic 阶段的 judge 调用全部失败（50/50，同一次限流事件），agentic 靠降级路径仍拿到
+  0.960/0.837，说明降级设计有效，但该数字不能归功于 facet。
+- 今日 router facet exact-match 26.7%（LLM 侧，#105 的动因之一），与 PR 描述的近期劣化一致。
