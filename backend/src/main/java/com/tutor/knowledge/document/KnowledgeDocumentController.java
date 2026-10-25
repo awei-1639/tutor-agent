@@ -1,6 +1,7 @@
 package com.tutor.knowledge.document;
 
 import com.tutor.identity.admin.AdminService;
+import com.tutor.identity.admin.RequireAdmin;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
+@RequireAdmin
 @RequestMapping("/admin/documents")
 public class KnowledgeDocumentController {
     private final AdminService admin;
