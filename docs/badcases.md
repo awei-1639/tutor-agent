@@ -430,15 +430,16 @@ LEARNING 让图扩展走技能入边。#111 修复：岗位主体词 ∧ 要求�
 由 10/05 的 0.800 证明已被当时的 LLM facet + 权重组合解决；规则化复现的是"扩展根本没跑"
 这一层。
 
-**未竟**：#111 的活体全量复测当日未能完成——晚间接连撞上三层环境问题，其中值得跟进的是：
+**未竟**：#111 的活体全量复测当日未能完成——晚间接连撞上 provider 软限流（单发正常、
+持续并发延迟 10x）引发的工具超时级联，叠加 dockerd 间歇重启与 drvfs 抖动。
 
-**新线索（疑似预算行锁竞争）**：provider 延迟尖峰（SiliconFlow 软限流，单发正常、持续并发
-延迟 10x）期间，后端出现 `QueryExecutorImpl` 栈 + `TransactionSystemException` + embed
-"Interrupted during action execution" 组合，随后 504 级联。怀疑路径：`llm_daily_budget`
-按天单行，每个请求都 UPDATE 同一行；若预算预留事务在持有该行锁期间跨越了 provider 网络
-调用，一次延迟尖峰就会让所有后续请求排队等锁、撞工具超时。验证方法：在 LlmBudgetGuard
-里核对预留/记账的事务边界是否包含网络 I/O；复现方法：给 embed 端点注入 3-5s 延迟打并发。
-若坐实，这是生产环境多用户下的真实风险（预算行会串行化所有 LLM 调用）。
+**"预算行锁竞争"假设已证伪（同日代码核查）**：曾怀疑 `llm_daily_budget` 按天单行的
+UPDATE 在事务内跨越 provider 网络调用导致级联等锁。读 `LlmBudgetGuard` 后排除：
+`reserve`/`settle` 均为紧凑纯 DB 事务（数条单行 upsert，无网络 I/O）；且当晚评测为串行
+请求，客户端层面不存在并发竞争。日志中的 postgres 栈 + `TransactionSystemException`
+是工具超时打断在途回调时对记账事务的中断痕迹，不是锁等待。保留一条设计观察：预算/
+用户/回合三层都是单行热点 UPDATE，多用户高并发下会串行化 LLM 调用入口（每调用
+reserve+settle ≈ 4-6 次单行更新），当前无事故证据，量级上来时值得压测。
 
 ### 已实施（2026-09-05，方向 1 的最小版本）
 
