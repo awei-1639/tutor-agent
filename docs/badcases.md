@@ -480,6 +480,82 @@ reserve+settle ≈ 4-6 次单行更新），当前无事故证据，量级上来
 transaction has not completed within the timeout`（Neo4jResilience 重试成功），
 且一次 fused 查询 P50 异常到 15s——为"累积状态"假说补充了 Neo4j 侧的线索。
 
+## Badcase 11：嵌入 provider 宕机时检索静默空转，运维无信号（已修复）
+
+### 现象（2026-10-25 鲁棒性演练 S1）
+
+`SILICONFLOW_BASE_URL` 指向死端口后：`/internal/retrieve` 返回 **200 + 空结果**
+（中英文查询均 0 条），且 healthz/readyz 全绿——故障完全不可观测。日志虽打了
+「向量检索不可用, 降级稀疏检索」，但稀疏降级实际同样产出为空，日志文案与真实行为不符。
+
+### 根因
+
+常规稀疏路径的 `chunk_text % ?` 算子受会话级 `pg_trgm.similarity_threshold`（默认 0.3）
+约束；查询短、chunk 长时 similarity 天然低于 0.3，在 Java 侧 0.15 过滤之前就已被 PG 挡空。
+演练复测三条中文查询全部 0 结果即此机制。
+
+### 修复（#117）
+
+- 新增 `VectorStore.sparseSearchLenient`：显式 `similarity(chunk_text, ?) >= 0.05` 谓词
+  绕开会话 GUC；`RetrievalCandidatePipeline` 降级路径改走宽松检索。
+- `ops/monitoring/alerts.yml` 新增 `TutorEmbedProviderDown`（critical，5 分钟内嵌入失败 >3 次）：
+  嵌入失败即静默空转，比通用 LLM 错误率告警（10 分钟窗口）更严。
+
+### 复现与通过标准
+
+`SILICONFLOW_BASE_URL=http://127.0.0.1:9/v1` 起实例：中文概念/考点类查询检索应非空
+（trigram 对罕见别名召回有限，如「西瓜书」单查仍可能为空，属已知边界）；指标
+`tutor_llm_calls_total{purpose="EMBED",status="error_estimated"}` 同步增长可告警。
+
+## Badcase 12：PG 宕机时 /readyz 挂起 30 秒而非快速 503（已修复）
+
+### 现象（2026-10-25 鲁棒性演练 S3）
+
+`docker stop tutor-postgres` 后 `/readyz` 30 秒无响应（curl 客户端超时 000）；
+检索请求同样挂起到客户端超时。放在 nginx/LB 后会占死连接、探针摘除失效。
+
+### 根因
+
+`HealthReadinessService` 用 `jdbc.queryForObject("SELECT 1")` 探测，PG 不可达时该调用
+阻塞在 Hikari 池连接等待（connectionTimeout 默认 ~30s）——探针的响应时间被池配置劫持。
+
+### 修复（#117）
+
+每个依赖独立 2 秒超时探测：专用守护线程池 + `CompletableFuture.get(timeout)`，
+超时按不可用上报；被放弃的探测线程在池超时后自行结束，不拖住探针响应。
+
+### 复现与通过标准
+
+停 PG 后 `curl --max-time 8 /readyz` 应在 2-3 秒内返回
+`503 {"unavailable":["postgres"],"status":"not_ready"}`；PG 恢复后回到 200。
+
+## Badcase 13：预算耗尽被伪装成 200-空结果（已修复）
+
+### 现象（2026-10-25 鲁棒性演练 S2）
+
+`LLM_BUDGET_DAILYTOKENLIMIT=1000` 下检索返回 200 + 空。预算路径的既有行为是明确拒绝
+（Badcase 06、chat SSE 的 `budget_*` 错误码），检索管线却把同一异常吞成了静默降级，
+把「配额没了」伪装成「检索无结果」。
+
+### 根因
+
+两层吞没：`RetrievalCandidatePipeline` 的 `catch (RuntimeException)` 把 `BudgetExhausted`
+当 provider 抖动降级；`ToolExecutor` 的 `ExecutionException` 包装再把它变成 `FAILED`(500)。
+单测（`budgetExhaustionPropagatesInsteadOfDegrading`）与活体复验（先得 500 后得 429）先后
+暴露了两层。
+
+### 修复（#117）
+
+管线对 `BudgetExhausted` 穿透不降级；`ToolExecutor` 解包时透传预算异常；
+`ApiExceptionHandler` 新增映射 → `429` + `userMessage()`（统一 {message,error,path,traceId} 响应体）。
+
+### 复现与通过标准
+
+限额 1K 起实例 → `/internal/retrieve` 返回 `429 {"message":"当前时段使用人数较多，请稍后再试。",...}`；
+chat SSE 的 `budget_*` 错误码不受影响；指标 `tutor_llm_budget_rejected_total{kind="GLOBAL"}` 增长。
+
+演练编排已固化为 `scripts/robustness-drill.sh`（七场景自动判定、环境自还原），可随时复跑。
+
 ## 如何提交一个好问题
 
 不要只发“启动不了”“结果不对”。至少附上：
