@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+
 /**
  * JWT 拦截器 (Phase 4 V4 4.x): 解析 Authorization Bearer 或 HttpOnly cookie → 注入 userId。
  * 未带 token → 拒绝请求；内部评估端点才使用 DEV_USER_ID=1。
@@ -46,8 +49,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler) throws Exception {
         addSecurityHeaders(res);
         String path = req.getRequestURI();
-        if (path.equals("/actuator/prometheus") && !metricsScrapeToken.isBlank()
-                && ("Bearer " + metricsScrapeToken).equals(req.getHeader("Authorization"))) {
+        if (path.equals("/actuator/prometheus") && matchesScrapeToken(req.getHeader("Authorization"))) {
             // Prometheus 抓取令牌认证; 指标端点不建立用户上下文, 令牌未配置时维持 401 行为
             return true;
         }
@@ -92,6 +94,16 @@ public class AuthInterceptor implements HandlerInterceptor {
         req.setAttribute(USER_ID_ATTR, uid);
         AuthContext.set(uid, jwt.parseTenantId(token));
         return true;
+    }
+
+    /**
+     * 恒定时间比较抓取令牌: String.equals 按字符提前返回, 响应耗时随匹配前缀长度变化,
+     * 给持有网络邻近位置的攻击者逐字节猜令牌的机会 (诊断报告 2026-09-10 §4.2)。
+     */
+    private boolean matchesScrapeToken(String authorizationHeader) {
+        if (metricsScrapeToken.isBlank() || authorizationHeader == null) return false;
+        return MessageDigest.isEqual(("Bearer " + metricsScrapeToken).getBytes(StandardCharsets.UTF_8),
+                authorizationHeader.getBytes(StandardCharsets.UTF_8));
     }
 
     private static String cookieValue(HttpServletRequest request, String name) {
