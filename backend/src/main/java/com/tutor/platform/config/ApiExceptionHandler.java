@@ -103,6 +103,18 @@ public class ApiExceptionHandler {
         return respond(status, message, ex, handler, request, response);
     }
 
+    /**
+     * 预算耗尽是可预期的客户端可见状态 (429), 不是 5xx。
+     * 检索管线不再把它降级成 200-空 (鲁棒性演练 2026-10-25 S2), 会传播到这里。
+     */
+    @ExceptionHandler(com.tutor.platform.llm.budget.BudgetExhausted.class)
+    public ResponseEntity<ApiError> budget(com.tutor.platform.llm.budget.BudgetExhausted ex,
+                                           HandlerMethod handler,
+                                           HttpServletRequest request,
+                                           HttpServletResponse response) throws Exception {
+        return respond(HttpStatus.TOO_MANY_REQUESTS, ex.userMessage(), ex, handler, request, response);
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiError> statusException(ResponseStatusException ex,
                                                     HandlerMethod handler,

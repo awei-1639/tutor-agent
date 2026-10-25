@@ -93,6 +93,23 @@ public class VectorStore {
                 .toList();
     }
 
+    /**
+     * 降级专用的宽松稀疏检索: 不走 `%` 算子 (它吃会话级 pg_trgm.similarity_threshold,
+     * 默认 0.3 会把短查询对长文本的天然低相似度全部挡掉), 改用显式谓词 + 低阈值。
+     * 嵌入 provider 宕机时的兜底——鲁棒性演练 2026-10-25 证实原稀疏路径此时产出为空。
+     */
+    public List<VectorHit> sparseSearchLenient(String query, int topK, double minSimilarity, GraphScope scope) {
+        GraphScope effectiveScope = scope == null ? GraphScope.publicOnly() : scope;
+        return jdbc.query(
+                "SELECT node_id, node_type, chunk_text, similarity(chunk_text, ?) AS sim, source_url, source_status, content_hash " +
+                        "FROM kg_chunks WHERE similarity(chunk_text, ?) >= ? " +
+                        "AND (visibility='public' AND ? OR owner_user_id=? OR (CAST(? AS VARCHAR) IS NOT NULL AND tenant_id=?)) " +
+                        "ORDER BY sim DESC LIMIT ?",
+                (rs, i) -> hit(rs),
+                query, query, minSimilarity, effectiveScope.includePublic(), effectiveScope.userId(),
+                effectiveScope.tenantId(), effectiveScope.tenantId(), topK);
+    }
+
     /** 按 node_id 批量取 chunk (图谱扩展节点回捞文本用) */
     public Map<String, VectorHit> byNodeIds(List<String> nodeIds) {
         return byNodeIds(nodeIds, GraphScope.publicOnly());

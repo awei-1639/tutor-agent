@@ -1,6 +1,7 @@
 package com.tutor.knowledge.retrieval.fusion;
 
 import com.tutor.platform.llm.EmbeddingGateway;
+import com.tutor.platform.llm.budget.BudgetExhausted;
 import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
 import com.tutor.knowledge.retrieval.graph.GraphStore;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -49,10 +51,10 @@ class RetrievalCandidatePipelineTest {
     }
 
     @Test
-    void embeddingFailureFallsBackToSparseCandidates() {
+    void embeddingFailureFallsBackToLenientSparseCandidates() {
         VectorStore.VectorHit hit = new VectorStore.VectorHit("skill:sparse", "skill", "text", 0.6D);
         when(embeddings.embedQuery("q", "trace")).thenThrow(new IllegalStateException("embedding down"));
-        when(vectorStore.sparseSearch(anyString(), anyInt(), anyDouble(), any(GraphScope.class)))
+        when(vectorStore.sparseSearchLenient(anyString(), anyInt(), anyDouble(), any(GraphScope.class)))
                 .thenReturn(List.of(hit));
 
         RetrievalCandidatePipeline.CandidateOutcome result = pipeline().retrieve(
@@ -61,6 +63,21 @@ class RetrievalCandidatePipelineTest {
 
         assertThat(result.evidences()).extracting("nodeId").containsExactly("skill:sparse");
         assertThat(result.telemetry().embeddingDegraded()).isTrue();
+        // 降级必须走宽松路径: 常规 sparseSearch 的 % 算子对短查询几乎必然全空 (演练 2026-10-25)
+        verify(vectorStore, never()).sparseSearch(anyString(), anyInt(), anyDouble(), any(GraphScope.class));
+    }
+
+    /** 预算耗尽不允许被吞成 200-空结果: 那会把「配额没了」伪装成「检索无结果」(演练 S2)。 */
+    @Test
+    void budgetExhaustionPropagatesInsteadOfDegrading() {
+        when(embeddings.embedQuery("q", "trace")).thenThrow(
+                new BudgetExhausted(BudgetExhausted.Kind.GLOBAL, "每日 token 限额已用尽"));
+
+        assertThatExceptionOfType(BudgetExhausted.class)
+                .isThrownBy(() -> pipeline().retrieve(
+                        "q", 3, "trace", true, GraphExpansionPolicy.none(),
+                        GraphScope.publicOnly(), false));
+        verify(vectorStore, never()).sparseSearchLenient(anyString(), anyInt(), anyDouble(), any(GraphScope.class));
     }
 
     @Test

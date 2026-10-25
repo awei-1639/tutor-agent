@@ -6,6 +6,7 @@ import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
 import com.tutor.knowledge.retrieval.graph.GraphStore;
 import com.tutor.knowledge.retrieval.vector.VectorStore;
 import com.tutor.platform.llm.EmbeddingGateway;
+import com.tutor.platform.llm.budget.BudgetExhausted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +86,10 @@ final class RetrievalCandidatePipeline {
         try {
             float[] queryVector = embeddings.embedQuery(query, traceId);
             denseHits = vectorStore.search(queryVector, profile.vectorTopN(), effectiveScope);
+        } catch (BudgetExhausted budget) {
+            // 预算耗尽不是 provider 抖动: 降级救不了 (后续回答 LLM 同样会被拒),
+            // 静默 200-空只会把「配额没了」伪装成「检索无结果」(演练 2026-10-25 S2)。
+            throw budget;
         } catch (RuntimeException error) {
             log.warn("向量检索不可用, 降级稀疏检索 trace={} type={}",
                     traceId, error.getClass().getSimpleName());
@@ -208,8 +213,10 @@ final class RetrievalCandidatePipeline {
 
     private List<Evidence> sparseFallback(String query, int topK, GraphScope scope) {
         try {
-            return vectorStore.sparseSearch(query, Math.max(topK, profile.vectorTopN()),
-                            profile.sparseThreshold(), scope).stream().limit(topK)
+            // 宽松模式: 常规稀疏路径的 `%` 算子 + 0.15 阈值对「短查询×长文本」几乎必然全空
+            // (演练 2026-10-25: 嵌入宕机时三组中文查询全部 0 结果), 降级时放低到 0.05
+            return vectorStore.sparseSearchLenient(query, Math.max(topK, profile.vectorTopN()),
+                            0.05D, scope).stream().limit(topK)
                     .map(hit -> FusedRetriever.evidence(hit, hit.score(), null)).toList();
         } catch (RuntimeException ignored) {
             return List.of();
