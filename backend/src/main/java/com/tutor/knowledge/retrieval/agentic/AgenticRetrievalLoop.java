@@ -192,17 +192,22 @@ final class AgenticRetrievalLoop {
     }
 
     private static Evidence mergeEvidence(Evidence oldEvidence, Evidence newEvidence) {
+        // 同一节点的多轮合并, 归属不变; 任一来源标记为用户自有即按自有处理 (防竞态下混入)。
+        String sourceKind = oldEvidence.selfMaterial() || newEvidence.selfMaterial()
+                ? Evidence.KIND_SELF : Evidence.KIND_REFERENCE;
         return new Evidence(oldEvidence.nodeId(), oldEvidence.nodeType(), oldEvidence.chunkText(),
                 oldEvidence.score() + newEvidence.score(),
                 firstNonNull(oldEvidence.graphPath(), newEvidence.graphPath()),
                 firstNonNull(oldEvidence.sourceUrl(), newEvidence.sourceUrl()),
                 firstNonNull(oldEvidence.sourceStatus(), newEvidence.sourceStatus()),
-                firstNonNull(oldEvidence.contentHash(), newEvidence.contentHash()));
+                firstNonNull(oldEvidence.contentHash(), newEvidence.contentHash()),
+                sourceKind);
     }
 
     private static Evidence withScore(Evidence evidence, double score) {
         return new Evidence(evidence.nodeId(), evidence.nodeType(), evidence.chunkText(), score,
-                evidence.graphPath(), evidence.sourceUrl(), evidence.sourceStatus(), evidence.contentHash());
+                evidence.graphPath(), evidence.sourceUrl(), evidence.sourceStatus(), evidence.contentHash(),
+                evidence.sourceKind());
     }
 
     private static <T> T firstNonNull(T preferred, T fallback) {

@@ -20,12 +20,17 @@ public class VectorStore {
     }
 
     public record VectorHit(String nodeId, String nodeType, String chunkText, double score, String sourceUrl,
-                            String sourceStatus, String contentHash) {
+                            String sourceStatus, String contentHash, boolean ownerSelf) {
         public VectorHit(String nodeId, String nodeType, String chunkText, double score) {
-            this(nodeId, nodeType, chunkText, score, null, null, null);
+            this(nodeId, nodeType, chunkText, score, null, null, null, false);
         }
         public VectorHit(String nodeId, String nodeType, String chunkText, double score, String sourceUrl) {
-            this(nodeId, nodeType, chunkText, score, sourceUrl, null, null);
+            this(nodeId, nodeType, chunkText, score, sourceUrl, null, null, false);
+        }
+        /** 测试夹具便利构造: 不关心归属时按公开参考资料处理。 */
+        public VectorHit(String nodeId, String nodeType, String chunkText, double score, String sourceUrl,
+                         String sourceStatus, String contentHash) {
+            this(nodeId, nodeType, chunkText, score, sourceUrl, sourceStatus, contentHash, false);
         }
     }
 
@@ -37,10 +42,10 @@ public class VectorStore {
         GraphScope effectiveScope = scope == null ? GraphScope.publicOnly() : scope;
         String vec = toVectorLiteral(queryVec);
         List<VectorHit> hits = new ArrayList<>(jdbc.query(
-                "SELECT node_id, node_type, chunk_text, 1 - (embedding <=> ?::vector) AS score, source_url, source_status, content_hash " +
+                "SELECT node_id, node_type, chunk_text, 1 - (embedding <=> ?::vector) AS score, source_url, source_status, content_hash, owner_user_id " +
                         "FROM kg_chunks WHERE (visibility='public' AND ? OR owner_user_id=? OR (CAST(? AS VARCHAR) IS NOT NULL AND tenant_id=?)) " +
                         "ORDER BY embedding <=> ?::vector LIMIT ?",
-                (rs, i) -> hit(rs),
+                (rs, i) -> hit(rs, effectiveScope.userId()),
                 vec, effectiveScope.includePublic(), effectiveScope.userId(),
                 effectiveScope.tenantId(), effectiveScope.tenantId(), vec, topK));
         hits.addAll(jdbc.query("""
@@ -48,12 +53,12 @@ public class VectorStore {
                        coalesce(d.resource_kind, 'document') AS node_type, c.chunk_text,
                        1 - (c.embedding <=> ?::vector) AS score,
                        'knowledge://document/' || c.document_id || '#chunk=' || c.chunk_index AS source_url,
-                       'managed' AS source_status, c.content_hash
+                       'managed' AS source_status, c.content_hash, true
                 FROM knowledge_document_chunks c
                 JOIN knowledge_documents d ON d.id=c.document_id
                 WHERE d.status='indexed' AND d.deleted_at IS NULL AND d.created_by=?
                 ORDER BY c.embedding <=> ?::vector LIMIT ?
-                """, (rs, i) -> hit(rs),
+                """, (rs, i) -> hit(rs, effectiveScope.userId()),
                 vec, effectiveScope.userId(), vec, topK));
         return hits.stream().sorted(Comparator.comparingDouble(VectorHit::score).reversed()).limit(topK).toList();
     }
@@ -70,21 +75,21 @@ public class VectorStore {
     public List<VectorHit> sparseSearch(String query, int topK, double minSimilarity, GraphScope scope) {
         GraphScope effectiveScope = scope == null ? GraphScope.publicOnly() : scope;
         List<VectorHit> hits = new ArrayList<>(jdbc.query(
-                "SELECT node_id, node_type, chunk_text, similarity(chunk_text, ?) AS sim, source_url, source_status, content_hash " +
+                "SELECT node_id, node_type, chunk_text, similarity(chunk_text, ?) AS sim, source_url, source_status, content_hash, owner_user_id " +
                         "FROM kg_chunks WHERE chunk_text % ? AND (visibility='public' AND ? OR owner_user_id=? OR (CAST(? AS VARCHAR) IS NOT NULL AND tenant_id=?)) ORDER BY sim DESC LIMIT ?",
-                (rs, i) -> hit(rs),
+                (rs, i) -> hit(rs, effectiveScope.userId()),
                 query, query, effectiveScope.includePublic(), effectiveScope.userId(),
                 effectiveScope.tenantId(), effectiveScope.tenantId(), topK));
         hits.addAll(jdbc.query("""
                 SELECT 'doc:' || c.document_id || ':' || c.chunk_index AS node_id,
                        coalesce(d.resource_kind, 'document') AS node_type, c.chunk_text, similarity(c.chunk_text, ?) AS sim,
                        'knowledge://document/' || c.document_id || '#chunk=' || c.chunk_index AS source_url,
-                       'managed' AS source_status, c.content_hash
+                       'managed' AS source_status, c.content_hash, true
                 FROM knowledge_document_chunks c
                 JOIN knowledge_documents d ON d.id=c.document_id
                 WHERE d.status='indexed' AND d.deleted_at IS NULL AND d.created_by=? AND c.chunk_text % ?
                 ORDER BY sim DESC LIMIT ?
-                """, (rs, i) -> hit(rs),
+                """, (rs, i) -> hit(rs, effectiveScope.userId()),
                 query, effectiveScope.userId(), query, topK));
         return hits.stream()
                 .filter(h -> h.score() >= minSimilarity)
@@ -101,11 +106,11 @@ public class VectorStore {
     public List<VectorHit> sparseSearchLenient(String query, int topK, double minSimilarity, GraphScope scope) {
         GraphScope effectiveScope = scope == null ? GraphScope.publicOnly() : scope;
         return jdbc.query(
-                "SELECT node_id, node_type, chunk_text, similarity(chunk_text, ?) AS sim, source_url, source_status, content_hash " +
+                "SELECT node_id, node_type, chunk_text, similarity(chunk_text, ?) AS sim, source_url, source_status, content_hash, owner_user_id " +
                         "FROM kg_chunks WHERE similarity(chunk_text, ?) >= ? " +
                         "AND (visibility='public' AND ? OR owner_user_id=? OR (CAST(? AS VARCHAR) IS NOT NULL AND tenant_id=?)) " +
                         "ORDER BY sim DESC LIMIT ?",
-                (rs, i) -> hit(rs),
+                (rs, i) -> hit(rs, effectiveScope.userId()),
                 query, query, minSimilarity, effectiveScope.includePublic(), effectiveScope.userId(),
                 effectiveScope.tenantId(), effectiveScope.tenantId(), topK);
     }
@@ -125,15 +130,17 @@ public class VectorStore {
         args.add(effectiveScope.tenantId());
         args.add(effectiveScope.tenantId());
         return jdbc.query(
-                "SELECT node_id, node_type, chunk_text, 0 AS score, source_url, source_status, content_hash FROM kg_chunks " +
+                "SELECT node_id, node_type, chunk_text, 0 AS score, source_url, source_status, content_hash, owner_user_id FROM kg_chunks " +
                         "WHERE node_id IN (" + in + ") AND (visibility='public' AND ? OR owner_user_id=? OR (CAST(? AS VARCHAR) IS NOT NULL AND tenant_id=?))",
-                (rs, i) -> hit(rs),
+                (rs, i) -> hit(rs, effectiveScope.userId()),
                 args.toArray()).stream().collect(Collectors.toMap(VectorHit::nodeId, h -> h));
     }
 
-    private static VectorHit hit(java.sql.ResultSet rs) throws java.sql.SQLException {
+    private static VectorHit hit(java.sql.ResultSet rs, long scopeUserId) throws java.sql.SQLException {
+        long ownerId = rs.getLong(8);
+        boolean ownerSelf = !rs.wasNull() && ownerId == scopeUserId && scopeUserId > 0;
         return new VectorHit(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4),
-                rs.getString(5), rs.getString(6), rs.getString(7));
+                rs.getString(5), rs.getString(6), rs.getString(7), ownerSelf);
     }
 
     public static String toVectorLiteral(float[] v) {

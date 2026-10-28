@@ -29,12 +29,12 @@ public class EvidenceSection implements ContextSection {
         if (evidences == null || evidences.isEmpty()) {
             return new ContextSection.Rendered("\n## 知识证据\n(本轮未检索到相关证据)\n", List.of());
         }
-        StringBuilder sb = new StringBuilder("\n## 知识证据\n");
+        StringBuilder sb = new StringBuilder("\n## 知识证据 (标记〔自有〕的是用户本人的材料, 其余为参考资料)\n");
         List<ContextSection.CitationMarker> markers = new ArrayList<>();
         for (int i = 0; i < evidences.size(); i++) {
             Evidence e = evidences.get(i);
             if (e == null || e.chunkText() == null || e.chunkText().isBlank()) continue;
-            String line = "[S" + (i + 1) + "] " + e.chunkText()
+            String line = "[S" + (i + 1) + "]" + (e.selfMaterial() ? "〔自有〕" : "") + " " + e.chunkText()
                     + (e.graphPath() != null ? " (图谱关联: " + e.graphPath() + ")" : "") + "\n";
             if (budget.count(sb.toString() + line) > budget()) break; // 低分证据被截尾
             sb.append(line);

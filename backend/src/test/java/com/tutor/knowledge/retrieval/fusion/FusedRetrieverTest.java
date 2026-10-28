@@ -165,6 +165,22 @@ class FusedRetrieverTest {
                 .contains("rag", "transformer");
     }
 
+    @Test
+    void evidenceCarriesOwnerSelfAsSelfSourceKind() {
+        com.tutor.knowledge.retrieval.vector.VectorStore.VectorHit own =
+                new com.tutor.knowledge.retrieval.vector.VectorStore.VectorHit(
+                        "doc:1:0", "document", "我的简历", 0.9, "knowledge://document/1#chunk=0",
+                        "managed", "h1", true);
+        com.tutor.knowledge.retrieval.vector.VectorStore.VectorHit seed =
+                new com.tutor.knowledge.retrieval.vector.VectorStore.VectorHit(
+                        "skill:java", "skill", "Java 基础", 0.8, null, null, null, false);
+
+        assertThat(FusedRetriever.evidence(own, 0.9, null).sourceKind())
+                .isEqualTo(com.tutor.contract.Evidence.KIND_SELF);
+        assertThat(FusedRetriever.evidence(seed, 0.8, null).sourceKind())
+                .isEqualTo(com.tutor.contract.Evidence.KIND_REFERENCE);
+    }
+
     private static GraphExpansionPolicy policy() {
         return GraphExpansionPolicy.of(
                 new GraphExpansionPolicy.Rule("PREREQUISITE", GraphExpansionPolicy.Direction.OUTGOING),
