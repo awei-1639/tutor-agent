@@ -1,6 +1,7 @@
 package com.tutor.conversation.chat.application;
 
 import com.tutor.contract.Evidence;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -35,6 +36,17 @@ class TurnCitationsTest {
     @Test
     void usedAlignedReturnsEmptyForMarkerFreeAnswers() {
         assertEquals(List.of(), citations.usedAligned("问候, 无任何标记", evidences, Set.of("S1")));
+    }
+
+    @Test
+    void bundleForPersistsSourceKindSoHistoryKeepsSourceBadge() throws Exception {
+        Evidence selfMaterial = new Evidence("resume:42", "document", "resume|我的简历|6 年后端", 0.9,
+                null, "knowledge://document/42#chunk=0", "managed", null, Evidence.KIND_SELF);
+        var bundle = citations.bundleFor("依据[S1]可知", List.of(selfMaterial), Set.of("S1"));
+
+        var persisted = new ObjectMapper().readTree(bundle.json()).get(0);
+        // 历史会话从 DB 恢复引用卡片时, 来源徽标依赖这个字段
+        assertEquals(Evidence.KIND_SELF, persisted.get("source_kind").asText());
     }
 
     @Test

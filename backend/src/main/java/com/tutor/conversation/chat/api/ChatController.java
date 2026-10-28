@@ -145,7 +145,9 @@ public class ChatController {
                                     "graph_path", e.graphPath() == null ? "" : e.graphPath(),
                                     "source_url", provenance.sourceUrl(),
                                     "source_status", provenance.sourceStatus(),
-                                    "evidence_hash", provenance.evidenceHash()), cancellation);
+                                    "evidence_hash", provenance.evidenceHash(),
+                                    // 前端按此区分「你的材料 / 参考资料」徽标
+                                    "source_kind", e.sourceKind()), cancellation);
                         }
                     }
 

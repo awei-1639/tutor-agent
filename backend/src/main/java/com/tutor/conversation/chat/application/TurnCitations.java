@@ -147,7 +147,9 @@ final class TurnCitations {
                 "graph_path", evidence.graphPath() == null ? "" : evidence.graphPath(),
                 "source_url", provenance.sourceUrl(),
                 "source_status", provenance.sourceStatus(),
-                "evidence_hash", provenance.evidenceHash());
+                "evidence_hash", provenance.evidenceHash(),
+                // 历史会话恢复时也要能渲染来源徽标, 故随引用一并落库
+                "source_kind", evidence.sourceKind());
     }
 
     private static int parseIndex(String digits) {

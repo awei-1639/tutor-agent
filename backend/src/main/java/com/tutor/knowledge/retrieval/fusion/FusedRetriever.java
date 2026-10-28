@@ -209,12 +209,14 @@ public class FusedRetriever {
 
     static Evidence evidence(VectorStore.VectorHit hit, double score, String graphPath) {
         return new Evidence(hit.nodeId(), hit.nodeType(), hit.chunkText(), score, graphPath,
-                hit.sourceUrl(), hit.sourceStatus(), hit.contentHash());
+                hit.sourceUrl(), hit.sourceStatus(), hit.contentHash(),
+                hit.ownerSelf() ? Evidence.KIND_SELF : Evidence.KIND_REFERENCE);
     }
 
     private static Evidence withScore(Evidence evidence, double score) {
         return new Evidence(evidence.nodeId(), evidence.nodeType(), evidence.chunkText(), score,
-                evidence.graphPath(), evidence.sourceUrl(), evidence.sourceStatus(), evidence.contentHash());
+                evidence.graphPath(), evidence.sourceUrl(), evidence.sourceStatus(), evidence.contentHash(),
+                evidence.sourceKind());
     }
 
     /**

@@ -5,18 +5,22 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-export function renderMarkdown(src: string, citationScope = ''): string {
+export function renderMarkdown(src: string, citationScope = '', selfSids: ReadonlySet<string> = new Set()): string {
   marked.setOptions({ gfm: true, breaks: false });
   let html = marked.parse(src, { async: false }) as string;
   // 把 [S#] 替换为可点击 cite-ref span (正则匹配后端输出格式)
-  html = html.replace(/\[S(\d+)]/g, (_, n) =>
-    `<span class="cite-ref" data-sid="S${n}" data-cite-key="${citationScope}:S${n}">[${n}]</span>`);
+  // selfSids: 用户自有材料对应的标号, 渲染成另一套配色, 让「你的材料」在正文里就能认出来
+  html = html.replace(/\[S(\d+)]/g, (_, n) => {
+    const sid = `S${n}`;
+    const self = selfSids.has(sid);
+    return `<span class="cite-ref${self ? ' cite-ref--self' : ''}" data-sid="${sid}" data-kind="${self ? 'self' : 'reference'}" data-cite-key="${citationScope}:${sid}">[${n}]</span>`;
+  });
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'em', 'del', 'ul', 'ol', 'li', 'blockquote',
       'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'span'
     ],
-    ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-sid', 'data-cite-key'],
+    ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'data-sid', 'data-cite-key', 'data-kind'],
     FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'svg', 'math']
   });
 }

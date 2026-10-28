@@ -51,7 +51,11 @@ final class JobSkillAnswerPolicy {
                             FusedRetriever.formatGraphPath(neighbor),
                             hit == null ? null : hit.sourceUrl(),
                             hit == null ? top.sourceStatus() : hit.sourceStatus(),
-                            hit == null ? null : hit.contentHash()));
+                            hit == null ? null : hit.contentHash(),
+                            hit != null && hit.ownerSelf() ? Evidence.KIND_SELF
+                                    // 无命中回捞时无法判定归属; 该提升路径挂在公开种子 job 节点下,
+                                    // 邻居默认按参考资料处理, 宁可漏标不可冒标用户材料。
+                                    : Evidence.KIND_REFERENCE));
                 });
         if (promoted.isEmpty()) return ranked;
 

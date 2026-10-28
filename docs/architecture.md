@@ -284,6 +284,12 @@ sequenceDiagram
 
 ## 4. 检索架构
 
+检索在本系统里是**辅料，不是主料**。系统的核心是用户模型（画像 / 记忆 / 证据），检索负责为回答提供可溯源的材料：简历与上传文档、用户画像、记忆提取，以及公开的知识种子。因此：
+
+- 问候、闲聊、越界轮次直接跳过检索（`skipRetrieval`），检索不是必经路径；
+- 回答必须用 `[S#]` 标注材料来源，由引用校验保证每个标号都有对应证据；
+- 检索排序不追求「答得像个知识库」，而是「答得贴合这个人」——画像当前只渗透到上下文拼装层，尚未参与重排（见 4.4 的边界说明）。
+
 ### 4.1 查询类型
 
 对话意图使用有限枚举：`resume`、`interview`、`planning`、`mixed`、`chat`、`out_of_scope`。
@@ -336,6 +342,20 @@ Query
 5. LLM 输出无效或失败时使用固定 Query 收窄策略。
 
 LLM 不能直接执行任意图查询。跳数、候选规模、关系范围和最终 TopK 都由服务端控制。
+
+### 4.4 证据来源标注
+
+每条 `Evidence` 带 `sourceKind`：`self`（用户自有材料）/ `reference`（公开参考资料）。判定复用图谱既有的所有权模型，不新增分类维度：
+
+| 来源 | 判定 | 结果 |
+| --- | --- | --- |
+| `kg_chunks` 公开种子 | `visibility='public'` | `reference` |
+| `kg_chunks` 归户切片 | `owner_user_id = 检索 scope.userId` | `self` |
+| `knowledge_documents` 上传文档 | `created_by = scope.userId` | `self` |
+
+传播路径：检索（`VectorStore` 带出 `owner_user_id`）→ 融合与合并（任一自有即自有；无命中回捞时宁按参考漏标）→ 提示词（自有证据标〔自有〕）→ SSE `citation` 事件与引用 JSON（落库，历史会话可恢复徽标）→ 前端正文标号配色与「你的材料 / 参考资料」徽标。
+
+边界：画像与记忆目前是独立上下文分区（`ProfileSection` / `FactsSection`），**不进 `Evidence`**，因此不会被标注为 `self`；它们属于「懂你」的另一条线，见第 5 节。
 
 ## 5. 记忆、文档和业务闭环
 
