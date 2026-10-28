@@ -852,7 +852,7 @@ export function streamChat(
     onMeta?: (e: { conversation_id: number; trace_id: string; turn_id?: string; quota_remaining_percent?: number }) => void;
     onStage?: (e: { phase: string; expert?: string; status?: string; detail?: string }) => void;
     onTool?: (e: { tool: string; step: number }) => void;
-    onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string }) => void;
+    onCitation?: (e: { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; source_kind?: string }) => void;
     onMemories?: (e: { items: MemoryRef[] }) => void;
     onReasoning?: (text: string) => void;
     onToken?: (text: string, seq?: number) => void;

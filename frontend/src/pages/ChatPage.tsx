@@ -4,7 +4,7 @@ import { api, streamChat, type MemoryRef } from '../lib/api';
 import { useChatConversations } from '../lib/chatConversations';
 import { renderMarkdown } from '../lib/markdown';
 
-interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; }
+interface Citation { sid: string; node_id: string; type: string; title: string; text: string; graph_path?: string; source_url?: string; source_status?: string; evidence_hash?: string; source_kind?: string; }
 interface DisplayCitation extends Citation { key: string; }
 interface Msg { id?: number; role: 'user' | 'assistant'; content: string; tokens?: string; reasoning?: string; citations?: Citation[]; memories?: MemoryRef[]; citationStatus?: string; citationIssues?: string[]; clarify?: string; clarifyOptions?: Array<{ id: string; label: string }>; trace_id?: string; locked?: boolean; feedback?: 'helpful' | 'not_helpful'; truncated?: boolean; }
 
@@ -28,6 +28,23 @@ function sourceStatusLabel(status?: string): string {
   } as Record<string, string>)[status ?? 'missing'] ?? '来源状态未知';
 }
 
+/**
+ * 来源徽标: 区分「你的材料」(简历/画像/记忆, 图谱里归户给你) 与公开参考资料。
+ * 后端未标注 (历史会话) 时不渲染, 宁可不标也不误标。
+ */
+function SourceKindTag({ kind, dark = false }: { kind?: string; dark?: boolean }) {
+  if (kind !== 'self' && kind !== 'reference') return null;
+  const self = kind === 'self';
+  const tone = dark
+    ? (self ? 'bg-[#2f6b52]/40 text-[#a7dbc2]' : 'bg-white/[0.08] text-ink-300')
+    : (self ? 'bg-[#2f6b52]/10 text-[#2f6b52]' : 'bg-ink-100 text-ink-500');
+  return (
+    <span className={`text-[10px] leading-none px-1.5 py-1 rounded-[4px] font-medium whitespace-nowrap ${tone}`}>
+      {self ? '你的材料' : '参考资料'}
+    </span>
+  );
+}
+
 // hover 浮卡: 展示已持久化的材料身份和原文片段。
 function CiteHover({ cite, x, y }: { cite: Citation; x: number; y: number }) {
   const sourceUrl = safeSourceUrl(cite.source_url);
@@ -39,8 +56,11 @@ function CiteHover({ cite, x, y }: { cite: Citation; x: number; y: number }) {
         <span>{cite.title}</span>
       </div>
       <div className="text-ink-300 text-[10px] mb-1.5">{cite.node_id}</div>
-      <div className={`text-[10px] mb-1.5 ${cite.source_status === 'integrity_mismatch' ? 'text-rose-300' : 'text-ink-400'}`}>
-        {sourceStatusLabel(cite.source_status)}
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <SourceKindTag kind={cite.source_kind} dark />
+        <span className={`text-[10px] ${cite.source_status === 'integrity_mismatch' ? 'text-rose-300' : 'text-ink-400'}`}>
+          {sourceStatusLabel(cite.source_status)}
+        </span>
       </div>
       <div className="text-ink-200 whitespace-pre-wrap leading-relaxed mb-2">
         {cite.text?.slice(0, 200)}…
@@ -61,10 +81,14 @@ function ReferencePanel({ citations, pinnedKey, onPin, onClose }: {
 }) {
   const pinned = citations.find(c => c.key === pinnedKey) ?? citations[0];
   const sourceUrl = safeSourceUrl(pinned?.source_url);
+  const selfCount = citations.filter(c => c.source_kind === 'self').length;
   return (
     <aside className="w-80 border-l editorial-rule bg-[#faf9f5] flex flex-col">
       <div className="px-4 py-3 border-b editorial-rule flex items-center justify-between glass-bar">
-        <div className="font-serif text-[15px] font-bold text-ink-900">参考材料 <span className="font-mono text-[11px] font-normal text-ink-500">{citations.length}</span></div>
+        <div className="flex items-baseline gap-2">
+          <span className="font-serif text-[15px] font-bold text-ink-900">引用材料 <span className="font-mono text-[11px] font-normal text-ink-500">{citations.length}</span></span>
+          {selfCount > 0 && <span className="text-[10px] text-[#2f6b52]">其中你的材料 {selfCount}</span>}
+        </div>
         <button onClick={onClose} className="text-xs text-ink-500 hover:text-ink-900">关闭</button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -74,6 +98,7 @@ function ReferencePanel({ citations, pinnedKey, onPin, onClose }: {
                   className={`ref-card w-full text-left p-2.5 pl-3.5 ${pinnedKey === c.key ? 'active' : ''}`}>
             <div className="flex items-center gap-1.5 mb-1">
               <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${pinnedKey === c.key ? 'bg-accent-500 text-white' : 'bg-accent-50 text-accent-600'}`}>{c.sid}</span>
+              {c.source_kind === 'self' && <SourceKindTag kind="self" />}
               <span className="text-xs font-medium text-ink-900 truncate">{c.title}</span>
             </div>
             <div className="text-[10px] text-ink-500 truncate">{c.node_id}</div>
@@ -85,8 +110,11 @@ function ReferencePanel({ citations, pinnedKey, onPin, onClose }: {
           <div className="text-xs text-ink-500 mb-1">详情</div>
           <div className="text-sm font-semibold text-ink-900 mb-1">{pinned.title}</div>
           <div className="text-xs text-ink-500 mb-3">{pinned.node_id} · {pinned.type}</div>
-          <div className={`text-[11px] mb-3 ${pinned.source_status === 'integrity_mismatch' ? 'text-rose-600' : 'text-ink-500'}`}>
-            {sourceStatusLabel(pinned.source_status)}
+          <div className="flex items-center gap-1.5 mb-3">
+            <SourceKindTag kind={pinned.source_kind} />
+            <span className={`text-[11px] ${pinned.source_status === 'integrity_mismatch' ? 'text-rose-600' : 'text-ink-500'}`}>
+              {sourceStatusLabel(pinned.source_status)}
+            </span>
           </div>
           <div className="text-xs text-ink-700 whitespace-pre-wrap leading-relaxed">{pinned.text}</div>
           {sourceUrl ? <a href={sourceUrl} target="_blank" rel="noreferrer" className="inline-flex mt-3 text-xs text-accent-600 hover:text-accent-700">打开原始材料 ↗</a>
@@ -115,6 +143,8 @@ function parseStoredCitations(raw?: string): Citation[] {
         source_url: typeof c.source_url === 'string' ? c.source_url : '',
         source_status: typeof c.source_status === 'string' ? c.source_status : 'missing',
         evidence_hash: typeof c.evidence_hash === 'string' ? c.evidence_hash : '',
+        // 历史会话若早于来源标注上线则无此字段, 保持 undefined 不渲染徽标
+        source_kind: c.source_kind === 'self' || c.source_kind === 'reference' ? c.source_kind : undefined,
       }];
     });
   } catch {
@@ -604,6 +634,8 @@ function CopyBtn({ text, className = '' }: { text: string; className?: string })
 const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, feedbackOpen, onOptionClick, onContinue, onFeedback, onToggleFeedback }: MessageItemProps) {
   // 失败/中断会留下零内容的教练消息（历史里也有）：只渲染头像+名字的空壳很突兀，直接隐藏。
   const clarifyText = m.role === 'assistant' ? clarifyOf(m.content) : null;
+  // 正文 [S#] 指向自有材料时换一套配色, 让「你的材料」在正文里就能辨认
+  const selfSids = new Set((m.citations ?? []).filter(c => c.source_kind === 'self').map(c => c.sid));
   const isEmptyAssistant = m.role === 'assistant' && !m.content && !m.clarify
     && !(m.citations && m.citations.length > 0) && !(m.memories && m.memories.length > 0);
   if (isEmptyAssistant && !(streaming && isLast)) return null;
@@ -627,7 +659,7 @@ const MessageItem = memo(function MessageItem({ m, index, isLast, streaming, fee
           {clarifyText != null ? (
             <div className="mt-1 px-3 py-2 bg-accent-50 text-accent-700 text-sm rounded">❓ 追问: {clarifyText}</div>
           ) : m.content ? (
-            <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index)) }} />
+            <div className="prose-chat text-[14.5px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content, String(index), selfSids) }} />
           ) : m.clarify ? null : !streaming ? (
             <div className="py-2 text-[12.5px] text-ink-400">本次回答未能生成，请重新发送</div>
           ) : m.reasoning ? null : (

@@ -13,6 +13,9 @@
   --signal-deep: #2440b4;
   --signal-soft: rgba(47, 79, 212, .08);
   --signal-ring: rgba(47, 79, 212, .22);
+  /* 自有材料（简历/画像/记忆）标识色：与咨询蓝区分，避免和"参考资料"混为一谈 */
+  --self: #2f6b52;
+  --self-soft: rgba(47, 107, 82, .10);
   --line: #dcdad1;
   --hairline: #e7e5dd;
   --shadow-sm: 0 1px 2px rgba(26,25,23,.05);
@@ -97,6 +100,9 @@ body {
   border: 1px solid transparent;
 }
 .cite-ref:hover { background: var(--signal); color: #fff; box-shadow: 0 1px 5px rgba(47,79,212,.35); }
+/* 引用你自己的材料时换配色：正文里一眼能分出「这条来自我」还是「这条来自资料库」 */
+.cite-ref--self { color: var(--self); background: var(--self-soft); }
+.cite-ref--self:hover { background: var(--self); color: #fff; box-shadow: 0 1px 5px rgba(47,107,82,.35); }
 
 /* v2: 流式打字机光标 */
 .stream-caret {
