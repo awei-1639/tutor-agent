@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -85,7 +86,16 @@ class ApiExceptionHandlerTest {
     void tooManyRequestsIsReportedAsRateLimited() throws Exception {
         mvc.perform(get("/probe/rate-limited"))
                 .andExpect(status().isTooManyRequests())
+                // 没有 Retry-After 时客户端只能立刻重试(放大压力)或凭感觉退避
+                .andExpect(header().string("Retry-After", "60"))
                 .andExpect(jsonPath("$.message").value("创建面试请求过于频繁，请稍后再试"));
+    }
+
+    @Test
+    void rateLimitedExceptionCarriesItsOwnRetryAfter() throws Exception {
+        mvc.perform(get("/probe/rate-limited-explicit"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "300"));
     }
 
     @Test
@@ -177,6 +187,11 @@ class ApiExceptionHandlerTest {
         @GetMapping("/probe/rate-limited")
         String rateLimited() {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "创建面试请求过于频繁，请稍后再试");
+        }
+
+        @GetMapping("/probe/rate-limited-explicit")
+        String rateLimitedExplicit() {
+            throw new com.tutor.platform.ratelimit.RateLimitedException("登录尝试过于频繁，请稍后再试", 300);
         }
 
         @GetMapping("/probe/tracked")

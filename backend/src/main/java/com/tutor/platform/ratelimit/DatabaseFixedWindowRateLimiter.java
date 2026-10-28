@@ -2,6 +2,7 @@ package com.tutor.platform.ratelimit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -45,6 +46,25 @@ public class DatabaseFixedWindowRateLimiter implements FixedWindowRateLimiter {
         } catch (RuntimeException e) {
             log.warn("共享限流存储不可用，回退到进程内窗口 scope={} subject={}: {}", scope, subjectId, e.getMessage());
             return fallback.tryAcquire(scope, subjectId, limit, windowSeconds);
+        }
+    }
+
+    @Override
+    public int peek(String scope, long subjectId, long windowSeconds) {
+        if (windowSeconds < 1) throw new IllegalArgumentException("window must be positive");
+        try {
+            Integer count = jdbc.queryForObject("""
+                    SELECT CASE WHEN window_started_at <= now() - make_interval(secs => ?)
+                                THEN 0 ELSE request_count END
+                    FROM rate_limit_windows
+                    WHERE scope = ? AND subject_id = ?
+                    """, Integer.class, (double) windowSeconds, scope, subjectId);
+            return count == null ? 0 : count;
+        } catch (EmptyResultDataAccessException noRow) {
+            return 0;
+        } catch (RuntimeException e) {
+            log.warn("共享限流存储不可用，回退到进程内窗口 peek scope={} subject={}: {}", scope, subjectId, e.getMessage());
+            return fallback.peek(scope, subjectId, windowSeconds);
         }
     }
 }

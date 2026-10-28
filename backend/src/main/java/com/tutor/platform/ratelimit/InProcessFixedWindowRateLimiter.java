@@ -32,5 +32,15 @@ public class InProcessFixedWindowRateLimiter implements FixedWindowRateLimiter {
         return allowed.get();
     }
 
+    @Override
+    public int peek(String scope, long subjectId, long windowSeconds) {
+        if (windowSeconds < 1) throw new IllegalArgumentException("window must be positive");
+        Window current = windows.get(scope + ":" + subjectId);
+        if (current == null) return 0;
+        long now = System.currentTimeMillis();
+        if (now - current.startedAt() >= windowSeconds * 1000L) return 0;
+        return current.count();
+    }
+
     private record Window(long startedAt, int count) {}
 }
