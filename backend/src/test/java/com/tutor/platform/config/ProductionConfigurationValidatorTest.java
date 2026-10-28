@@ -42,6 +42,26 @@ class ProductionConfigurationValidatorTest {
                 new AliyunOcrProperties(true, "cn-hangzhou", "", "", 80, 100, 15)).afterSingletonsInstantiated());
     }
 
+    @Test
+    void rejectsDevLoginInProduction() {
+        ProductionConfigurationValidator validator = validator(validLlm(),
+                new OssProperties(false, "", "", "", "", "", ""),
+                new Mem0Properties(false, "", "", 2));
+        org.springframework.test.util.ReflectionTestUtils.setField(validator, "devLoginEnabled", true);
+
+        assertThrows(IllegalStateException.class, validator::afterSingletonsInstantiated);
+    }
+
+    @Test
+    void rejectsInternalEndpointsInProduction() {
+        ProductionConfigurationValidator validator = validator(validLlm(),
+                new OssProperties(false, "", "", "", "", "", ""),
+                new Mem0Properties(false, "", "", 2));
+        org.springframework.test.util.ReflectionTestUtils.setField(validator, "internalEndpointsEnabled", true);
+
+        assertThrows(IllegalStateException.class, validator::afterSingletonsInstantiated);
+    }
+
     private static ProductionConfigurationValidator validator(LlmProperties llm, OssProperties oss, Mem0Properties mem0) {
         return new ProductionConfigurationValidator(llm, oss, mem0, new ClamAvProperties(false, "", 0, 2),
                 new AliyunOcrProperties(false, "", "", "", 80, 100, 15));

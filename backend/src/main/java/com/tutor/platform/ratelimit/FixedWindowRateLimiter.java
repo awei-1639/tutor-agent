@@ -14,4 +14,14 @@ public interface FixedWindowRateLimiter {
      * @return 是否放行
      */
     boolean tryAcquire(String scope, long subjectId, int limit, long windowSeconds);
+
+    /**
+     * 只读查询当前窗口已发生的次数，不消耗额度。
+     *
+     * <p>为「只对失败计次」的模型服务：调用方需要在真正执行昂贵操作（如 BCrypt 校验）
+     * 之前判断是否已被锁定，此时不能顺手计次——否则成功请求也会占用失败配额。
+     *
+     * @return 窗口内已计次数；窗口已过期或无记录返回 0
+     */
+    int peek(String scope, long subjectId, long windowSeconds);
 }

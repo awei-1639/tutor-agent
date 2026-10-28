@@ -45,6 +45,9 @@ public class ApiExceptionHandler {
     /** 5xx 对外的统一文案: 内部错误详情不得出网。 */
     private static final String SERVER_ERROR_MESSAGE = "服务暂时不可用，请稍后重试。";
 
+    /** 429 未给出具体冷却时长时的默认值: 让客户端至少能按固定节奏退避, 而不是立刻重试。 */
+    private static final long DEFAULT_RETRY_AFTER_SECONDS = 60L;
+
     /**
      * CodedException 错误码 → HTTP 状态码。
      *
@@ -126,6 +129,20 @@ public class ApiExceptionHandler {
         return respond(status, message, ex, handler, request, response);
     }
 
+    /**
+     * 限流拒绝携带具体冷却时长，写进 {@code Retry-After}。
+     * 其余 429 路径（预算耗尽、ResponseStatusException）走各自 handler，由
+     * {@link #respond} 统一补默认值。
+     */
+    @ExceptionHandler(com.tutor.platform.ratelimit.RateLimitedException.class)
+    public ResponseEntity<ApiError> rateLimited(com.tutor.platform.ratelimit.RateLimitedException ex,
+                                                HandlerMethod handler,
+                                                HttpServletRequest request,
+                                                HttpServletResponse response) throws Exception {
+        return respond(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), ex, handler, request, response,
+                ex.retryAfterSeconds());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> validationFailed(MethodArgumentNotValidException ex,
                                                      HandlerMethod handler,
@@ -175,6 +192,16 @@ public class ApiExceptionHandler {
                                              HandlerMethod handler,
                                              HttpServletRequest request,
                                              HttpServletResponse response) throws Exception {
+        return respond(status, message, ex, handler, request, response, null);
+    }
+
+    private ResponseEntity<ApiError> respond(HttpStatus status,
+                                             String message,
+                                             Exception ex,
+                                             HandlerMethod handler,
+                                             HttpServletRequest request,
+                                             HttpServletResponse response,
+                                             Long retryAfterSeconds) throws Exception {
         if (response != null && response.isCommitted()) {
             // 响应已提交(典型: SSE 流已开始写入), 状态码与报头都无法再改写,
             // 此时写 JSON 会击穿流式帧格式导致客户端静默失败——放行交由容器关闭连接,
@@ -193,7 +220,22 @@ public class ApiExceptionHandler {
             log.info("HTTP {} {} 业务异常 traceId={}: {}", status.value(), path, traceId, ex.getMessage());
         }
         return ResponseEntity.status(status)
+                .headers(retryAfterHeaders(status, retryAfterSeconds))
                 .body(new ApiError(message, status.getReasonPhrase(), path, traceId));
+    }
+
+    /**
+     * 429 一律带 {@code Retry-After}: 没有这个头, 客户端只能立刻重试或凭感觉退避,
+     * 前者放大压力、后者体验随机。非 429 响应不加头, 避免污染正常响应。
+     */
+    private static org.springframework.http.HttpHeaders retryAfterHeaders(HttpStatus status, Long retryAfterSeconds) {
+        if (status != HttpStatus.TOO_MANY_REQUESTS) return null;
+        long seconds = (retryAfterSeconds == null || retryAfterSeconds < 1)
+                ? DEFAULT_RETRY_AFTER_SECONDS
+                : retryAfterSeconds;
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.set("Retry-After", Long.toString(seconds));
+        return headers;
     }
 
     /**

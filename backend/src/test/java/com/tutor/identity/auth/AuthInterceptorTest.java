@@ -148,10 +148,59 @@ class AuthInterceptorTest {
         assertThat(interceptor.preHandle(request("/actuator/prometheus", "Bearer scrape-secret"), responseWithWriter(), new Object())).isFalse();
     }
 
+    @Test
+    void internalEndpointRejectsMissingOrWrongToken() throws Exception {
+        AuthInterceptor tokenInterceptor = new AuthInterceptor(jwt, true, true, "", "internal-secret");
+
+        assertThat(tokenInterceptor.preHandle(request("/internal/retrieve", null), mock(HttpServletResponse.class), new Object()))
+                .isFalse();
+        assertThat(tokenInterceptor.preHandle(requestWithInternalToken("/internal/retrieve", "wrong"),
+                mock(HttpServletResponse.class), new Object())).isFalse();
+    }
+
+    @Test
+    void internalEndpointAcceptsMatchingTokenEvenOffLoopback() throws Exception {
+        // 令牌一旦配置就是主控制: 同机反向代理会让 remoteAddr 恒为 127.0.0.1,
+        // 继续要求 loopback 对隧道场景毫无约束力, 只会制造"已防护"的错觉。
+        AuthInterceptor tokenInterceptor = new AuthInterceptor(jwt, true, true, "", "internal-secret");
+        HttpServletRequest request = requestWithInternalToken("/internal/retrieve", "internal-secret");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.10");
+
+        assertThat(tokenInterceptor.preHandle(request, mock(HttpServletResponse.class), new Object())).isTrue();
+        assertThat(AuthContext.currentUserId()).isEqualTo(AuthInterceptor.DEV_USER_ID);
+    }
+
+    @Test
+    void internalEndpointWithoutTokenRejectsProxiedRequests() throws Exception {
+        // 未配置令牌时只能靠 loopback 判定, 而代理头是"真正客户端在别处"的唯一信号
+        HttpServletRequest request = request("/internal/retrieve", null);
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.10");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isFalse();
+        verify(response).setStatus(404);
+    }
+
+    @Test
+    void internalEndpointWithoutTokenStillAllowsPlainLoopback() throws Exception {
+        HttpServletRequest request = request("/internal/retrieve", null);
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+
+        assertThat(interceptor.preHandle(request, mock(HttpServletResponse.class), new Object())).isTrue();
+    }
+
     private static HttpServletRequest request(String path, String authorization) {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURI()).thenReturn(path);
         when(request.getHeader("Authorization")).thenReturn(authorization);
+        return request;
+    }
+
+    private static HttpServletRequest requestWithInternalToken(String path, String token) {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn(path);
+        when(request.getHeader(AuthInterceptor.INTERNAL_TOKEN_HEADER)).thenReturn(token);
         return request;
     }
 

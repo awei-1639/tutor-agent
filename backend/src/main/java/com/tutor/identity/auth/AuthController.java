@@ -1,5 +1,6 @@
 package com.tutor.identity.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -19,6 +20,9 @@ import java.time.Duration;
  * - POST /auth/register: email + password + name → token
  * - POST /auth/login: email + password → token
  * /auth/dev-login 仅在开发配置显式开启时可用，自动创建开发账号
+ *
+ * <p>三个入口都先经过 {@link AuthAttemptLimiter}: 这是全站唯一「无认证 + BCrypt」
+ * 的路径, 不加限流即可被无限撞库或被并发请求烧满 CPU。
  */
 @RestController
 @RequestMapping("/auth")
@@ -27,15 +31,18 @@ public class AuthController {
     private final boolean devLoginEnabled;
     private final boolean cookieSecure;
     private final CsrfTokenService csrf;
+    private final AuthAttemptLimiter attempts;
 
     public AuthController(AuthService auth,
                           @Value("${tutor.auth.dev-login-enabled:false}") boolean devLoginEnabled,
                           @Value("${tutor.auth.cookie-secure:false}") boolean cookieSecure,
-                          CsrfTokenService csrf) {
+                          CsrfTokenService csrf,
+                          AuthAttemptLimiter attempts) {
         this.auth = auth;
         this.devLoginEnabled = devLoginEnabled;
         this.cookieSecure = cookieSecure;
         this.csrf = csrf;
+        this.attempts = attempts;
     }
 
     public record RegisterRequest(
@@ -51,29 +58,47 @@ public class AuthController {
     public record DevLoginRequest(@NotBlank String name) {}
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest req) {
+    public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest req,
+                                                        HttpServletRequest request) {
+        // 注册不区分成功/失败计次: 邮箱占用探测本身也是攻击面
+        attempts.acquire(request, null);
         // IllegalArgumentException → 400 由全局异常处理统一映射
         return authenticated(auth.register(req.email(), req.password(), req.name()));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest req) {
-        return authenticatedOrUnauthorized(() -> auth.login(req.email(), req.password()));
+    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest req,
+                                                     HttpServletRequest request) {
+        attempts.acquire(request, req.email());
+        try {
+            return authenticated(auth.login(req.email(), req.password()));
+        } catch (IllegalArgumentException e) {
+            // 邮箱不存在 / 密码错 / 已禁用 / 已删除 一律计一次失败: 若只对「密码错」计次,
+            // 攻击者就能用响应差异反推账号是否存在。
+            attempts.recordFailure(req.email());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
+        }
     }
 
     /** 开发环境单字段 name 登录，自动创建开发账号。 */
     @PostMapping("/dev-login")
-    public ResponseEntity<Map<String, Object>> devLogin(@Valid @RequestBody DevLoginRequest req) {
+    public ResponseEntity<Map<String, Object>> devLogin(@Valid @RequestBody DevLoginRequest req,
+                                                        HttpServletRequest request) {
         if (!devLoginEnabled) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "endpoint not available");
         }
+        // dev-login 用固定口令创建账号, 公网可达时等价于注册后门, 同样纳入 IP 计次
+        attempts.acquire(request, null);
+        String email = "dev@" + req.name() + ".local";
         try {
-            AuthService.AuthResult r = auth.register("dev@" + req.name() + ".local",
-                    "devpass", req.name());
-            return authenticated(r);
+            return authenticated(auth.register(email, "devpass", req.name()));
         } catch (IllegalArgumentException e) {
             // 邮箱已注册 → 用真实登录
-            return login(new LoginRequest("dev@" + req.name() + ".local", "devpass"));
+            try {
+                return authenticated(auth.login(email, "devpass"));
+            } catch (IllegalArgumentException failed) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, failed.getMessage());
+            }
         }
     }
 

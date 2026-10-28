@@ -3,6 +3,8 @@ package com.tutor.identity.auth;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Cookie;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,17 +22,28 @@ import java.security.MessageDigest;
 public class AuthInterceptor implements HandlerInterceptor {
     public static final String USER_ID_ATTR = "tutor.userId";
     public static final String ACCESS_COOKIE = "tutor_access";
+    public static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
     public static final long DEV_USER_ID = 1L;
+
+    private static final Logger log = LoggerFactory.getLogger(AuthInterceptor.class);
 
     private final JwtService jwt;
     private final boolean internalEndpointsEnabled;
     private final boolean internalEndpointsLoopbackOnly;
     private final String metricsScrapeToken;
+    private final String internalToken;
 
     public AuthInterceptor(JwtService jwt,
                            @Value("${tutor.internal.enabled:false}") boolean internalEndpointsEnabled,
                            @Value("${tutor.internal.loopback-only:true}") boolean internalEndpointsLoopbackOnly) {
-        this(jwt, internalEndpointsEnabled, internalEndpointsLoopbackOnly, "");
+        this(jwt, internalEndpointsEnabled, internalEndpointsLoopbackOnly, "", "");
+    }
+
+    public AuthInterceptor(JwtService jwt,
+                           @Value("${tutor.internal.enabled:false}") boolean internalEndpointsEnabled,
+                           @Value("${tutor.internal.loopback-only:true}") boolean internalEndpointsLoopbackOnly,
+                           @Value("${tutor.metrics.scrape-token:}") String metricsScrapeToken) {
+        this(jwt, internalEndpointsEnabled, internalEndpointsLoopbackOnly, metricsScrapeToken, "");
     }
 
     // 必须显式指定：多于一个构造器且都无 @Autowired 时，Spring 会退化去找无参构造器并直接失败。
@@ -38,11 +51,20 @@ public class AuthInterceptor implements HandlerInterceptor {
     public AuthInterceptor(JwtService jwt,
                            @Value("${tutor.internal.enabled:false}") boolean internalEndpointsEnabled,
                            @Value("${tutor.internal.loopback-only:true}") boolean internalEndpointsLoopbackOnly,
-                           @Value("${tutor.metrics.scrape-token:}") String metricsScrapeToken) {
+                           @Value("${tutor.metrics.scrape-token:}") String metricsScrapeToken,
+                           @Value("${tutor.internal.token:}") String internalToken) {
         this.jwt = jwt;
         this.internalEndpointsEnabled = internalEndpointsEnabled;
         this.internalEndpointsLoopbackOnly = internalEndpointsLoopbackOnly;
         this.metricsScrapeToken = metricsScrapeToken == null ? "" : metricsScrapeToken.trim();
+        this.internalToken = internalToken == null ? "" : internalToken.trim();
+        // /internal 的 loopback 判定只看 remoteAddr, 任何同机反向代理(含内网穿透)都会让
+        // 公网请求看起来来自 127.0.0.1。没有令牌时这条防线只剩"代理不转发 /internal"这一条隐含假设,
+        // 因此必须在启动日志里显式可见。
+        if (internalEndpointsEnabled && this.internalToken.isBlank()) {
+            log.warn("/internal 端点已启用但未配置 INTERNAL_TOKEN: 仅靠 remoteAddr 判定本机, "
+                    + "同机反向代理/内网穿透会绕过该判定");
+        }
     }
 
     @Override
@@ -54,7 +76,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         if (path.startsWith("/internal")) {
-            if (!internalEndpointsEnabled || (internalEndpointsLoopbackOnly && !isLoopback(req.getRemoteAddr()))) {
+            if (!internalEndpointsEnabled || !internalAccessAllowed(req)) {
                 res.setStatus(404);
                 return false;
             }
@@ -100,6 +122,40 @@ public class AuthInterceptor implements HandlerInterceptor {
      * 恒定时间比较抓取令牌: String.equals 按字符提前返回, 响应耗时随匹配前缀长度变化,
      * 给持有网络邻近位置的攻击者逐字节猜令牌的机会 (诊断报告 2026-09-10 §4.2)。
      */
+    /**
+     * /internal 门禁。两条路互斥：
+     * <ol>
+     *   <li>配置了 {@code INTERNAL_TOKEN} → 令牌是主控制，必须恒定时间匹配。此时不再强制
+     *       loopback：令牌本身就是凭证，本机与远端一视同仁（远端要比本机更严格才有意义）。</li>
+     *   <li>未配置令牌 → 退回原先的 loopback 判定，并额外拒绝携带代理头的请求。
+     *       同机反向代理会让 remoteAddr 恒为 127.0.0.1，代理头是唯一还能看出来的信号。</li>
+     * </ol>
+     */
+    private boolean internalAccessAllowed(HttpServletRequest req) {
+        if (!internalToken.isBlank()) {
+            return matchesInternalToken(req.getHeader(INTERNAL_TOKEN_HEADER));
+        }
+        if (internalEndpointsLoopbackOnly && !isLoopback(req.getRemoteAddr())) return false;
+        return !hasProxyMarker(req);
+    }
+
+    /** 出现任一代理头即说明真正客户端不在这条连接上，此时 loopback 判定不可信。 */
+    private static boolean hasProxyMarker(HttpServletRequest req) {
+        return hasText(req.getHeader("X-Forwarded-For"))
+                || hasText(req.getHeader("X-Real-IP"))
+                || hasText(req.getHeader("Forwarded"));
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private boolean matchesInternalToken(String provided) {
+        if (internalToken.isBlank() || provided == null) return false;
+        return MessageDigest.isEqual(internalToken.getBytes(StandardCharsets.UTF_8),
+                provided.getBytes(StandardCharsets.UTF_8));
+    }
+
     private boolean matchesScrapeToken(String authorizationHeader) {
         if (metricsScrapeToken.isBlank() || authorizationHeader == null) return false;
         return MessageDigest.isEqual(("Bearer " + metricsScrapeToken).getBytes(StandardCharsets.UTF_8),
