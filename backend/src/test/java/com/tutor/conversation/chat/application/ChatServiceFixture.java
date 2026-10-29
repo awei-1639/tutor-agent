@@ -91,7 +91,7 @@ final class ChatServiceFixture {
         return new ChatService(agenticRetriever, promptAssembler, profileSection, tokenBudget,
                 gateway, conversations, profiles, router, routingPolicy, expertRunner, aggregator, trace, resumes,
                 longTermMemory, episodeSection, factRecall, factsSection,
-                citationVerification, postTurnTasks, memoryConsent, null, null, toolCallLoop, toolLoopEnabled);
+                citationVerification, postTurnTasks, memoryConsent, null, null, toolCallLoop, toolLoopEnabled, false);
     }
 
     private void stubConversationDefaults() {

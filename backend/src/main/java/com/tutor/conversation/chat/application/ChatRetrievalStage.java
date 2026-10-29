@@ -26,13 +26,25 @@ final class ChatRetrievalStage {
     private final LongTermMemoryService longTermMemory;
     private final FactRecallService factRecall;
     private final TraceRecorder trace;
+    /**
+     * 画像感知重排门禁: 开启后向检索多要 {@code TOP_K + POOL_EXTRA} 条候选,
+     * 用 L3 画像 (target_position/skills) 稳定重排后裁回 TOP_K。
+     * 检索内核零改动, 收益经检索评测确认前保持关闭。
+     */
+    private final boolean personalizeEnabled;
 
     ChatRetrievalStage(AgenticRetriever agenticRetriever, LongTermMemoryService longTermMemory,
                        FactRecallService factRecall, TraceRecorder trace) {
+        this(agenticRetriever, longTermMemory, factRecall, trace, false);
+    }
+
+    ChatRetrievalStage(AgenticRetriever agenticRetriever, LongTermMemoryService longTermMemory,
+                       FactRecallService factRecall, TraceRecorder trace, boolean personalizeEnabled) {
         this.agenticRetriever = agenticRetriever;
         this.longTermMemory = longTermMemory;
         this.factRecall = factRecall;
         this.trace = trace;
+        this.personalizeEnabled = personalizeEnabled;
     }
 
     RetrievedContext retrieve(String executionQuestion, TurnContext context,
@@ -68,14 +80,22 @@ final class ChatRetrievalStage {
         long start = System.currentTimeMillis();
         GraphExpansionPolicy graphPolicy = GraphExpansionPolicy.forFacets(
                 plan.retrievalFacets(), plan.retrievalHint());
+        // 画像重排: 溢出池多取候选, 让画像只裁决"同分竞争", 不改写检索内核打分
+        ProfilePersonalizer.Signal signal = personalizeEnabled
+                ? ProfilePersonalizer.fromProfile(context.profile()) : null;
+        boolean personalize = signal != null && signal.present();
+        int requestTopK = personalize ? TOP_K + ProfilePersonalizer.POOL_EXTRA : TOP_K;
         AgenticRetriever.RetrievalResult result = agenticRetriever.retrieveAdaptiveResult(
-                executionQuestion, TOP_K, traceId, plan.allowMultiHopEscalation(), graphPolicy,
+                executionQuestion, requestTopK, traceId, plan.allowMultiHopEscalation(), graphPolicy,
                 GraphScope.forUser(context.userId(), AuthContext.currentTenantId()));
         if (result == null) throw new IllegalStateException("检索结果不能为空");
 
         List<Evidence> evidences = result.evidences();
+        ProfilePersonalizer.Result personalized = personalize
+                ? ProfilePersonalizer.personalize(signal, evidences, TOP_K) : null;
+        if (personalized != null) evidences = personalized.evidences();
         trace.span(traceId, context.convId(), "retrieve", start, false,
-                retrievalTrace(plan, graphPolicy, result, evidences));
+                retrievalTrace(plan, graphPolicy, result, evidences, personalized));
         // 引用事件不再在此倾倒全部检索候选：问候/闲聊轮次的候选与回答无关，
         // 完成阶段会按回答里的 [S#] 标记只发实际用到的证据 (TurnCitations.usedAligned)。
         return new RetrievedContext(evidences, memoryRecall.episodes(), facts);
@@ -84,7 +104,8 @@ final class ChatRetrievalStage {
     private Map<String, Object> retrievalTrace(RoutingPolicy.ExecutionPlan executionPlan,
                                                GraphExpansionPolicy graphPolicy,
                                                AgenticRetriever.RetrievalResult result,
-                                               List<Evidence> evidences) {
+                                               List<Evidence> evidences,
+                                               ProfilePersonalizer.Result personalized) {
         return Map.ofEntries(
                 Map.entry("requested_mode", executionPlan.allowMultiHopEscalation()
                         ? "multi_candidate" : "single"),
@@ -92,6 +113,8 @@ final class ChatRetrievalStage {
                 Map.entry("hops", result.hops()),
                 Map.entry("stop_reason", result.stopReason()),
                 Map.entry("evidence_count", evidences.size()),
+                Map.entry("personalize_applied", personalized != null),
+                Map.entry("personalize_boosted_count", personalized == null ? 0 : personalized.boostedCount()),
                 Map.entry("graph_relations", graphPolicy.relationDescriptions()),
                 Map.entry("graph_policy", graphPolicy.policyDescriptions()),
                 Map.entry("resource_facet", executionPlan.retrievalFacets().contains(
