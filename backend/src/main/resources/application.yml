@@ -91,6 +91,10 @@ tutor:
       # 在检索评测集证明保留各通道的最低候选数量能提升召回、且不降低精度前，
       # 保持关闭。
       enabled: ${RETRIEVAL_CHANNEL_FLOOR_ENABLED:false}
+    personalize:
+      # 画像感知重排: chat 检索多取一个溢出候选池, 用 L3 画像 (target_position/skills)
+      # 稳定重排后裁回 topK。检索内核零改动; 收益经检索评测确认前保持关闭。
+      enabled: ${RETRIEVAL_PERSONALIZE_ENABLED:false}
   interview:
     open-rate-limit-per-hour: ${INTERVIEW_OPEN_RATE_LIMIT_PER_HOUR:5}
     answer-rate-limit-per-minute: ${INTERVIEW_ANSWER_RATE_LIMIT_PER_MINUTE:30}

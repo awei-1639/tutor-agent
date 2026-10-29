@@ -69,7 +69,7 @@ public class ChatService {
                 profileService, router, routingPolicy, expertRunner, aggregator, trace, resumeService,
                 longTermMemory, episodeSection, factRecall, factsSection,
                 citationVerification, postTurnTasks, memoryConsent,
-                null, null, null, false);
+                null, null, null, false, false);
     }
 
     @Autowired
@@ -90,12 +90,13 @@ public class ChatService {
                        ChatTurnService chatTurns,
                        StructuredOutputService structuredOutputService,
                        ToolCallLoop toolCallLoop,
-                       @Value("${tutor.chat.tool-loop-enabled:false}") boolean toolLoopEnabled) {
+                       @Value("${tutor.chat.tool-loop-enabled:false}") boolean toolLoopEnabled,
+                       @Value("${tutor.retrieval.personalize-enabled:false}") boolean retrievalPersonalizeEnabled) {
         this.routingPolicy = routingPolicy;
         this.conversations = conversations;
         this.contextLoader = new ChatContextLoader(conversations, profileService, memoryConsent);
         this.retrievalStage = new ChatRetrievalStage(
-                agenticRetriever, longTermMemory, factRecall, trace);
+                agenticRetriever, longTermMemory, factRecall, trace, retrievalPersonalizeEnabled);
         this.completionFinalizer = new ChatCompletionFinalizer(
                 conversations, citationVerification, postTurnTasks, chatTurns);
         this.answerStage = new ChatAnswerStage(
