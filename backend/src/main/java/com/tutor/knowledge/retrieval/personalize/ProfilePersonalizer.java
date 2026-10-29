@@ -1,4 +1,4 @@
-package com.tutor.conversation.chat.application;
+package com.tutor.knowledge.retrieval.personalize;
 
 import com.tutor.contract.Evidence;
 
@@ -20,37 +20,37 @@ import java.util.regex.Pattern;
  * <p>安全边界: 总增幅封顶 {@link #MAX_FACTOR}, 防止画像把语义不相关的候选顶进 topK;
  * ASCII 词元按词边界匹配, 避免 "go" 命中 "google" 这类假阳性。
  */
-final class ProfilePersonalizer {
+public final class ProfilePersonalizer {
     /** 命中 target_position 任一词元的固定加成 (强信号)。 */
-    static final double TARGET_POSITION_BONUS = 0.20;
+    public static final double TARGET_POSITION_BONUS = 0.20;
     /** 每命中一个技能 (confidence 加权) 的加成。 */
-    static final double SKILL_BONUS_PER_MATCH = 0.06;
+    public static final double SKILL_BONUS_PER_MATCH = 0.06;
     /** 技能加成总和上限。 */
-    static final double SKILL_BONUS_CAP = 0.15;
+    public static final double SKILL_BONUS_CAP = 0.15;
     /** 单条证据总增幅上限 (1 + 0.25)。 */
-    static final double MAX_FACTOR = 1.25;
+    public static final double MAX_FACTOR = 1.25;
     /** 技能置信度低于此值不参与匹配 (每日衰减后接近噪声的 inferred 技能)。 */
-    static final double MIN_SKILL_CONFIDENCE = 0.5;
+    public static final double MIN_SKILL_CONFIDENCE = 0.5;
     /** 重排需要额外候选池的大小: topK 之外多取这些候选参与画像竞争。 */
-    static final int POOL_EXTRA = 7;
+    public static final int POOL_EXTRA = 7;
 
     private ProfilePersonalizer() {}
 
     /** 画像重排信号; 空 signal = 无画像或字段全空, 调用方应直接跳过。 */
-    record Signal(String targetPosition, List<WeightedSkill> skills) {
-        boolean present() {
+    public record Signal(String targetPosition, List<WeightedSkill> skills) {
+        public boolean present() {
             return (targetPosition != null && !targetPosition.isBlank())
                     || (skills != null && !skills.isEmpty());
         }
     }
 
-    record WeightedSkill(String name, double confidence) {}
+    public record WeightedSkill(String name, double confidence) {}
 
     /** 重排结果: 裁剪后的证据列表 + 因画像加成而改变排名的条数 (观测用)。 */
-    record Result(List<Evidence> evidences, int boostedCount) {}
+    public record Result(List<Evidence> evidences, int boostedCount) {}
 
     /** 从画像快照提取信号; 容错: 字段缺失/类型不符一律忽略, 绝不让坏数据打断检索。 */
-    static Signal fromProfile(Map<String, Object> profile) {
+    public static Signal fromProfile(Map<String, Object> profile) {
         if (profile == null || profile.isEmpty()) return new Signal(null, List.of());
         String target = profile.get("target_position") == null
                 ? null : String.valueOf(profile.get("target_position")).trim();
@@ -71,7 +71,7 @@ final class ProfilePersonalizer {
     }
 
     /** 候选池重排并裁剪到 topK。candidates 无需预先排序; 相同加成保持原相对顺序 (稳定)。 */
-    static Result personalize(Signal signal, List<Evidence> candidates, int topK) {
+    public static Result personalize(Signal signal, List<Evidence> candidates, int topK) {
         List<Evidence> safeCandidates = candidates == null ? List.of() : candidates;
         if (topK <= 0 || safeCandidates.isEmpty() || signal == null || !signal.present()) {
             return new Result(safeCandidates.stream().limit(Math.max(0, topK)).toList(), 0);
@@ -112,7 +112,7 @@ final class ProfilePersonalizer {
     }
 
     /** ASCII 词元按词边界, 其余 (CJK 等) 按子串。 */
-    static boolean matches(String lowerText, String lowerToken) {
+    public static boolean matches(String lowerText, String lowerToken) {
         if (lowerText.isEmpty() || lowerToken == null || lowerToken.length() < 2) return false;
         if (lowerToken.chars().allMatch(c -> (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
             return Pattern.compile("(?<![a-z0-9])" + Pattern.quote(lowerToken) + "(?![a-z0-9])")

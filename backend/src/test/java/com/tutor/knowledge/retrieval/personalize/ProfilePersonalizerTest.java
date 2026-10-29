@@ -1,8 +1,8 @@
-package com.tutor.conversation.chat.application;
+package com.tutor.knowledge.retrieval.personalize;
 
 import com.tutor.contract.Evidence;
-import com.tutor.conversation.chat.application.ProfilePersonalizer.Result;
-import com.tutor.conversation.chat.application.ProfilePersonalizer.Signal;
+import com.tutor.knowledge.retrieval.personalize.ProfilePersonalizer.Result;
+import com.tutor.knowledge.retrieval.personalize.ProfilePersonalizer.Signal;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

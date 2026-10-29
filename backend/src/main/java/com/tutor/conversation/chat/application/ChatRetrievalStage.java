@@ -13,6 +13,7 @@ import com.tutor.conversation.memory.local.FactStore;
 import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.agentic.AgenticRetriever;
 import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
+import com.tutor.knowledge.retrieval.personalize.ProfilePersonalizer;
 
 import java.util.ArrayList;
 import java.util.List;

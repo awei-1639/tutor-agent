@@ -8,6 +8,7 @@ import com.tutor.knowledge.retrieval.GraphScope;
 import com.tutor.knowledge.retrieval.agentic.AgenticRetriever;
 import com.tutor.knowledge.retrieval.fusion.FusedRetriever;
 import com.tutor.knowledge.retrieval.graph.GraphExpansionPolicy;
+import com.tutor.knowledge.retrieval.personalize.ProfilePersonalizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -74,17 +75,37 @@ public class RetrievalToolService {
             hint = plan.retrievalHint();
         }
         GraphExpansionPolicy policy = GraphExpansionPolicy.forFacets(facets,
-                "agentic".equals(mode) ? IntentRouter.RetrievalHint.MULTI_CANDIDATE : hint);
+                "agentic".equals(mode) || "agentic_personalized".equals(mode)
+                        ? IntentRouter.RetrievalHint.MULTI_CANDIDATE : hint);
+        boolean personalized = "fused_personalized".equals(mode) || "agentic_personalized".equals(mode);
         List<Evidence> results;
-        if ("agentic".equals(mode)) {
-            results = agenticRetriever.retrieveAdaptiveResult(request.query(), topK, traceId, true, policy,
+        if ("agentic".equals(mode) || "agentic_personalized".equals(mode)) {
+            List<Evidence> pool = agenticRetriever.retrieveAdaptiveResult(request.query(),
+                    personalized ? topK + ProfilePersonalizer.POOL_EXTRA : topK,
+                    traceId, true, policy, GraphScope.publicOnly()).evidences();
+            results = personalized ? personalize(request.profile(), pool, topK) : pool;
+        } else if (personalized) {
+            List<Evidence> pool = retriever.retrieve(request.query(),
+                    topK + ProfilePersonalizer.POOL_EXTRA, traceId, true, false, policy,
                     GraphScope.publicOnly()).evidences();
+            results = personalize(request.profile(), pool, topK);
         } else {
             results = retriever.retrieve(request.query(), topK, traceId, !"vector_only".equals(mode),
                     "fused_rerank".equals(mode), policy, GraphScope.publicOnly()).evidences();
         }
         return Map.of("mode", mode, "latency_ms", System.currentTimeMillis() - started,
                 "results", results.stream().map(e -> Map.of("node_id", e.nodeId(), "type", e.nodeType(), "score", e.score())).toList());
+    }
+
+    /** 画像重排失败不阻断检索: 信号缺失时等价于纯裁剪, 解析异常降级为无画像。 */
+    private static List<Evidence> personalize(Map<String, Object> profile, List<Evidence> pool, int topK) {
+        ProfilePersonalizer.Signal signal;
+        try {
+            signal = ProfilePersonalizer.fromProfile(profile);
+        } catch (RuntimeException degraded) {
+            signal = ProfilePersonalizer.fromProfile(null);
+        }
+        return ProfilePersonalizer.personalize(signal, pool, topK).evidences();
     }
 
     private IntentRouter.RouteDecision routeDecision(String query, String traceId) {

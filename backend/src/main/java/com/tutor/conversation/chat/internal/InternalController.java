@@ -54,13 +54,15 @@ public class InternalController {
     }
 
     public record RetrieveRequest(@NotBlank @Size(max = 4000) String query,
-                                  @Min(1) @Max(20) Integer topK, @Size(max = 32) String mode) {}
+                                  @Min(1) @Max(20) Integer topK, @Size(max = 32) String mode,
+                                  @Size(max = 4) Map<String, Object> profile) {}
 
     @SuppressWarnings("unchecked")
     @PostMapping("/retrieve")
     public Map<String, Object> retrieve(@Valid @RequestBody RetrieveRequest req) {
         String traceId = MDC.get("traceId");
-        return (Map<String, Object>) toolExecutor.execute("retrieve", new ToolInputs.Retrieve(req.query(), req.topK(), req.mode()),
+        return (Map<String, Object>) toolExecutor.execute("retrieve",
+                new ToolInputs.Retrieve(req.query(), req.topK(), req.mode(), req.profile()),
                 new ToolExecutionContext(traceId, "eval", AuthContext.requireUserId(), null, false));
     }
 

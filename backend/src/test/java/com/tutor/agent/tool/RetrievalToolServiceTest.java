@@ -1,5 +1,6 @@
 package com.tutor.agent.tool;
 
+import com.tutor.contract.Evidence;
 import com.tutor.contract.Intent;
 import com.tutor.agent.expert.IntentRouter;
 import com.tutor.agent.expert.RoutingPolicy;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -112,6 +114,62 @@ class RetrievalToolServiceTest {
     }
 
     private static ToolInputs.Retrieve retrieve(String query) {
-        return new ToolInputs.Retrieve(query, 5, "fused");
+        return new ToolInputs.Retrieve(query, 5, "fused", null);
+    }
+
+    // ---- 画像感知模式 (fused_personalized / agentic_personalized) ----
+
+    private static Evidence evidence(String nodeId, String text) {
+        return new Evidence(nodeId, "skill", text, 0.5, null, null, null, "h", Evidence.KIND_REFERENCE);
+    }
+
+    @Test
+    void fusedPersonalizedFetchesOverflowPoolAndReranks() {
+        stubHappyPath();
+        // 内核收到 topK+POOL_EXTRA=12 的池请求
+        when(retriever.retrieve(anyString(), anyInt(), anyString(), anyBoolean(), anyBoolean(), any(), any()))
+                .thenReturn(new FusedRetriever.RetrievalOutcome(List.of(
+                        evidence("a", "向量数据库原理"), evidence("b", "无关内容"),
+                        evidence("c", "Redis 缓存穿透")), null));
+        RetrievalToolService service = service(false, true);
+
+        var result = service.retrieve(new ToolInputs.Retrieve(QUERY, 5, "fused_personalized",
+                Map.of("skills", List.of(Map.of("name", "Redis", "confidence", 1.0)))), "trace-p1");
+
+        verify(retriever).retrieve(anyString(), org.mockito.ArgumentMatchers.eq(12), anyString(),
+                anyBoolean(), anyBoolean(), any(), any());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+        // 命中画像的 b/c 中 c 被顶到最前, 池裁回 topK=5
+        assertThat(results.getFirst().get("node_id")).isEqualTo("c");
+    }
+
+    @Test
+    void fusedPersonalizedWithoutProfileDegradesToPlainCut() {
+        stubHappyPath();
+        when(retriever.retrieve(anyString(), anyInt(), anyString(), anyBoolean(), anyBoolean(), any(), any()))
+                .thenReturn(new FusedRetriever.RetrievalOutcome(List.of(
+                        evidence("a", "A"), evidence("b", "B")), null));
+        RetrievalToolService service = service(false, true);
+
+        var result = service.retrieve(new ToolInputs.Retrieve(QUERY, 5, "fused_personalized", null), "trace-p2");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
+        assertThat(results).extracting(r -> r.get("node_id")).containsExactly("a", "b");
+    }
+
+    @Test
+    void agenticPersonalizedUsesOverflowPoolToo() {
+        stubHappyPath();
+        when(agenticRetriever.retrieveAdaptiveResult(anyString(), anyInt(), anyString(), anyBoolean(), any(), any()))
+                .thenReturn(new AgenticRetriever.RetrievalResult(List.of(evidence("a", "A")), 1, false, "ok", null));
+        RetrievalToolService service = service(false, true);
+
+        service.retrieve(new ToolInputs.Retrieve(QUERY, 5, "agentic_personalized",
+                Map.of("target_position", "后端")), "trace-p3");
+
+        verify(agenticRetriever).retrieveAdaptiveResult(anyString(),
+                org.mockito.ArgumentMatchers.eq(12), anyString(), anyBoolean(), any(), any());
     }
 }
