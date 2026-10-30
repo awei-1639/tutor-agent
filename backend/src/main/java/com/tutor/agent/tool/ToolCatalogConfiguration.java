@@ -7,6 +7,7 @@ import com.tutor.contract.ToolSpec;
 import com.tutor.identity.profile.ProfileService;
 import com.tutor.coaching.push.PushService;
 import com.tutor.identity.resume.ResumeService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,9 +35,13 @@ public class ToolCatalogConfiguration {
     }
 
     @Bean
-    ToolRegistration retrievalTool(RetrievalToolService retrieval) {
+    ToolRegistration retrievalTool(RetrievalToolService retrieval,
+            @Value("${tutor.agent.tool.retrieve-timeout-seconds:30}") long retrieveTimeoutSeconds) {
+        // 默认 30s 覆盖单跳/融合检索；judge 驱动的多跳（每跳一次 judge LLM）在慢推理模型下
+        // 可能超过它，评测/部署侧可用该配置放宽，chat 主链路直调检索不受此契约约束。
+        if (retrieveTimeoutSeconds <= 0) throw new IllegalArgumentException("retrieve 超时必须为正数");
         return new ToolRegistration(
-                new ToolSpec("retrieve", ToolInputs.Retrieve.class, Duration.ofSeconds(30), true, SideEffect.L0,
+                new ToolSpec("retrieve", ToolInputs.Retrieve.class, Duration.ofSeconds(retrieveTimeoutSeconds), true, SideEffect.L0,
                         "按查询检索知识库证据，参数 query（字符串）与 top_n（整数，可选）"),
                 Set.of("eval", "chat", "planner", "resume", "interview"),
                 (input, context) -> retrieval.retrieve((ToolInputs.Retrieve) input, context.traceId()));
