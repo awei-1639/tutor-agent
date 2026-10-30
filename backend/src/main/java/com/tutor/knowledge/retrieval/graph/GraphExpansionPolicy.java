@@ -39,7 +39,11 @@ public record GraphExpansionPolicy(List<Rule> rules, double minSourceScore) {
             addRule(rules, new Rule("TEACHES", Direction.INCOMING, 0.85D, 1.0D));
         }
         if (effectiveFacets.contains(RoutingPolicy.RetrievalFacet.LEARNING)) {
-            addRule(rules, new Rule("PREREQUISITE", Direction.INCOMING, 0.80D, 1.0D));
+            // PREREQUISITE 入边加权 2.0 (multi_hop 诊断 2026-10-30): 学习意图下, 前置技能就是
+            // 问题的正主, 但它的 chunk 与查询词面无关, 单靠 RRF 基础分 (~alpha/(k+rank)≈0.06)
+            // 压不过双通道话题切片 (0.09+)。边类型本身编码了意图, 属于机制证据而非词面启发;
+            // 收益/风险由全量评测裁决 (四切片防退化)。
+            addRule(rules, new Rule("PREREQUISITE", Direction.INCOMING, 0.80D, 2.0D));
             addRule(rules, new Rule("TEACHES", Direction.INCOMING, 0.85D, 0.90D));
         }
         if (effectiveFacets.contains(RoutingPolicy.RetrievalFacet.CAREER)) {

@@ -79,22 +79,39 @@ public class RetrievalToolService {
                         ? IntentRouter.RetrievalHint.MULTI_CANDIDATE : hint);
         boolean personalized = "fused_personalized".equals(mode) || "agentic_personalized".equals(mode);
         List<Evidence> results;
+        FusedRetriever.RetrievalTelemetry telemetry;
         if ("agentic".equals(mode) || "agentic_personalized".equals(mode)) {
-            List<Evidence> pool = agenticRetriever.retrieveAdaptiveResult(request.query(),
+            AgenticRetriever.RetrievalResult pool = agenticRetriever.retrieveAdaptiveResult(request.query(),
                     personalized ? topK + ProfilePersonalizer.POOL_EXTRA : topK,
-                    traceId, true, policy, GraphScope.publicOnly()).evidences();
-            results = personalized ? personalize(request.profile(), pool, topK) : pool;
+                    traceId, true, policy, GraphScope.publicOnly());
+            telemetry = pool.telemetry();
+            results = personalized ? personalize(request.profile(), pool.evidences(), topK) : pool.evidences();
         } else if (personalized) {
-            List<Evidence> pool = retriever.retrieve(request.query(),
+            FusedRetriever.RetrievalOutcome pool = retriever.retrieve(request.query(),
                     topK + ProfilePersonalizer.POOL_EXTRA, traceId, true, false, policy,
-                    GraphScope.publicOnly()).evidences();
-            results = personalize(request.profile(), pool, topK);
+                    GraphScope.publicOnly());
+            telemetry = pool.telemetry();
+            results = personalize(request.profile(), pool.evidences(), topK);
         } else {
-            results = retriever.retrieve(request.query(), topK, traceId, !"vector_only".equals(mode),
-                    "fused_rerank".equals(mode), policy, GraphScope.publicOnly()).evidences();
+            FusedRetriever.RetrievalOutcome outcome = retriever.retrieve(request.query(), topK, traceId,
+                    !"vector_only".equals(mode), "fused_rerank".equals(mode), policy, GraphScope.publicOnly());
+            telemetry = outcome.telemetry();
+            results = outcome.evidences();
         }
-        return Map.of("mode", mode, "latency_ms", System.currentTimeMillis() - started,
-                "results", results.stream().map(e -> Map.of("node_id", e.nodeId(), "type", e.nodeType(), "score", e.score())).toList());
+        // 评测可观测性: facet/图策略/三路候选量随响应返回, 供离线归因 (遥测在主链路本就产生, 这里只是不再丢弃)。
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("mode", mode);
+        response.put("latency_ms", System.currentTimeMillis() - started);
+        response.put("results", results.stream().map(e -> Map.of("node_id", e.nodeId(), "type", e.nodeType(), "score", e.score())).toList());
+        response.put("facets", facets.stream().map(Enum::name).toList());
+        response.put("graph_relations", policy.relationDescriptions());
+        Map<String, Object> tele = new LinkedHashMap<>();
+        tele.put("dense_candidates", telemetry.denseCandidates());
+        tele.put("sparse_candidates", telemetry.sparseCandidates());
+        tele.put("graph_candidates", telemetry.graphCandidates());
+        tele.put("graph_expansion_sources", telemetry.graphExpansionSources());
+        response.put("telemetry", tele);
+        return response;
     }
 
     /** 画像重排失败不阻断检索: 信号缺失时等价于纯裁剪, 解析异常降级为无画像。 */

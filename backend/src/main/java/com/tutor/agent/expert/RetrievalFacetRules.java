@@ -39,7 +39,11 @@ public final class RetrievalFacetRules {
             "(这本书|这门课|这个课|这套课|这门课程|这份资料|这些资料|这套题|这个题库)"
                     + "|(适合(入门|新手|初学者|零基础|我看吗|我看么|自学))"
                     + "|(推荐.*(书|课程|课|资料|教材|视频|教程|题库))"
-                    + "|((书|课程|资料|题库|教程|教材|讲义).*(怎么样|好不好|适合|值得|有用吗|怎么看|先看哪))",
+                    + "|((书|课程|资料|题库|教程|教材|讲义).*(怎么样|好不好|适合|值得|有用吗|怎么看|先看哪))"
+                    // 资源问法补全 (multi_hop 诊断 2026-10-30): "有啥好书推荐/求文档教程/实战项目可以练手"
+                    // 此前落进 LEARNING, 图加权会把前置技能块挤到资源 gold 之前。
+                    + "|((有啥|有什么|求|来点|推荐).{0,10}(好书|书单|书|课程|资料|教材|教程|文档|题库|视频))"
+                    + "|(实战项目.{0,8}(练手|推荐|上手))",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern RESOURCE = Pattern.compile(
@@ -75,7 +79,10 @@ public final class RetrievalFacetRules {
     private static final Pattern LEARNING = Pattern.compile(
             "学习|先学|怎么学|学什么|怎么入门|学习计划|学习路径|路线图|规划|课表|排期|节奏|前置|基础|入门|"
                     +             "多久|知识点|考点|笔试|面试|真题|面经|复习|备考|技能|算法题|手撕|"
-                    + "刷题|项目实战|练手|掌握|精通|还差什么|缺什么|差在哪",
+                    + "刷题|项目实战|练手|掌握|精通|还差什么|缺什么|差在哪|"
+                    // 前置问法的口语变体 (multi_hop 诊断 2026-10-30): "先会/先懂/先补/提前看"
+                    // 与 "完全不懂/从哪儿开始" 在评测集 80 条里出现 10+ 次, 缺失导致图扩展没开。
+                    + "先会|先懂|先补|提前看|从哪儿开始|从哪里开始|完全不懂|打基础|预备|先准备|要会啥|得会啥",
             Pattern.CASE_INSENSITIVE);
 
     /** 岗位诉求里夹着技能差距评估: 要答"还差什么"必须拉技能依赖, 因此补 learning。 */
@@ -86,28 +93,37 @@ public final class RetrievalFacetRules {
     /**
      * 按文本信号判定检索 facet。判不出信号时返回空列表 (不做图扩展)。
      * 返回顺序固定为枚举序 (LEARNING, CAREER, RESOURCE), 便于断言与比对。
+     *
+     * <p>CONCEPT 让位 (multi_hop 诊断 2026-10-30): "正则化技术是啥？零基础想学，先得会哪些东西？"
+     * 这类混合意图会被「是啥」整体拦截成空 facet, 图扩展没开。学习/岗位信号在场时, 说明用户要的
+     * 不只是定义——此时 CONCEPT 不再抑制; 纯定义问法 (无任何学习/岗位信号) 仍维持空 facet。
      */
     public static List<RoutingPolicy.RetrievalFacet> classify(String query) {
         if (query == null || query.isBlank()) return List.of();
         String text = query.strip();
-        if (CONCEPT.matcher(text).find() || SOFT_SKILL.matcher(text).find()) {
+        if (SOFT_SKILL.matcher(text).find()) {
             return List.of();
         }
         if (RESOURCE_SUBJECT.matcher(text).find()) {
+            // 问题主体就是资料本身: 单给 resource, 不叠加 learning (标注规则 3), 优先级最高。
             return List.of(RoutingPolicy.RetrievalFacet.RESOURCE);
         }
-        Set<RoutingPolicy.RetrievalFacet> facets = EnumSet.noneOf(RoutingPolicy.RetrievalFacet.class);
         boolean career = CAREER.matcher(text).find()
                 || (JOB_TITLE.matcher(text).find() && JOB_REQUIREMENT.matcher(text).find());
+        boolean learning = LEARNING.matcher(text).find()
+                || (career && SKILL_GAP_WITH_CAREER.matcher(text).find());
+        if (!learning && CONCEPT.matcher(text).find()) {
+            return List.of();
+        }
+        Set<RoutingPolicy.RetrievalFacet> facets = EnumSet.noneOf(RoutingPolicy.RetrievalFacet.class);
         if (career) {
             facets.add(RoutingPolicy.RetrievalFacet.CAREER);
         }
-        if (LEARNING.matcher(text).find()
-                || (career && SKILL_GAP_WITH_CAREER.matcher(text).find())) {
+        if (learning) {
             facets.add(RoutingPolicy.RetrievalFacet.LEARNING);
         }
         // learning 已含 TEACHES (权重略低), 只有在没有 learning 语义时才单给 resource。
-        if (!facets.contains(RoutingPolicy.RetrievalFacet.LEARNING) && RESOURCE.matcher(text).find()) {
+        if (!learning && RESOURCE.matcher(text).find()) {
             facets.add(RoutingPolicy.RetrievalFacet.RESOURCE);
         }
         return List.copyOf(facets);

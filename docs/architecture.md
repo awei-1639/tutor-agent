@@ -372,6 +372,31 @@ LLM 不能直接执行任意图查询。跳数、候选规模、关系范围和�
   加成把词汇相似但语义更远的候选拱了上去，而 RRF 原排序本已调优；×1.25 封顶只防灾难、不防慢性退化。
   错位画像（D）同样低于基线，即"无关画像不加分也不免伤"。复评入口：`evals/run_personalize_eval.mjs`。
 
+### 4.6 多跳前置切片诊断与 facet/图加权修复（2026-10-30）
+
+四臂评测暴露 `multi_hop_prereq` 切片 Recall@5 仅 37.2%（天花板 97.7%，非指标结构性低估）。逐条归因
+（`/internal/retrieve` 新增 facets/graph_relations/telemetry 输出，图通道遥测随响应返回）后确认三层机制
+缺陷叠加 gold 噪声，随后按机制修复：
+
+| 缺陷 | 修复 |
+|---|---|
+| facet 措辞缺口：「先会/先懂/先补/提前看/完全不懂/从哪儿开始」不触发 LEARNING，图扩展没开 | `RetrievalFacetRules.LEARNING` 扩充口语前置问法 |
+| CONCEPT 过拦：「正则化技术是啥？零基础想学…」被「是啥」整体拦截成空 facet | CONCEPT 仅在无学习/岗位信号时抑制（混合意图让位） |
+| 资源问法漏判：「有啥好书推荐/实战项目可以练手」落进 LEARNING，图加权挤掉资源 gold | `RESOURCE_SUBJECT` 补全资料问法（资料主体单给 resource，规则 3） |
+| 图候选 RRF 打分不足：前置 chunk 与查询词面无关，`alpha/(k+rank)≈0.06` 压不过双通道话题切片（0.09+） | LEARNING facet 下 `PREREQUISITE` 入边权重 1.0→2.0——边类型本身编码意图，属机制证据而非词面启发 |
+
+全量 280 条复测（fused 臂，评测结果 `evals/results/fused_facet_fix_2026-10-30.json`）：
+**整体 Recall@5 62.6%→70.4%、Hit@5 89.3%→96.1%、MRR 0.707→0.779**；`multi_hop_prereq` 切片
+Recall@5 37.2%→66.4%、Hit@5 75%→100%（零命中清零）；`resource_rec` 与基线持平（97.5% Hit），
+`job_requirement` -1pp（名次级，无新增零命中），`single_hop` -1.7pp（1 条）。其余发现：
+
+- `retrieve` 工具超时可配置（`tutor.agent.tool.retrieve-timeout-seconds`，默认 30s 不变）——judge 驱动
+  的多跳在慢推理模型下会超 30s 顶，评测路径（ToolExecutor）因此失真；chat 主链路直调检索不受此约束；
+- 逐条 gold 复核推翻了部分"gold 噪声"初判：q217/q274（数学题挂 DSA/python gold）与图数据一致，
+  是有效标注；真正无解的是 gold 与图都不覆盖的少数案例（如 Transformer 无已知前置）；
+- channel-floor（各通道保底 1 名额）对图候选无增益：保底名额被"同时也是 dense 命中"的节点占掉，
+  保持默认关闭。
+
 ## 5. 记忆、文档和业务闭环
 
 ### 记忆

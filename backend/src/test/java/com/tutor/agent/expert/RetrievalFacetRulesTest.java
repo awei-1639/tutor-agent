@@ -111,4 +111,37 @@ class RetrievalFacetRulesTest {
         assertThat(RetrievalFacetRules.classify("帮我改简历，再规划一下复习"))
                 .containsExactly(RoutingPolicy.RetrievalFacet.LEARNING, RoutingPolicy.RetrievalFacet.CAREER);
     }
+
+    /**
+     * multi_hop 诊断 (2026-10-30) 的两层回归锁定:
+     * 1) 混合意图不再被 CONCEPT「是啥」整体拦截; 2) 口语前置问法触发 LEARNING。
+     */
+    @Test
+    void mixedIntentAndOralPrereqPhrasingsTriggerLearning() {
+        // 混合意图: 「是啥」+ 前置诉求 → 学习 (此前被 CONCEPT 拦成空 facet)
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("正则化技术是啥？零基础想学，先得会哪些东西？")))
+                .isEqualTo(LEARNING);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("集成学习是啥？零基础想学的话，之前要学点什么？")))
+                .isEqualTo(LEARNING);
+        // 口语前置问法 (rag_testset q221/q230/q250/q273/q274 实测漏判的形态)
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("激活函数，完全不懂，得先会哪些知识？")))
+                .isEqualTo(LEARNING);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("我想学数据清洗和整理，但啥都不会，得先会啥呀？")))
+                .isEqualTo(LEARNING);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("ETL流水线，小白要从哪里开始学？")))
+                .isEqualTo(LEARNING);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("学概率论和统计，需要先会啥？")))
+                .isEqualTo(LEARNING);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("词向量这块，零基础的话得先补啥知识？")))
+                .isEqualTo(LEARNING);
+        // 纯概念问法 (无学习/岗位信号) 仍维持空 facet
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("什么是检索增强生成"))).isEqualTo(NONE);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("LoRA微调和全参数微调有什么区别"))).isEqualTo(NONE);
+        // 资源问法补全: 资料主体单给 resource, 不叠加 learning (防止图加权挤掉资源 gold)
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("机器学习基础有啥好书推荐？"))).isEqualTo(RESOURCE);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("机器学习基础有啥实战项目可以练手？"))).isEqualTo(RESOURCE);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("求Python基础的文档教程，最好详细点的"))).isEqualTo(RESOURCE);
+        // 岗位语意的「有什么项目经验」不得误判为资源
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("简历里写什么项目经验比较加分"))).isEqualTo(CAREER);
+    }
 }
