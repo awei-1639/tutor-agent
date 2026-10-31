@@ -68,6 +68,18 @@ public record GraphExpansionPolicy(List<Rule> rules, double minSourceScore) {
         return new GraphExpansionPolicy(List.of(rules), 0.15D);
     }
 
+    /**
+     * 岗位需求清单的定向查询策略：只认 Job-[:REQUIRES]->Skill 这一条出边。
+     *
+     * <p>与 {@link #forFacets} 分开，是因为它的用途不同：facet 策略决定「用什么关系扩召回」，
+     * 这里只用于把一个已经命中的岗位节点翻译成它的技能集合（答案形态转换），
+     * 候选排序仍然由 RRF 决定。关系类型同样受 {@link #ALLOWED_RELATIONS} 白名单约束，
+     * 且不读任何 LLM 输出。
+     */
+    public static GraphExpansionPolicy jobRequirementLookup() {
+        return of(new Rule("REQUIRES", Direction.OUTGOING, 0.80D, 1.0D));
+    }
+
     public List<String> relationDescriptions() {
         return rules.stream().map(rule -> rule.relation()
                 + (rule.direction() == Direction.OUTGOING ? "->" : "<-" )).toList();

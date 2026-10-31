@@ -163,8 +163,7 @@ final class RetrievalCandidatePipeline {
                 })
                 .filter(evidence -> evidence != null)
                 .toList();
-        List<Evidence> answerShaped = JobSkillAnswerPolicy.promoteRequiredSkills(
-                ranked, neighbors, byId, query);
+        List<Evidence> answerShaped = reshapeJobAnswer(ranked, byId, query, topK, effectiveScope);
         List<Evidence> selected = !channelFloorEnabled ? answerShaped.stream().limit(topK).toList()
                 : FusedRetriever.ensureChannelFloor(answerShaped, topK,
                 denseHits.stream().map(VectorStore.VectorHit::nodeId).collect(java.util.stream.Collectors.toSet()),
@@ -174,6 +173,37 @@ final class RetrievalCandidatePipeline {
                 denseHits.size(), sparseHits.size(), neighbors.size(), expandSources.size(),
                 false, sparseDegraded, false, false));
     }
+
+    /**
+     * 技能寻求型查询的答案形态转换（详见 {@link JobSkillAnswerPolicy}）。
+     *
+     * <p>这里单独补一次 REQUIRES 查询，而不是复用上面的扩展结果：扩展起点只取 dense/sparse
+     * 各自的前 N 名与别名种子，命中 topK 的岗位节点未必在其中（实测只有 34/60 的岗位查询
+     * 能靠通用扩展拿到 REQUIRES 边）。直接对命中的岗位节点做定向一跳，代价是每次最多一次
+     * 图查询 + 一次 byNodeIds 回捞，且只在「技能寻求型 ∧ 命中里有岗位节点」时发生。
+     */
+    private List<Evidence> reshapeJobAnswer(List<Evidence> ranked, Map<String, VectorStore.VectorHit> byId,
+                                            String query, int topK, GraphScope scope) {
+        if (ranked.isEmpty() || !JobSkillQueryClassifier.classify(query).seeking()) return ranked;
+        List<String> jobIds = ranked.stream()
+                .map(Evidence::nodeId)
+                .filter(id -> id != null && id.startsWith(JobSkillAnswerPolicy.JOB_PREFIX))
+                .distinct()
+                .limit(JOB_SEED_LIMIT)
+                .toList();
+        if (jobIds.isEmpty()) return ranked;
+        List<GraphStore.Neighbor> requires = graphStore.expand(jobIds, JobSkillAnswerPolicy.MAX_PROMOTED,
+                JOB_SEED_LIMIT * JobSkillAnswerPolicy.MAX_PROMOTED,
+                GraphExpansionPolicy.jobRequirementLookup(), scope);
+        if (requires.isEmpty()) return ranked;
+        List<String> missing = requires.stream().map(GraphStore.Neighbor::dstId)
+                .filter(id -> id != null && !byId.containsKey(id)).distinct().toList();
+        if (!missing.isEmpty()) byId.putAll(vectorStore.byNodeIds(missing, scope));
+        return JobSkillAnswerPolicy.promoteRequiredSkills(ranked, requires, byId, query, topK);
+    }
+
+    /** 最多把前两个岗位节点翻译成技能: 再多说明召回本身已经在漂, 不该继续替它作答。 */
+    private static final int JOB_SEED_LIMIT = 2;
 
     private List<String> aliasSources(String query, GraphExpansionPolicy graphPolicy,
                                       GraphScope scope) {

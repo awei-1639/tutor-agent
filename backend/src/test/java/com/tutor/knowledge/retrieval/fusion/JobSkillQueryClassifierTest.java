@@ -25,6 +25,37 @@ class JobSkillQueryClassifierTest {
     }
 
     @Test
+    void firesOnSynonymPhrasingsThatTheFirstVersionMissed() {
+        // 评测集里同样在问技能清单, 但动词是「要求什么/具备哪些/要啥」——首版漏判 7/60。
+        List<String> queries = List.of(
+                "视界科技的NLP多模态岗，要求什么技能？",
+                "华为的大模型应用开发工程师，要求哪些技术？",
+                "网易的算法岗要求什么呀？",
+                "字节跳动的算法实习生，得具备什么能力？",
+                "三维视界的计算机视觉工程师（三维重建），得懂哪些东西？",
+                "百川智能大模型训练实习岗要啥技能？");
+        for (String query : queries) {
+            assertThat(JobSkillQueryClassifier.classify(query).seeking())
+                    .as("应该判定为技能寻求型: %s", query)
+                    .isTrue();
+        }
+    }
+
+    @Test
+    void doesNotFireWithoutRoleContextEvenIfADemandVerbIsPresent() {
+        // 「需要改哪些层」是学习建议, 不是岗位需求; 缺岗位语境时不得触发答案形态转换,
+        // 否则会把一个无关岗位的 REQUIRES 技能塞进答案（实测会让 single_hop 切片掉 5pp）。
+        List<String> queries = List.of(
+                "微调BERT做情感分析需要改哪些层？",
+                "做数据清洗需要掌握哪些工具？");
+        for (String query : queries) {
+            assertThat(JobSkillQueryClassifier.classify(query).seeking())
+                    .as("无岗位语境不应判定为技能寻求型: %s", query)
+                    .isFalse();
+        }
+    }
+
+    @Test
     void doesNotFireOnRecommendationOrDefinitionQueries() {
         List<String> queries = List.of(
                 "推荐几个NLP算法岗的职位",
