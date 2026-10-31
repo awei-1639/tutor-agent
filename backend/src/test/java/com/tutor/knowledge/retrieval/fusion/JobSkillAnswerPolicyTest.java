@@ -17,11 +17,12 @@ class JobSkillAnswerPolicyTest {
     private static final String JOB_ID = "job:nlp-algorithm-engineer-3";
 
     @Test
-    void promotesRequiredSkillsInPlaceOfTheTopJobNode() {
+    void promotesRequiredSkillsAndDropsEveryJobSlot() {
         Evidence job = evidence(JOB_ID, "job", 0.82D);
         Evidence siblingJob = evidence("job:nlp-engineer-302", "job", 0.07D);
-        List<Evidence> ranked = List.of(job, siblingJob);
-        List<GraphStore.Neighbor> neighbors = List.of(
+        Evidence skill = evidence("skill:python-basics", "skill", 0.06D);
+        List<Evidence> ranked = List.of(job, siblingJob, skill);
+        List<GraphStore.Neighbor> requires = List.of(
                 requires(JOB_ID, "skill:rag", 0.9D),
                 requires(JOB_ID, "skill:transformers", 0.95D),
                 requires(JOB_ID, "skill:inactive", 0.99D, "inactive"),
@@ -30,58 +31,85 @@ class JobSkillAnswerPolicyTest {
         hits.put("skill:rag", new VectorStore.VectorHit("skill:rag", "skill", "RAG 检索增强", 0.5D));
         hits.put("skill:transformers", new VectorStore.VectorHit("skill:transformers", "skill", "Transformer 结构", 0.6D));
 
-        List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(ranked, neighbors, hits, SKILL_SEEKING);
+        List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(ranked, requires, hits, SKILL_SEEKING, 5);
 
-        assertThat(result).hasSize(3);
-        assertThat(result.get(0).nodeId()).isEqualTo("skill:transformers");
-        assertThat(result.get(1).nodeId()).isEqualTo("skill:rag");
+        // 置信度高的前置优先, inactive 边被过滤; 岗位节点(含兄弟岗位)全部让位, 独立召回保留在最后
+        assertThat(result).extracting(Evidence::nodeId)
+                .containsExactly("skill:transformers", "skill:rag", "skill:python-basics");
         assertThat(result.get(0).score()).isEqualTo(0.82D);
         assertThat(result.get(0).chunkText()).isEqualTo("Transformer 结构");
         assertThat(result.get(0).graphPath()).contains("REQUIRES");
-        assertThat(result).extracting(Evidence::nodeId).doesNotContain(JOB_ID);
-        assertThat(result.get(2).nodeId()).isEqualTo("job:nlp-engineer-302");
     }
 
     @Test
     void leavesRankingUnchangedWhenQueryIsNotSkillSeeking() {
         Evidence job = evidence(JOB_ID, "job", 0.82D);
-        List<GraphStore.Neighbor> neighbors = List.of(requires(JOB_ID, "skill:rag", 0.9D));
+        List<GraphStore.Neighbor> requires = List.of(requires(JOB_ID, "skill:rag", 0.9D));
 
         List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(
-                List.of(job), neighbors, Map.of(), "推荐几个NLP算法岗的职位");
+                List.of(job), requires, Map.of(), "推荐几个NLP算法岗的职位", 5);
 
         assertThat(result).containsExactly(job);
     }
 
     @Test
-    void leavesRankingUnchangedWhenTopNodeIsNotAJob() {
+    void leavesRankingUnchangedWhenNoJobNodeIsRetrieved() {
         Evidence skill = evidence("skill:transformers", "skill", 0.9D);
-        List<GraphStore.Neighbor> neighbors = List.of(requires(JOB_ID, "skill:rag", 0.9D));
+        List<GraphStore.Neighbor> requires = List.of(requires(JOB_ID, "skill:rag", 0.9D));
 
         List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(
-                List.of(skill), neighbors, Map.of(), SKILL_SEEKING);
+                List.of(skill), requires, Map.of(), SKILL_SEEKING, 5);
 
         assertThat(result).containsExactly(skill);
     }
 
     @Test
-    void leavesRankingUnchangedWhenTheTopJobHasNoRequiresNeighbors() {
+    void leavesRankingUnchangedWhenTheJobHasNoActiveRequiresEdges() {
         Evidence job = evidence(JOB_ID, "job", 0.82D);
-        List<GraphStore.Neighbor> neighbors = List.of(teaches("skill:transformers", "skill:rag", 1.0D));
+        List<GraphStore.Neighbor> edges = List.of(teaches("skill:transformers", "skill:rag", 1.0D));
 
         List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(
-                List.of(job), neighbors, Map.of(), SKILL_SEEKING);
+                List.of(job), edges, Map.of(), SKILL_SEEKING, 5);
 
         assertThat(result).containsExactly(job);
     }
 
     @Test
-    void fallsBackToNodeNameWhenNoVectorHitExistsForASkill() {
-        Evidence job = evidence(JOB_ID, "job", 0.5D);
-        List<GraphStore.Neighbor> neighbors = List.of(requires(JOB_ID, "skill:rag", 0.9D));
+    void capsPromotionsAtTopKMinusOneSoOneIndependentSlotSurvives() {
+        Evidence job = evidence(JOB_ID, "job", 0.82D);
+        List<GraphStore.Neighbor> requires = List.of(
+                requires(JOB_ID, "skill:a", 1.0D), requires(JOB_ID, "skill:b", 0.9D),
+                requires(JOB_ID, "skill:c", 0.8D), requires(JOB_ID, "skill:d", 0.7D),
+                requires(JOB_ID, "skill:e", 0.6D), requires(JOB_ID, "skill:f", 0.5D));
 
         List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(
-                List.of(job), neighbors, Map.of(), SKILL_SEEKING);
+                List.of(job), requires, Map.of(), SKILL_SEEKING, 5);
+
+        assertThat(result).extracting(Evidence::nodeId)
+                .containsExactly("skill:a", "skill:b", "skill:c", "skill:d");
+    }
+
+    @Test
+    void doesNotPromoteSkillsThatAlreadyOccupyTopK() {
+        Evidence job = evidence(JOB_ID, "job", 0.82D);
+        Evidence existing = evidence("skill:rag", "skill", 0.09D);
+        List<GraphStore.Neighbor> requires = List.of(
+                requires(JOB_ID, "skill:rag", 1.0D), requires(JOB_ID, "skill:transformers", 0.9D));
+
+        List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(
+                List.of(job, existing), requires, Map.of(), SKILL_SEEKING, 5);
+
+        assertThat(result).extracting(Evidence::nodeId)
+                .containsExactly("skill:transformers", "skill:rag");
+    }
+
+    @Test
+    void fallsBackToNodeNameWhenNoVectorHitExistsForASkill() {
+        Evidence job = evidence(JOB_ID, "job", 0.5D);
+        List<GraphStore.Neighbor> requires = List.of(requires(JOB_ID, "skill:rag", 0.9D));
+
+        List<Evidence> result = JobSkillAnswerPolicy.promoteRequiredSkills(
+                List.of(job), requires, Map.of(), SKILL_SEEKING, 5);
 
         assertThat(result.get(0).nodeId()).isEqualTo("skill:rag");
         assertThat(result.get(0).chunkText()).isEqualTo("rag");

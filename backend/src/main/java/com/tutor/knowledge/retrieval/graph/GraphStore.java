@@ -167,7 +167,54 @@ public class GraphStore {
         return result.available() ? result.value() : List.of();
     }
 
+    /**
+     * 两跳前置的置信度折扣：保证直接前置永远排在传递前置之前，第二跳只补位不抢位。
+     *
+     * <p>取值 0.85 是算出来的，不是拍的：第二跳得分 = alpha * weight * dampen / (rrfK + seedRank)，
+     * 要挤进 top5 必须高于 dense 第 5 名的 1/(rrfK+5)=0.0667。dampen=0.6 时只有 seedRank≤5 才够，
+     * 实测第二跳恰好停在 9-12 名；0.85 可覆盖 seedRank≤10，同时仍低于第一跳（1.0），
+     * 保持「直接前置优先于传递前置」的语义。
+     */
+    static final double SECOND_HOP_DAMPEN = 0.85D;
+
     private static String branch(GraphExpansionPolicy.Rule rule) {
+        return rule.maxHops() > 1 ? multiHopBranch(rule) : singleHopBranch(rule);
+    }
+
+    /**
+     * 两跳扩展 (LEARNING + PREREQUISITE)。评测集 gold 标的是前置关系的传递闭包，
+     * 单跳只能覆盖直接前置，第二跳前置（python-basics / calculus 这类最底层基础）
+     * 连 top20 都进不来。这里用变长路径一次查到 1..2 跳，按深度打折后排序；
+     * 同一邻居的多条路径只保留得分最高的一条，避免重复占满 perSource 名额。
+     */
+    private static String multiHopBranch(GraphExpansionPolicy.Rule rule) {
+        String relation = rule.relation();
+        String visible = scopePredicate("m");
+        String walk = switch (rule.direction()) {
+            case INCOMING -> "(m:Seed)-[:" + relation + "*1.." + rule.maxHops() + "]->(n)";
+            case OUTGOING -> "(n)-[:" + relation + "*1.." + rule.maxHops() + "]->(m:Seed)";
+        };
+        String pathEdge = "x IN relationships(p)";
+        String bestEdge = "x IN relationships(bestPath)";
+        return "MATCH p = " + walk + " "
+                + "WHERE m.node_id <> n.node_id AND " + visible + " "
+                + "AND all(" + pathEdge + " WHERE coalesce(x.status, 'active')='active' "
+                + "AND coalesce(x.confidence, 1.0) >= " + rule.minConfidence() + ") "
+                + "WITH m, p, length(p) AS depth, "
+                + "reduce(mn = 1.0, " + pathEdge + " | CASE WHEN coalesce(x.confidence, 1.0) < mn "
+                + "THEN coalesce(x.confidence, 1.0) ELSE mn END) AS pathConfidence "
+                + "WITH m, p, pathConfidence * CASE WHEN depth = 1 THEN 1.0 ELSE "
+                + SECOND_HOP_DAMPEN + " END AS weighted "
+                + "ORDER BY weighted DESC, m.node_id "
+                + "WITH m, collect(p)[0] AS bestPath, collect(weighted)[0] AS bestConfidence "
+                + "RETURN '" + relation + "' AS rel, m, '" + rule.direction().name() + "' AS direction, "
+                + "bestConfidence AS confidence, "
+                + "head([" + bestEdge + " | coalesce(x.source, 'seed')]) AS edge_source, "
+                + "head([" + bestEdge + " | coalesce(x.status, 'active')]) AS edge_status "
+                + "ORDER BY confidence DESC, m.node_id LIMIT $perSource";
+    }
+
+    private static String singleHopBranch(GraphExpansionPolicy.Rule rule) {
         String relation = rule.relation();
         String visible = scopePredicate("m");
         String quality = "coalesce(r.status, 'active')='active' AND coalesce(r.confidence, 1.0) >= "

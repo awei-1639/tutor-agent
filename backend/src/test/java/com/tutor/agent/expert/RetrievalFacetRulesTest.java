@@ -144,4 +144,23 @@ class RetrievalFacetRulesTest {
         // 岗位语意的「有什么项目经验」不得误判为资源
         assertThat(Set.copyOf(RetrievalFacetRules.classify("简历里写什么项目经验比较加分"))).isEqualTo(CAREER);
     }
+
+    /**
+     * 策略选择 vs 学习顺序 (multi_hop 二轮诊断 2026-10-31 的 q010 坏例)。
+     *
+     * <p>「先刷 easy 还是直接 hard」问的是做法, 前置图扩展会把方法论正主 (leetcode-practice)
+     * 挤出 top5; 而「先学 A 还是 B」两个选项是不同的知识实体, 前置依赖正是答案, 必须保留 LEARNING。
+     */
+    @Test
+    void strategyChoiceSuppressesPrereqExpansionWithoutSwallowingLearningOrder() {
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("LeetCode刷题是先刷easy还是直接hard？")))
+                .doesNotContain(RoutingPolicy.RetrievalFacet.LEARNING);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("做项目是先做后端还是先把前端搭起来比较稳？")))
+                .doesNotContain(RoutingPolicy.RetrievalFacet.LEARNING);
+        // 学习顺序: 两个选项都是知识实体, 不能抑制
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("我该先学机器学习还是直接上手LangChain")))
+                .isEqualTo(LEARNING);
+        assertThat(Set.copyOf(RetrievalFacetRules.classify("学后端应该先学 Java 还是先学 Go？")))
+                .isEqualTo(LEARNING);
+    }
 }

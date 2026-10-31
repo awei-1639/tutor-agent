@@ -34,6 +34,23 @@ public final class RetrievalFacetRules {
             "面试官问|怎么回答|该怎么回答|如何回答|怎么表达|如何表达|该怎么说|话术|怎么开口|怎么跟.*说",
             Pattern.CASE_INSENSITIVE);
 
+    /**
+     * 策略/顺序选择: 问的是「先刷哪个 / 先做哪一步」, 答案在方法论本身, 不在前置技能链上。
+     *
+     * <p>multi_hop 二轮诊断 (2026-10-31) 的 q010 坏例: 「LeetCode 刷题是先刷 easy 还是直接 hard?」
+     * gold 是 leetcode-practice, 但「刷题」触发了 LEARNING, 前置扩展把 DSA / python-basics 拱到前面,
+     * 正主被挤掉。
+     *
+     * <p>只认「执行动作」类动词 (刷/做/背/练/准备/投/写), 不认「学」与「看」:
+     * 「我该先学机器学习还是直接上手 LangChain」「先看线代还是微积分」问的是**学习顺序**,
+     * 两个选项是不同的知识实体, 前置依赖恰恰就是答案, 必须保留 LEARNING
+     * (人工标注语料里的正例, 早期版本误伤过)。
+     */
+    private static final Pattern STRATEGY_CHOICE = Pattern.compile(
+            "先(刷|做|背|练|准备|投|写).{0,12}(还是|或者|或)"
+                    + "|(还是|或者).{0,12}先(刷|做|背|练|准备|投|写)",
+            Pattern.CASE_INSENSITIVE);
+
     /** 问题主体就是资料本身: 单给 resource, 不叠加 learning (标注规则 3)。 */
     private static final Pattern RESOURCE_SUBJECT = Pattern.compile(
             "(这本书|这门课|这个课|这套课|这门课程|这份资料|这些资料|这套题|这个题库)"
@@ -112,6 +129,12 @@ public final class RetrievalFacetRules {
                 || (JOB_TITLE.matcher(text).find() && JOB_REQUIREMENT.matcher(text).find());
         boolean learning = LEARNING.matcher(text).find()
                 || (career && SKILL_GAP_WITH_CAREER.matcher(text).find());
+        // 策略/顺序选择问法: 关掉前置图扩展。它会用「先学什么」的方式回答「先做哪个」的问题,
+        // 把方法论正主 (岗位/刷题/项目类技能) 挤出 top5。
+        boolean strategyChoice = STRATEGY_CHOICE.matcher(text).find();
+        if (strategyChoice) {
+            learning = false;
+        }
         if (!learning && CONCEPT.matcher(text).find()) {
             return List.of();
         }
