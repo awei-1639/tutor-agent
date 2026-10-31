@@ -397,6 +397,61 @@ Recall@5 37.2%→66.4%、Hit@5 75%→100%（零命中清零）；`resource_rec` 
 - channel-floor（各通道保底 1 名额）对图候选无增益：保底名额被"同时也是 dense 命中"的节点占掉，
   保持默认关闭。
 
+### 4.7 两跳前置扩展与策略选择抑制（2026-10-31）
+
+4.6 之后 `multi_hop_prereq` 已到 66.4%、零命中清零，但缺口性质没查清。按 gold 规模拆解发现：
+**top5 里平均只有 2.15 个名额被 gold 占用，还空着 2.85 个**——连 gold 只有 2 个的案例也只命中 1.41 个。
+说明不是"位置不够"，而是 gold 压根没进 top5。
+
+用 topK=20 的探针区分召回与排序：Recall@20 仅 83.2%，**19.9% 的 gold 连前 20 都进不来**，且缺失的
+全是 `python-basics`(7x)、`calculus`、`gradient-descent`、`activation-functions` 这类最底层基础。
+这些技能在 `kg_chunks` 里都有切片（495 节点 / 495 chunks），所以不是数据缺失。
+
+根因：**评测集 gold 标的是前置关系的传递闭包，而图扩展只走单跳**。「学 PyTorch 前要会什么」的 gold
+含 `neural-networks`（直接前置）和 `deep-learning-basics`（前置的前置）。Cypher 验证两跳闭包与 gold
+完全一致（`pytorch` → {deep-learning-basics, neural-networks, python-basics}；`data-augmentation` →
+{calculus, deep-learning-basics, gradient-descent, machine-learning-fundamentals}），平均 3.04 个
+邻居、最大 8 个，规模可控。
+
+| 改动 | 说明 |
+|---|---|
+| `GraphExpansionPolicy.Rule` 增加 `maxHops`（1 或 2，硬编码安全边界） | 只有传递语义的关系才允许走第二跳；`TEACHES`/`REQUIRES` 保持单跳 |
+| LEARNING 下 `PREREQUISITE` 入边改为 `*1..2` 变长路径 | 一次查到两跳闭包，同邻居多路径只保留最高分那条，不重复占 `perSource` 名额 |
+| 第二跳置信度 × 0.85 | 见下 |
+| `STRATEGY_CHOICE` 抑制前置扩展 | 「先刷 easy 还是直接 hard」是做法问题，不是「要学什么」 |
+
+**0.85 这个折扣是算出来的**：第二跳得分 = `alpha × weight × dampen / (rrfK + seedRank)`，要进 top5
+必须高于 dense 第 5 名的 `1/(rrfK+5)=0.0667`。dampen=0.6 时只有 seedRank≤5 才够——实测第二跳恰好停在
+9-12 名（Recall@5 反而 67.0%→66.2%）；0.85 可覆盖 seedRank≤10，同时仍低于第一跳（1.0），保持
+「直接前置优先于传递前置」。
+
+**策略选择抑制**来自 q010 坏例：「LeetCode 刷题是先刷 easy 还是直接 hard?」gold 是 `leetcode-practice`，
+但「刷题」触发 LEARNING，前置扩展把 DSA / python-basics 拱上来，正主被挤出 top5。判据只认**动作类**
+动词（刷/做/背/练/准备/投/写）+「还是/或」，**不认「学」与「看」**——「我该先学机器学习还是直接上手
+LangChain」「先看线代还是微积分」问的是学习顺序，两个选项是不同的知识实体，前置依赖恰恰就是答案。
+（收窄前曾在人工标注语料上误伤一条，40/40 掉到 39/40，已修正并加回归用例。）
+
+全量 280 条复测（`evals/results/fused_two_hop_2026-10-31.json`）：
+
+| 切片 | 4.6 之后 | 本次 | Δ |
+|---|---|---|---|
+| 整体 | 70.4% / Hit 96.1% / MRR 0.779 | **71.2% / 95.7% / 0.785** | +0.8pp |
+| multi_hop_prereq | 66.4% / Hit 100% / MRR 0.768 | **69.4% / 98.75% / 0.786** | **+3.0pp** |
+| single_hop_skill | 93.3% | 93.3% | 持平（q010 已修回） |
+| resource_rec | 63.9% / 97.5% | 63.9% / 97.5% | 持平 |
+| job_requirement | 61.2% / 91.7% | 61.2% / 91.7% | 持平 |
+
+`multi_hop` 的 Recall@20 从 83.2%→**91.8%**，完全未召回的 gold 从 19.9%→10.7%——两跳把「不可达」
+变成了「可达」，这是结构性改善而非调参收益。
+
+边界与遗留：
+
+- 唯一回归是 `multi_hop` 的 Hit@5 100%→98.75%（1 条 q215）。核对判定为**标注口径分歧**：用户问
+  「词向量零基础得先补啥」，返回线代/微积分/DL 基础其实贴合问题，但 gold 只标到 NLP/RNN。
+  不为它改代码（否则就是对评测集过拟合）。
+- 剩余 10.7% 完全未召回的 gold 仍需图数据或标注口径层面解决，不是检索算法能补的。
+- 两跳只作用于 LEARNING facet 的 `PREREQUISITE`；chat 主链路与评测链路共用同一套策略。
+
 ## 5. 记忆、文档和业务闭环
 
 ### 记忆

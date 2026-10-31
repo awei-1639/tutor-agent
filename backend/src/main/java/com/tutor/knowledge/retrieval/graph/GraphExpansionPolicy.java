@@ -43,7 +43,14 @@ public record GraphExpansionPolicy(List<Rule> rules, double minSourceScore) {
             // 问题的正主, 但它的 chunk 与查询词面无关, 单靠 RRF 基础分 (~alpha/(k+rank)≈0.06)
             // 压不过双通道话题切片 (0.09+)。边类型本身编码了意图, 属于机制证据而非词面启发;
             // 收益/风险由全量评测裁决 (四切片防退化)。
-            addRule(rules, new Rule("PREREQUISITE", Direction.INCOMING, 0.80D, 2.0D));
+            //
+            // 两跳 (multi_hop 二轮诊断 2026-10-31): 评测集 gold 标的是前置关系的传递闭包——
+            // 「学 PyTorch 先会什么」的 gold 含 neural-networks (直接前置) 和 deep-learning-basics
+            // (前置的前置)。单跳只覆盖前者, 剩余缺口有 19.9% 的 gold 连 top20 都进不来, 且
+            // 全是 python-basics / calculus / gradient-descent 这类最底层基础。图里两跳可达性
+            // 已验证 (pytorch/data-augmentation 的两跳闭包与 gold 完全一致), 平均 3.04 个邻居,
+            // 规模可控。第二跳在 GraphStore 里按 confidence 打折, 让直接前置始终排在前面。
+            addRule(rules, new Rule("PREREQUISITE", Direction.INCOMING, 0.80D, 2.0D, 2));
             addRule(rules, new Rule("TEACHES", Direction.INCOMING, 0.85D, 0.90D));
         }
         if (effectiveFacets.contains(RoutingPolicy.RetrievalFacet.CAREER)) {
@@ -54,7 +61,7 @@ public record GraphExpansionPolicy(List<Rule> rules, double minSourceScore) {
     }
 
     private static void addRule(LinkedHashMap<String, Rule> rules, Rule rule) {
-        rules.putIfAbsent(rule.relation() + ':' + rule.direction(), rule);
+        rules.putIfAbsent(rule.relation() + ':' + rule.direction() + ':' + rule.maxHops(), rule);
     }
 
     public static GraphExpansionPolicy of(Rule... rules) {
@@ -80,9 +87,18 @@ public record GraphExpansionPolicy(List<Rule> rules, double minSourceScore) {
         return !rules.isEmpty();
     }
 
-    public record Rule(String relation, Direction direction, double minConfidence, double weight) {
+    /**
+     * 单条扩展规则。{@code maxHops} 是安全边界的一部分（直接写在代码里，不开放配置）：
+     * 目前只允许 1（直接邻居）或 2（两跳闭包），且只有 PREREQUISITE 这类"传递性前置"语义
+     * 才值得走到第二跳。
+     */
+    public record Rule(String relation, Direction direction, double minConfidence, double weight, int maxHops) {
         public Rule(String relation, Direction direction) {
-            this(relation, direction, 0.80D, 1.0D);
+            this(relation, direction, 0.80D, 1.0D, 1);
+        }
+
+        public Rule(String relation, Direction direction, double minConfidence, double weight) {
+            this(relation, direction, minConfidence, weight, 1);
         }
 
         public Rule {
@@ -97,11 +113,15 @@ public record GraphExpansionPolicy(List<Rule> rules, double minSourceScore) {
             if (!Double.isFinite(weight) || weight <= 0D || weight > 2D) {
                 throw new IllegalArgumentException("weight must be between 0 and 2");
             }
+            if (maxHops < 1 || maxHops > 2) {
+                throw new IllegalArgumentException("maxHops must be 1 or 2");
+            }
         }
 
         String description() {
             return relation + (direction == Direction.OUTGOING ? "->" : "<-")
-                    + "@" + String.format(Locale.ROOT, "%.2f", minConfidence);
+                    + "@" + String.format(Locale.ROOT, "%.2f", minConfidence)
+                    + (maxHops > 1 ? "/" + maxHops + "hop" : "");
         }
     }
 
